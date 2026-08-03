@@ -11,6 +11,6 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@synaptix/project-model": "workspace:*"
+    "@synaptix/project-model": "0.1.0"
   }
 }
