@@ -11,6 +11,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
+    "@synaptix/command-system": "0.1.0",
+    "@synaptix/project-model": "0.1.0",
     "zod": "^4.0.0"
   }
 }
