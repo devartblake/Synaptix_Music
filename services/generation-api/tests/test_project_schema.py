@@ -6,7 +6,6 @@ from pydantic import ValidationError
 
 from app.models.project import MusicProject
 
-
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[3]
     / "schemas"
