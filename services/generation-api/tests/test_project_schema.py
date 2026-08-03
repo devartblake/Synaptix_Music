@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from app.models.project import MusicProject
 
