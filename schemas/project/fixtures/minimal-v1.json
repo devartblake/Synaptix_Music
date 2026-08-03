@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "projectId": "project-demo",
+  "revisionId": "revision-001",
+  "parentRevisionId": null,
+  "metadata": {
+    "name": "Canonical Fixture",
+    "createdAt": "2026-08-03T16:00:00Z",
+    "updatedAt": "2026-08-03T16:00:00Z"
+  },
+  "transport": {
+    "ticksPerQuarterNote": 960,
+    "loopEnabled": false,
+    "loopRange": null
+  },
+  "tempoMap": [
+    { "id": "tempo-1", "position": { "bar": 0, "beat": 0, "tick": 0 }, "bpm": 120 }
+  ],
+  "timeSignatureMap": [
+    { "id": "signature-1", "position": { "bar": 0, "beat": 0, "tick": 0 }, "numerator": 4, "denominator": 4 }
+  ],
+  "tracks": [
+    {
+      "id": "track-1",
+      "name": "Lead",
+      "kind": "instrument",
+      "color": "#5B8DEF",
+      "muted": false,
+      "solo": false,
+      "volumeDb": 0,
+      "pan": 0,
+      "devices": [
+        {
+          "id": "device-1",
+          "deviceType": "synaptix.basic-synth",
+          "deviceVersion": "1.0.0",
+          "enabled": true,
+          "parameters": [{ "id": "gain", "value": 0.8 }]
+        }
+      ],
+      "clips": [
+        {
+          "id": "clip-1",
+          "kind": "midi",
+          "name": "Opening Motif",
+          "range": { "start": { "bar": 0, "beat": 0, "tick": 0 }, "durationTicks": 3840 },
+          "loop": false,
+          "notes": [
+            { "id": "note-1", "pitch": 60, "velocity": 100, "startTick": 0, "durationTicks": 960 }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": [],
+  "markers": [
+    { "id": "marker-1", "name": "Intro", "position": { "bar": 0, "beat": 0, "tick": 0 }, "kind": "section" }
+  ],
+  "generationMetadata": {
+    "generatorId": "synaptix-procedural",
+    "generatorVersion": "0.1.0",
+    "seed": 42,
+    "createdAt": "2026-08-03T16:00:00Z",
+    "prompt": "Bright trivia intro"
+  }
+}
