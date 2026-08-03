@@ -3,13 +3,200 @@
   "$id": "https://schemas.synaptixplay.com/music/project/v1.json",
   "title": "Synaptix Music Project",
   "type": "object",
-  "required": [
-    "schemaVersion",
-    "projectId",
-    "revisionId",
-    "metadata",
-    "tempo",
-    "timeSignature",
-    "tracks"
-  ]
+  "additionalProperties": false,
+  "required": ["schemaVersion", "projectId", "revisionId", "parentRevisionId", "metadata", "transport", "tempoMap", "timeSignatureMap", "tracks", "assets", "markers"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "projectId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "parentRevisionId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "createdAt", "updatedAt"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ticksPerQuarterNote", "loopEnabled", "loopRange"],
+      "properties": {
+        "ticksPerQuarterNote": { "type": "integer", "minimum": 1 },
+        "loopEnabled": { "type": "boolean" },
+        "loopRange": { "oneOf": [{ "$ref": "#/$defs/musicalRange" }, { "type": "null" }] }
+      }
+    },
+    "tempoMap": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/tempoEvent" } },
+    "timeSignatureMap": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/timeSignatureEvent" } },
+    "tracks": { "type": "array", "items": { "$ref": "#/$defs/track" } },
+    "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
+    "markers": { "type": "array", "items": { "$ref": "#/$defs/marker" } },
+    "generationMetadata": { "$ref": "#/$defs/generationMetadata" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1 },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bar", "beat", "tick"],
+      "properties": {
+        "bar": { "type": "integer", "minimum": 0 },
+        "beat": { "type": "integer", "minimum": 0 },
+        "tick": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "musicalRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "durationTicks"],
+      "properties": {
+        "start": { "$ref": "#/$defs/position" },
+        "durationTicks": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "tempoEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position", "bpm"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "position": { "$ref": "#/$defs/position" },
+        "bpm": { "type": "number", "minimum": 20, "maximum": 400 }
+      }
+    },
+    "timeSignatureEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position", "numerator", "denominator"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "position": { "$ref": "#/$defs/position" },
+        "numerator": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "denominator": { "enum": [1, 2, 4, 8, 16, 32] }
+      }
+    },
+    "midiNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pitch", "velocity", "startTick", "durationTicks"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "pitch": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "velocity": { "type": "integer", "minimum": 1, "maximum": 127 },
+        "startTick": { "type": "integer", "minimum": 0 },
+        "durationTicks": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "clip": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "kind", "name", "range", "loop", "notes"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "midi" },
+            "name": { "type": "string", "minLength": 1 },
+            "range": { "$ref": "#/$defs/musicalRange" },
+            "loop": { "type": "boolean" },
+            "notes": { "type": "array", "items": { "$ref": "#/$defs/midiNote" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "kind", "name", "range", "loop", "assetId", "sourceOffsetSeconds", "gainDb"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "audio" },
+            "name": { "type": "string", "minLength": 1 },
+            "range": { "$ref": "#/$defs/musicalRange" },
+            "loop": { "type": "boolean" },
+            "assetId": { "$ref": "#/$defs/id" },
+            "sourceOffsetSeconds": { "type": "number", "minimum": 0 },
+            "gainDb": { "type": "number", "minimum": -96, "maximum": 24 }
+          }
+        }
+      ]
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "deviceType", "deviceVersion", "enabled", "parameters"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "deviceType": { "$ref": "#/$defs/id" },
+        "deviceVersion": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "value"],
+            "properties": { "id": { "$ref": "#/$defs/id" }, "value": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "kind", "muted", "solo", "volumeDb", "pan", "devices", "clips"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["instrument", "audio", "bus"] },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "muted": { "type": "boolean" },
+        "solo": { "type": "boolean" },
+        "volumeDb": { "type": "number", "minimum": -96, "maximum": 24 },
+        "pan": { "type": "number", "minimum": -1, "maximum": 1 },
+        "outputBusId": { "$ref": "#/$defs/id" },
+        "devices": { "type": "array", "items": { "$ref": "#/$defs/device" } },
+        "clips": { "type": "array", "items": { "$ref": "#/$defs/clip" } }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "uri", "mediaType", "checksumSha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["audio", "soundfont", "impulse-response"] },
+        "uri": { "type": "string", "minLength": 1 },
+        "mediaType": { "type": "string", "minLength": 1 },
+        "checksumSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "durationSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "licenseId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "position", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "position": { "$ref": "#/$defs/position" },
+        "kind": { "enum": ["section", "cue", "loop-start", "loop-end"] }
+      }
+    },
+    "generationMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generatorId", "generatorVersion", "seed", "createdAt"],
+      "properties": {
+        "generatorId": { "$ref": "#/$defs/id" },
+        "generatorVersion": { "type": "string", "minLength": 1 },
+        "seed": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "prompt": { "type": "string" }
+      }
+    }
+  }
 }
