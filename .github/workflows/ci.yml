@@ -42,7 +42,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check app tests
-      - run: ruff format --check app tests
+      - run: ruff format --diff app tests
       - run: pytest
 
   rust:
