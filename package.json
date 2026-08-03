@@ -1,7 +1,12 @@
 {
   "name": "synaptix-music",
+  "version": "0.1.0",
   "private": true,
   "packageManager": "npm@11.4.2",
+  "engines": {
+    "node": ">=22.14.0 <23",
+    "npm": ">=11.4.2 <12"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,10 +15,17 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "check:docker": "docker compose -f infrastructure/docker/docker-compose.yml config --quiet",
+    "ci": "npm run format:check && npm run check:boundaries && npm run typecheck && npm run build && npm run test"
   },
   "devDependencies": {
-    "turbo": "^2.5.0",
-    "typescript": "^5.8.0"
+    "prettier": "3.6.2",
+    "turbo": "2.5.0",
+    "typescript": "5.8.3"
   }
 }
