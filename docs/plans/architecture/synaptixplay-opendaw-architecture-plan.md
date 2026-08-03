@@ -56,7 +56,8 @@ synaptix-music/
 │   └── wasm-bindings/
 ├── schemas/
 ├── infrastructure/
-├── plans/
+├── docs/
+│   └── plans/
 └── .github/
 ```
 

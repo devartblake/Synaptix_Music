@@ -11,8 +11,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@synaptix/project-model": "workspace:*",
-    "@synaptix/audio-runtime": "workspace:*",
+    "@synaptix/project-model": "0.1.0",
+    "@synaptix/audio-runtime": "0.1.0",
     "tone": "^15.1.22"
   }
 }
