@@ -44,7 +44,7 @@ export type SerializedGenerationStateCommand = {
   createdAt: string;
 };
 
-class ApplyGenerationStateCommand implements StudioCommand {
+class ApplyGenerationStateCommand {
   readonly type = "apply-generation-state" as const;
   readonly id: string;
   private previous: GenerationStateSnapshot | null = null;
@@ -99,7 +99,7 @@ class ApplyGenerationStateCommand implements StudioCommand {
     return MusicProjectSchema.parse(next);
   }
 
-  serialize(): SerializedCommand {
+  serialize(): SerializedGenerationStateCommand {
     return {
       type: this.type,
       commandId: this.id,
@@ -114,8 +114,18 @@ class ApplyGenerationStateCommand implements StudioCommand {
       generatorVersion: this.proposal.provenance.generatorVersion,
       seed: this.proposal.provenance.seed,
       createdAt: this.timestamp
-    } as SerializedCommand;
+    };
   }
+}
+
+function asStudioCommand(command: ApplyGenerationStateCommand): StudioCommand {
+  return {
+    id: command.id,
+    type: command.type as StudioCommand["type"],
+    execute: (project) => command.execute(project),
+    undo: (project) => command.undo(project),
+    serialize: () => command.serialize() as unknown as SerializedCommand
+  };
 }
 
 function toTrack(generated: GeneratedTrack): Track {
@@ -151,7 +161,9 @@ export function generationProposalToTransaction(
   const timestamp = options.timestamp ?? new Date().toISOString();
   const prefix = options.commandIdPrefix ?? `generation-${proposal.provenance.seed}`;
   const commands: StudioCommand[] = [
-    new ApplyGenerationStateCommand(proposal, timestamp, { id: `${prefix}-state` })
+    asStudioCommand(
+      new ApplyGenerationStateCommand(proposal, timestamp, { id: `${prefix}-state` })
+    )
   ];
 
   proposal.tracks.forEach((track, index) => {
