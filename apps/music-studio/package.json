@@ -8,8 +8,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@synaptix/command-system": "0.1.0",
     "@synaptix/daw-engine": "0.1.0",
     "@synaptix/project-model": "0.1.0",
+    "@synaptix/project-storage": "0.1.0",
     "next": "^15.4.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
