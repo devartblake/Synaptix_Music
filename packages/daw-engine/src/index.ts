@@ -1,4 +1,4 @@
-import type { MusicProject, MusicalPosition } from "@synaptix/project-model";
+import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
 import * as Tone from "tone";
 
 export interface TransportSnapshot {
@@ -21,13 +21,25 @@ export interface AudioTransport {
   dispose(): void;
 }
 
+interface TrackRuntime {
+  channel: Tone.Channel;
+  synth: Tone.PolySynth;
+}
+
 function positionToTicks(position: MusicalPosition, beatsPerBar = 4, ppq = 960): number {
   return position.bar * beatsPerBar * ppq + position.beat * ppq + position.tick;
+}
+
+function trackAudible(track: Track, tracks: readonly Track[]): boolean {
+  const anySolo = tracks.some((candidate) => candidate.solo);
+  return !track.muted && (!anySolo || track.solo);
 }
 
 export class BrowserAudioEngine implements AudioTransport {
   private initialized = false;
   private project: MusicProject | null = null;
+  private readonly runtimes = new Map<string, TrackRuntime>();
+  private scheduledEventIds: number[] = [];
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -41,6 +53,7 @@ export class BrowserAudioEngine implements AudioTransport {
     transport.PPQ = project.transport.ticksPerQuarterNote;
     transport.bpm.value = project.tempoMap[0]?.bpm ?? 120;
     transport.loop = project.transport.loopEnabled;
+
     if (project.transport.loopRange) {
       const startTicks = positionToTicks(
         project.transport.loopRange.start,
@@ -49,6 +62,48 @@ export class BrowserAudioEngine implements AudioTransport {
       );
       transport.loopStart = `${startTicks}i`;
       transport.loopEnd = `${startTicks + project.transport.loopRange.durationTicks}i`;
+    }
+
+    this.rebuildAudioGraph(project);
+  }
+
+  private rebuildAudioGraph(project: MusicProject): void {
+    this.clearScheduledEvents();
+    this.disposeRuntimes();
+
+    const beatsPerBar = project.timeSignatureMap[0]?.numerator ?? 4;
+    const ppq = project.transport.ticksPerQuarterNote;
+
+    for (const track of project.tracks) {
+      if (track.kind !== "instrument") continue;
+
+      const channel = new Tone.Channel({
+        volume: track.volumeDb,
+        pan: track.pan,
+        mute: !trackAudible(track, project.tracks)
+      }).toDestination();
+      const synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: track.name.toLowerCase().includes("bass") ? "square" : "triangle" },
+        envelope: { attack: 0.01, decay: 0.12, sustain: 0.35, release: 0.2 }
+      }).connect(channel);
+
+      this.runtimes.set(track.id, { channel, synth });
+
+      for (const clip of track.clips) {
+        if (clip.kind !== "midi") continue;
+        const clipStartTicks = positionToTicks(clip.range.start, beatsPerBar, ppq);
+        for (const note of clip.notes) {
+          const eventId = Tone.getTransport().schedule((time) => {
+            synth.triggerAttackRelease(
+              Tone.Frequency(note.pitch, "midi").toFrequency(),
+              `${note.durationTicks}i`,
+              time,
+              note.velocity / 127
+            );
+          }, `${clipStartTicks + note.startTick}i`);
+          this.scheduledEventIds.push(eventId);
+        }
+      }
     }
   }
 
@@ -94,8 +149,26 @@ export class BrowserAudioEngine implements AudioTransport {
     };
   }
 
+  private clearScheduledEvents(): void {
+    const transport = Tone.getTransport();
+    for (const eventId of this.scheduledEventIds) {
+      transport.clear(eventId);
+    }
+    this.scheduledEventIds = [];
+  }
+
+  private disposeRuntimes(): void {
+    for (const runtime of this.runtimes.values()) {
+      runtime.synth.dispose();
+      runtime.channel.dispose();
+    }
+    this.runtimes.clear();
+  }
+
   dispose(): void {
     this.stop();
+    this.clearScheduledEvents();
+    this.disposeRuntimes();
     this.project = null;
     this.initialized = false;
   }
