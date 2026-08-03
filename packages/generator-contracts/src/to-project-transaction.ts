@@ -9,7 +9,6 @@ import {
 } from "@synaptix/command-system";
 import {
   MusicProjectSchema,
-  type Marker,
   type MusicProject,
   type Track
 } from "@synaptix/project-model";
@@ -26,6 +25,8 @@ export interface GenerationTransactionOptions {
   timestamp?: string;
   commandIdPrefix?: string;
 }
+
+type Marker = MusicProject["markers"][number];
 
 interface GenerationStateSnapshot {
   tempoMap: MusicProject["tempoMap"];
