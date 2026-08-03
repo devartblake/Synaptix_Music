@@ -10,9 +10,7 @@ class GenerationRequest(StrictModel):
     genre: Literal["electronic-trivia"] = "electronic-trivia"
     mood: Literal["upbeat", "tense", "triumphant"] = "upbeat"
     tempo: int = Field(default=120, ge=90, le=140)
-    key: Literal["C minor", "D minor", "E minor", "F minor", "G minor", "A minor"] = (
-        "D minor"
-    )
+    key: Literal["C minor", "D minor", "E minor", "F minor", "G minor", "A minor"] = "D minor"
     durationBars: int = Field(default=16, ge=8, le=64)
     energy: float = Field(default=0.6, ge=0, le=1)
     complexity: float = Field(default=0.5, ge=0, le=1)

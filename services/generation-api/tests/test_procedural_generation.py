@@ -46,8 +46,7 @@ def test_proposal_has_expected_structure_and_duration() -> None:
     ]
     assert sum(section.bars for section in proposal.sections) == 16
     assert all(
-        track.clips[0].range.durationTicks == 16 * TICKS_PER_BAR
-        for track in proposal.tracks
+        track.clips[0].range.durationTicks == 16 * TICKS_PER_BAR for track in proposal.tracks
     )
     assert all(track.clips[0].notes for track in proposal.tracks)
     assert proposal.provenance.seed == 42

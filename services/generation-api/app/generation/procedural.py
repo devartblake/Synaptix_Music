@@ -110,9 +110,7 @@ def _drum_notes(bars: int, energy: float, rng: random.Random) -> list[MidiNote]:
     return notes
 
 
-def _bass_notes(
-    bars: int, root: int, energy: float, rng: random.Random
-) -> list[MidiNote]:
+def _bass_notes(bars: int, root: int, energy: float, rng: random.Random) -> list[MidiNote]:
     notes: list[MidiNote] = []
     for bar in range(bars):
         degree = CHORD_DEGREES[bar % len(CHORD_DEGREES)]
