@@ -2,8 +2,9 @@ import json
 from pathlib import Path
 
 import pytest
-from app.models.project import MusicProject
 from pydantic import ValidationError
+
+from app.models.project import MusicProject
 
 
 FIXTURE_PATH = (
