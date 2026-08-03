@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/dsp", "crates/wasm-bindings"]
+resolver = "2"

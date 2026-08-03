@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.synaptixplay.com/music/project/v1.json",
+  "title": "Synaptix Music Project",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "revisionId",
+    "metadata",
+    "tempo",
+    "timeSignature",
+    "tracks"
+  ]
+}

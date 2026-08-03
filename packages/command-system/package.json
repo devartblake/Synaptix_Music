@@ -1,0 +1,16 @@
+{
+  "name": "@synaptix/command-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@synaptix/project-model": "workspace:*"
+  }
+}

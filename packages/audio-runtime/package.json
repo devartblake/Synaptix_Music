@@ -1,0 +1,16 @@
+{
+  "name": "@synaptix/audio-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "tone": "^15.1.22"
+  }
+}

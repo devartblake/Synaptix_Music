@@ -1,0 +1,1 @@
+export function midiToFrequency(note: number, tuning = 440): number { if (!Number.isInteger(note) || note < 0 || note > 127) throw new RangeError("MIDI note must be 0-127"); return tuning * Math.pow(2, (note - 69) / 12); }

@@ -1,0 +1,4 @@
+import { z } from "zod";
+export const MusicProjectSchema = z.object({ schemaVersion: z.number().int().positive(), projectId: z.string(), revisionId: z.string(), metadata: z.object({ name: z.string(), createdAt: z.string(), updatedAt: z.string() }), tempo: z.number().positive(), timeSignature: z.tuple([z.number().int().positive(), z.number().int().positive()]), tracks: z.array(z.unknown()), assets: z.array(z.unknown()).default([]) });
+export type MusicProject = z.infer<typeof MusicProjectSchema>;
+export function createEmptyProject(projectId: string): MusicProject { const now = new Date().toISOString(); return { schemaVersion: 1, projectId, revisionId: crypto.randomUUID(), metadata: { name: "Untitled Project", createdAt: now, updatedAt: now }, tempo: 120, timeSignature: [4, 4], tracks: [], assets: [] }; }

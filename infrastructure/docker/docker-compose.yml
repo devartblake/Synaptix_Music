@@ -1,0 +1,11 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: synaptix_music
+      POSTGRES_USER: synaptix
+      POSTGRES_PASSWORD: synaptix
+    ports: ["5432:5432"]
+  redis:
+    image: redis:8-alpine
+    ports: ["6379:6379"]
