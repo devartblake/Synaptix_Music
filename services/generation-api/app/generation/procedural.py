@@ -204,46 +204,50 @@ def generate_arrangement(request: GenerationRequest) -> GenerationProposal:
     root = ROOT_MIDI_BY_KEY[request.key]
     sections = _sections(request.durationBars)
 
+    drum_notes = _drum_notes(request.durationBars, request.energy, rng)
+    bass_notes = _bass_notes(
+        request.durationBars,
+        root,
+        request.energy,
+        rng,
+    )
+    harmony_notes = _harmony_notes(request.durationBars, root)
+    melody_notes = _melody_notes(
+        request.durationBars,
+        root,
+        request.complexity,
+        request.energy,
+        rng,
+    )
+
     tracks = [
         GeneratedTrack(
             id="track-drums",
             role="drums",
             name="Drums",
             instrumentId="synaptix-drum-machine-01",
-            clips=[_clip("drums", request.durationBars, _drum_notes(request.durationBars, request.energy, rng))],
+            clips=[_clip("drums", request.durationBars, drum_notes)],
         ),
         GeneratedTrack(
             id="track-bass",
             role="bass",
             name="Bass",
             instrumentId="synaptix-bass-synth-01",
-            clips=[_clip("bass", request.durationBars, _bass_notes(request.durationBars, root, request.energy, rng))],
+            clips=[_clip("bass", request.durationBars, bass_notes)],
         ),
         GeneratedTrack(
             id="track-harmony",
             role="harmony",
             name="Harmony",
             instrumentId="synaptix-poly-synth-01",
-            clips=[_clip("harmony", request.durationBars, _harmony_notes(request.durationBars, root))],
+            clips=[_clip("harmony", request.durationBars, harmony_notes)],
         ),
         GeneratedTrack(
             id="track-melody",
             role="melody",
             name="Lead Melody",
             instrumentId="synaptix-lead-synth-01",
-            clips=[
-                _clip(
-                    "melody",
-                    request.durationBars,
-                    _melody_notes(
-                        request.durationBars,
-                        root,
-                        request.complexity,
-                        request.energy,
-                        rng,
-                    ),
-                )
-            ],
+            clips=[_clip("melody", request.durationBars, melody_notes)],
         ),
     ]
 
