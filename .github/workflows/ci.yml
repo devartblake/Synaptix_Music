@@ -41,7 +41,7 @@ jobs:
           cache-dependency-path: services/generation-api/pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - run: ruff check app tests --fix --diff
+      - run: ruff check app tests
       - run: ruff format --check app tests
       - run: pytest
 
