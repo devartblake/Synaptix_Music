@@ -1,0 +1,17 @@
+{
+  "name": "@synaptix/project-storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "echo Storage tests are pending the browser test harness"
+  },
+  "dependencies": {
+    "@synaptix/command-system": "0.1.0",
+    "@synaptix/project-model": "0.1.0"
+  }
+}

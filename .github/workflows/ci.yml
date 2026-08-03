@@ -22,7 +22,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: corepack enable
+      - run: npm install --global npm@11.4.2
       - run: npm ci --no-audit --no-fund
       - run: npm run ci
 
