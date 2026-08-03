@@ -24,6 +24,11 @@ jobs:
           package-manager-cache: false
       - run: corepack enable
       - run: npm install --no-audit --no-fund
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-lockfile
+          path: package-lock.json
+          if-no-files-found: error
       - run: npm run ci
 
   python:
