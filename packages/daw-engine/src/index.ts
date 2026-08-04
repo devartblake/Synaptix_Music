@@ -5,9 +5,19 @@ export interface TransportSnapshot {
   initialized: boolean;
   playing: boolean;
   positionSeconds: number;
+  positionTicks: number;
   tempo: number;
   loopEnabled: boolean;
 }
+
+export interface NoteAuditionRequest {
+  trackId: string;
+  pitch: number;
+  velocity?: number;
+  durationSeconds?: number;
+}
+
+export type TransportListener = (snapshot: TransportSnapshot) => void;
 
 export interface AudioTransport {
   initialize(): Promise<void>;
@@ -17,7 +27,10 @@ export interface AudioTransport {
   stop(): void;
   seek(position: MusicalPosition): void;
   setLoop(enabled: boolean): void;
+  auditionNote(request: NoteAuditionRequest): Promise<void>;
+  allNotesOff(): void;
   snapshot(): TransportSnapshot;
+  subscribe(listener: TransportListener, intervalMs?: number): () => void;
   dispose(): void;
 }
 
@@ -35,11 +48,19 @@ function trackAudible(track: Track, tracks: readonly Track[]): boolean {
   return !track.muted && (!anySolo || track.solo);
 }
 
+function clampMidiValue(value: number, minimum: number, maximum: number): number {
+  if (!Number.isFinite(value)) {
+    throw new Error("MIDI audition values must be finite numbers.");
+  }
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
 export class BrowserAudioEngine implements AudioTransport {
   private initialized = false;
   private project: MusicProject | null = null;
   private readonly runtimes = new Map<string, TrackRuntime>();
   private scheduledEventIds: number[] = [];
+  private readonly subscriptions = new Set<ReturnType<typeof setInterval>>();
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -114,12 +135,14 @@ export class BrowserAudioEngine implements AudioTransport {
 
   pause(): void {
     Tone.getTransport().pause();
+    this.allNotesOff();
   }
 
   stop(): void {
     const transport = Tone.getTransport();
     transport.stop();
     transport.seconds = 0;
+    this.allNotesOff();
   }
 
   seek(position: MusicalPosition): void {
@@ -138,14 +161,49 @@ export class BrowserAudioEngine implements AudioTransport {
     Tone.getTransport().loop = enabled;
   }
 
+  async auditionNote({ trackId, pitch, velocity = 100, durationSeconds = 0.18 }: NoteAuditionRequest): Promise<void> {
+    await this.initialize();
+    const runtime = this.runtimes.get(trackId);
+    if (!runtime) {
+      throw new Error(`Track runtime ${trackId} is not available for audition.`);
+    }
+    const safePitch = clampMidiValue(Math.round(pitch), 0, 127);
+    const safeVelocity = clampMidiValue(velocity, 1, 127) / 127;
+    const safeDuration = clampMidiValue(durationSeconds, 0.03, 2);
+    runtime.synth.triggerAttackRelease(
+      Tone.Frequency(safePitch, "midi").toFrequency(),
+      safeDuration,
+      undefined,
+      safeVelocity
+    );
+  }
+
+  allNotesOff(): void {
+    for (const runtime of this.runtimes.values()) {
+      runtime.synth.releaseAll();
+    }
+  }
+
   snapshot(): TransportSnapshot {
     const transport = Tone.getTransport();
     return {
       initialized: this.initialized,
       playing: transport.state === "started",
       positionSeconds: transport.seconds,
+      positionTicks: transport.ticks,
       tempo: transport.bpm.value,
       loopEnabled: Boolean(transport.loop)
+    };
+  }
+
+  subscribe(listener: TransportListener, intervalMs = 33): () => void {
+    const safeInterval = Math.max(16, Math.round(intervalMs));
+    listener(this.snapshot());
+    const timer = setInterval(() => listener(this.snapshot()), safeInterval);
+    this.subscriptions.add(timer);
+    return () => {
+      clearInterval(timer);
+      this.subscriptions.delete(timer);
     };
   }
 
@@ -167,6 +225,10 @@ export class BrowserAudioEngine implements AudioTransport {
 
   dispose(): void {
     this.stop();
+    for (const timer of this.subscriptions) {
+      clearInterval(timer);
+    }
+    this.subscriptions.clear();
     this.clearScheduledEvents();
     this.disposeRuntimes();
     this.project = null;
