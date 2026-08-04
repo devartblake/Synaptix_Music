@@ -25,6 +25,7 @@ import {
 
 import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-project-repository";
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
+import { PianoRoll } from "./PianoRoll";
 
 const TRACK_NAMES = ["Drums", "Bass", "Harmony", "Lead Melody"] as const;
 const TOTAL_BARS = 16;
@@ -94,8 +95,8 @@ function clipStyle(clip: Clip, project: MusicProject): React.CSSProperties {
 }
 
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
-
 type Gesture = { trackId: string; field: "volume" | "pan"; initial: number };
+type ActiveClip = { trackId: string; clipId: string };
 
 export default function StudioClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState(() => createStarterProject(projectId));
@@ -104,6 +105,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [hydrated, setHydrated] = useState(false);
   const [sync, setSync] = useState(INITIAL_SYNC);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
   const engine = useMemo(() => new BrowserAudioEngine(), []);
   const localRef = useRef<LocalProjectRepository | null>(null);
   const hybridRef = useRef<HybridProjectRepository | null>(null);
@@ -148,6 +150,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
       const modifier = event.ctrlKey || event.metaKey;
       if (!modifier) return;
       if (event.key.toLowerCase() === "z") {
@@ -253,6 +257,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         : sync.error ?? (sync.lastSyncedAt ? `Synced ${new Date(sync.lastSyncedAt).toLocaleTimeString()}` : "Local only");
   const history = historyRef.current;
   void historyVersion;
+  void hydrated;
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui", background: "#111318", color: "#f4f5f7", minHeight: "100vh" }}>
@@ -288,7 +293,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </section>
       ))}
 
-      <section aria-label="Arrangement timeline" style={{ border: "1px solid #343943", borderRadius: 8, overflow: "auto" }}>
+      {!activeClip && <section aria-label="Arrangement timeline" style={{ border: "1px solid #343943", borderRadius: 8, overflow: "auto" }}>
         <div style={{ minWidth: 1120 }}>
           <div style={{ display: "grid", gridTemplateColumns: "260px repeat(16, minmax(48px, 1fr))", background: "#1a1e26", borderBottom: "1px solid #343943" }}>
             <div style={{ padding: 10 }}>Tracks and mixer</div>
@@ -320,15 +325,24 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                 </label>
               </div>
               <div style={{ position: "relative", minHeight: 96, backgroundImage: "repeating-linear-gradient(to right, transparent 0, transparent calc(6.25% - 1px), #252a33 calc(6.25% - 1px), #252a33 6.25%)" }}>
-                {value.clips.map((clip) => <div key={clip.id} style={clipStyle(clip, project)}>
+                {value.clips.map((clip) => <div key={clip.id} style={clipStyle(clip, project)} onDoubleClick={() => clip.kind === "midi" && setActiveClip({ trackId: value.id, clipId: clip.id })}>
                   <strong>{clip.name}</strong>
                   <div style={{ fontSize: 12, opacity: 0.8 }}>{clip.kind === "midi" ? `${clip.notes.length} MIDI notes` : "Audio clip"}</div>
+                  {clip.kind === "midi" && <button style={{ marginTop: 6 }} onClick={(event) => { event.stopPropagation(); setActiveClip({ trackId: value.id, clipId: clip.id }); }}>Edit</button>}
                 </div>)}
               </div>
             </div>
           ))}
         </div>
-      </section>
+      </section>}
+
+      {activeClip && <PianoRoll
+        project={project}
+        trackId={activeClip.trackId}
+        clipId={activeClip.clipId}
+        onExecute={execute}
+        onClose={() => setActiveClip(null)}
+      />}
     </main>
   );
 }
