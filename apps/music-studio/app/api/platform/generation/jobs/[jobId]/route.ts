@@ -1,8 +1,4 @@
-import {
-  GenerationJobRequestSchema,
-  GenerationJobSchema,
-  PlatformErrorSchema
-} from "@synaptix/platform-contracts";
+import { GenerationJobSchema, PlatformErrorSchema } from "@synaptix/platform-contracts";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -28,35 +24,35 @@ function errorResponse(
   );
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ jobId: string }> }
+): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
   const authorization = request.headers.get("authorization");
   const cookie = request.headers.get("cookie");
+  const { jobId } = await context.params;
 
   if (!authorization && !cookie) {
     return errorResponse(401, "authentication_required", "Authentication is required.", correlationId);
   }
-
-  let input;
-  try {
-    input = GenerationJobRequestSchema.parse(await request.json());
-  } catch {
-    return errorResponse(400, "invalid_generation_request", "The generation request is invalid.", correlationId);
+  if (!jobId) {
+    return errorResponse(400, "invalid_job_id", "A generation job ID is required.", correlationId);
   }
 
   try {
-    const response = await fetch(`${platformBaseUrl()}/api/v1/music/generation/jobs`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-correlation-id": correlationId,
-        "idempotency-key": input.idempotencyKey,
-        ...(authorization ? { authorization } : {}),
-        ...(cookie ? { cookie } : {})
-      },
-      body: JSON.stringify(input),
-      cache: "no-store"
-    });
+    const response = await fetch(
+      `${platformBaseUrl()}/api/v1/music/generation/jobs/${encodeURIComponent(jobId)}`,
+      {
+        method: "GET",
+        headers: {
+          "x-correlation-id": correlationId,
+          ...(authorization ? { authorization } : {}),
+          ...(cookie ? { cookie } : {})
+        },
+        cache: "no-store"
+      }
+    );
 
     const body: unknown = await response.json();
     if (!response.ok) {

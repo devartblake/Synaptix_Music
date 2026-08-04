@@ -2,6 +2,7 @@ import {
   GenerationJobRequestSchema,
   GenerationJobSchema,
   PlatformErrorSchema,
+  TerminalGenerationJobStatuses,
   type GenerationJob,
   type GenerationJobRequest,
   type PlatformError
@@ -39,4 +40,66 @@ export async function submitGenerationJob(
     signal
   });
   return parseResponse(response);
+}
+
+export async function getGenerationJob(
+  jobId: string,
+  signal?: AbortSignal
+): Promise<GenerationJob> {
+  const response = await fetch(`/api/platform/generation/jobs/${encodeURIComponent(jobId)}`, {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+    signal
+  });
+  return parseResponse(response);
+}
+
+export interface PollGenerationJobOptions {
+  signal?: AbortSignal;
+  intervalMs?: number;
+  timeoutMs?: number;
+  onUpdate?: (job: GenerationJob) => void;
+}
+
+export async function pollGenerationJob(
+  jobId: string,
+  options: PollGenerationJobOptions = {}
+): Promise<GenerationJob> {
+  const intervalMs = Math.max(500, options.intervalMs ?? 1500);
+  const timeoutMs = Math.max(intervalMs, options.timeoutMs ?? 120_000);
+  const startedAt = Date.now();
+
+  while (true) {
+    options.signal?.throwIfAborted();
+    const job = await getGenerationJob(jobId, options.signal);
+    options.onUpdate?.(job);
+
+    if (TerminalGenerationJobStatuses.has(job.status as never)) {
+      return job;
+    }
+    if (Date.now() - startedAt >= timeoutMs) {
+      throw new PlatformApiError(
+        {
+          code: "generation_status_timeout",
+          message: "Generation status polling timed out.",
+          correlationId: job.correlationId,
+          retryable: true
+        },
+        408
+      );
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, intervalMs);
+      options.signal?.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          reject(options.signal?.reason ?? new DOMException("Aborted", "AbortError"));
+        },
+        { once: true }
+      );
+    });
+  }
 }
