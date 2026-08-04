@@ -37,35 +37,51 @@ export const GenerationJobRequestSchema = z.object({
   requestedAt: IsoDateSchema
 });
 
-export const CreditReservationSchema = z.object({
-  reservationId: IdSchema,
-  amount: z.number().int().positive(),
-  status: z.enum(["reserved", "committed", "released", "expired"]),
-  expiresAt: IsoDateSchema
-});
+export const GenerationJobStatusSchema = z.enum([
+  "queued",
+  "running",
+  "retryScheduled",
+  "completed",
+  "failed",
+  "deadLetter",
+  "cancelled"
+]);
 
 export const GenerationJobSchema = z.object({
   jobId: IdSchema,
   projectId: IdSchema,
-  status: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
-  reservation: CreditReservationSchema,
-  proposal: GenerationProposalSchema.optional(),
-  failureCode: z.string().min(1).optional(),
-  failureMessage: z.string().min(1).optional(),
+  playerId: IdSchema,
+  expectedRevisionId: IdSchema,
+  status: GenerationJobStatusSchema,
   createdAt: IsoDateSchema,
-  updatedAt: IsoDateSchema
+  updatedAt: IsoDateSchema,
+  result: GenerationProposalSchema.nullable().optional(),
+  errorCode: z.string().min(1).nullable().optional(),
+  errorMessage: z.string().min(1).nullable().optional(),
+  correlationId: IdSchema,
+  reservationId: IdSchema.nullable().optional(),
+  attemptCount: z.number().int().nonnegative(),
+  nextAttemptAt: IsoDateSchema.nullable().optional()
 });
 
 export const PlatformErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
-  correlationId: IdSchema,
-  retryable: z.boolean().default(false)
+  correlationId: IdSchema.optional().default("unknown"),
+  retryable: z.boolean().optional().default(false)
 });
+
+export const TerminalGenerationJobStatuses = new Set([
+  "completed",
+  "failed",
+  "deadLetter",
+  "cancelled"
+] as const);
 
 export type PlatformUser = z.infer<typeof PlatformUserSchema>;
 export type MusicEntitlements = z.infer<typeof MusicEntitlementsSchema>;
 export type ProjectAccess = z.infer<typeof ProjectAccessSchema>;
 export type GenerationJobRequest = z.infer<typeof GenerationJobRequestSchema>;
+export type GenerationJobStatus = z.infer<typeof GenerationJobStatusSchema>;
 export type GenerationJob = z.infer<typeof GenerationJobSchema>;
 export type PlatformError = z.infer<typeof PlatformErrorSchema>;
