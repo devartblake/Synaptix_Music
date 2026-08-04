@@ -6,6 +6,28 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Current — Generation status delivery hardening
+
+- Added concurrent active-job discovery rather than assuming one active generation.
+- Added durable status-event replay with per-job cursors.
+- Added authenticated client acknowledgements after replay processing.
+- Added a concurrent status tracker that reconciles all active jobs after reconnect.
+- Added BFF routes for job listing, replay, and acknowledgement.
+
+#### PR #11 — SignalR recovery and idempotent proposal application
+
+- Added the Microsoft SignalR browser client and automatic reconnect.
+- Added typed `MusicGenerationJobStatusChanged` validation.
+- Reconciled durable job state after initial connection and reconnect.
+- Added deterministic job-based transaction and revision identifiers.
+- Added duplicate-application protection for completed proposals.
+
+#### PR #10 — Generation job polling
+
+- Aligned the TypeScript lifecycle with queued, running, retry-scheduled, completed, failed, dead-letter, and cancelled backend states.
+- Added authenticated job-status BFF reads.
+- Added abortable polling, timeout handling, terminal-state detection, and status callbacks.
+
 #### PR #9 — SynaptixPlay platform integration boundary
 
 - Added `@synaptix/platform-contracts` with strict schemas for users, entitlements, project access, credit reservations, generation jobs, and normalized errors.
@@ -84,7 +106,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 ### Changed
 
 - Updated local-development instructions to use the pinned Node/npm/Python/Rust versions.
-- Updated documentation to reflect completion of Stages 1 through 8 and the active Stage 9 integration boundary.
+- Updated documentation to reflect completion of Stages 1 through 9 and the generation status integration sequence.
 - Added a consolidated implementation-stage index.
 
 ### Fixed
@@ -98,4 +120,4 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ## Release Policy
 
-The first tagged release should be created only after the standalone browser editor, local persistence, procedural generation, platform job integration, and deterministic rendering path are validated together.
+The first tagged release should be created only after the standalone browser editor, local persistence, procedural generation, platform job integration, project synchronization, and deterministic rendering path are validated together.
