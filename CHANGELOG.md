@@ -6,13 +6,22 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
-#### Current — Generation status delivery hardening
+#### Task 2 complete — Generation-job status updates
 
-- Added concurrent active-job discovery rather than assuming one active generation.
-- Added durable status-event replay with per-job cursors.
-- Added authenticated client acknowledgements after replay processing.
-- Added a concurrent status tracker that reconciles all active jobs after reconnect.
-- Added BFF routes for job listing, replay, and acknowledgement.
+- Added polling, terminal-state handling, and authenticated BFF status reads.
+- Added player-scoped SignalR lifecycle delivery with automatic reconnect.
+- Added durable reconnect reconciliation, event replay cursors, and acknowledgements.
+- Added concurrent active-job tracking rather than assuming one active generation.
+- Added deterministic job-based command, transaction, and revision identifiers.
+- Added duplicate completed-proposal protection.
+- Added deterministic transition coalescing for rapid lifecycle updates.
+- Added executable lifecycle tests covering coalescing and idempotent application.
+
+#### PR #12 — Concurrent replay and acknowledgements
+
+- Added typed contracts for concurrent job lists, replay events, cursors, and acknowledgements.
+- Added BFF routes for active jobs, durable replay, and acknowledgement writes.
+- Added per-job reconnect reconciliation and cursor tracking.
 
 #### PR #11 — SignalR recovery and idempotent proposal application
 
@@ -106,7 +115,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 ### Changed
 
 - Updated local-development instructions to use the pinned Node/npm/Python/Rust versions.
-- Updated documentation to reflect completion of Stages 1 through 9 and the generation status integration sequence.
+- Updated documentation to mark generation-job status updates complete and Stage 10 project synchronization active.
 - Added a consolidated implementation-stage index.
 
 ### Fixed
