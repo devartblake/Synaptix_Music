@@ -111,7 +111,7 @@ export class RemoveMidiNotesCommand extends MidiNotesCommand {
 }
 
 export class MoveMidiNotesCommand extends MidiNotesCommand {
-  readonly kind = "move-midi-notes";
+  readonly kind: string = "move-midi-notes";
   readonly noteIds: ReadonlySet<string>;
   constructor(
     trackId: string,
