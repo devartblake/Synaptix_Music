@@ -65,12 +65,11 @@ test("history must be reset before switching projects", async () => {
   assert.equal(history.canUndo, false);
 });
 
-test("failed commands do not corrupt history stacks", async () => {
+test("failed command construction leaves history unchanged", () => {
   const history = new EditorCommandHistory();
-  const current = project();
 
-  await assert.rejects(
-    history.execute(current, new SetTempoEditorCommand(120, 301)),
+  assert.throws(
+    () => new SetTempoEditorCommand(120, 301),
     /between 20 and 300/
   );
 
