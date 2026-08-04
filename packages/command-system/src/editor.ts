@@ -31,7 +31,7 @@ abstract class TrackFieldCommand<T> implements EditorCommand {
   readonly id: string;
   abstract readonly kind: string;
 
-  protected constructor(
+  constructor(
     readonly trackId: string,
     readonly previousValue: T,
     readonly nextValue: T,
