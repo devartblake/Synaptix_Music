@@ -14,47 +14,39 @@ This index records the completed Synaptix Music implementation slices and the ne
 | Procedural Generation Service | #6 | Added deterministic electronic-trivia MIDI arrangement generation |
 | Generation Conversion and Browser Transport | #7 | Converted proposals into one undoable revision and added the transport/editor shell |
 | MIDI Synthesis, Clip Visualization, and Autosave | #8 | Added audible scheduling, mixer controls, visible clips, and local autosave |
+| SynaptixPlay Platform Integration | #9 | Added typed platform contracts and the authenticated Next.js BFF boundary |
+| Generation Job Status Updates | #10–#12 | Added polling, SignalR, reconnect recovery, replay, acknowledgements, concurrent jobs, and idempotent application |
 
 ## Active Stage
 
-### Stage 9 — SynaptixPlay Platform Integration
+### Stage 10 — Platform Project Synchronization
 
-PR #9 establishes the client-side and BFF boundary for:
+The active sequence introduces a repository abstraction spanning IndexedDB and the SynaptixPlay platform, revision upload/download contracts, optimistic concurrency, offline queues, and explicit conflict handling.
 
-- Authentication forwarding
-- Project authorization requests
-- Entitlement and quota contracts
-- Credit reservations
-- Idempotent generation-job submission
-- Correlation IDs
-- Durable job-status contracts
-- Normalized platform errors
-- Private .NET-to-Python dispatch
+## Generation Status Completion Criteria
 
-The remaining implementation belongs primarily in the SynaptixPlay .NET backend.
+The completed status boundary now includes:
+
+- durable polling and terminal-state handling;
+- player-scoped SignalR updates;
+- reconnect reconciliation;
+- concurrent active-job tracking;
+- durable event replay and acknowledgements;
+- deterministic proposal transaction/revision IDs;
+- duplicate completed-result protection;
+- deterministic transition coalescing and executable lifecycle tests.
 
 ## Expected Next Slices
 
-1. Implement the Stage 9 .NET endpoints and durable generation-job workflow.
-2. Add generation-job status polling or realtime updates to the browser studio.
-3. Apply completed generation proposals through the existing command/revision boundary.
-4. Add dedicated mute, solo, loop, and transport commands.
-5. Add browser undo and redo controls.
-6. Add piano-roll editing and MIDI-note commands.
-7. Add device-specific instrument factories and drum mapping.
+1. Add the cloud/local project repository abstraction.
+2. Add canonical project and revision upload/download BFF contracts.
+3. Add optimistic concurrency and conflict responses.
+4. Add an offline synchronization queue and reconnect drain.
+5. Add conflict resolution and project browser surfaces.
+6. Complete editor command coverage and browser undo/redo.
+7. Add piano-roll editing and MIDI-note commands.
 8. Define deterministic render contracts and background-worker execution.
-
-## Completed Plan Documents
-
-- [Foundation Slice 1](foundation-slice-1.md)
-- [Canonical Project Schema v1](canonical-project-schema-v1.md)
-- [Command Transaction History v1](command-transaction-history-v1.md)
-- [Local Project Storage v1](local-project-storage-v1.md)
-- [Procedural Generation Service v1](procedural-generation-service-v1.md)
-- [Generation Commands and Transport v1](generation-commands-and-transport-v1.md)
-- [MIDI Synthesis, Clip Visualization, and Autosave v1](midi-synthesis-clip-autosave-v1.md)
-- [Stage 9 Platform Integration](stage-9-platform-integration.md)
 
 ## Revision Date
 
-2026-08-03
+2026-08-04
