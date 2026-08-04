@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const response = await fetch(`${platformBaseUrl()}/api/music/generation/jobs`, {
+    const response = await fetch(`${platformBaseUrl()}/api/v1/music/generation/jobs`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
