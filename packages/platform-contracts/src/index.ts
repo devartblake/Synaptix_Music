@@ -64,6 +64,29 @@ export const GenerationJobSchema = z.object({
   nextAttemptAt: IsoDateSchema.nullable().optional()
 });
 
+const RealtimeStatusSchema = z.string().transform((value, context) => {
+  const normalized = value.charAt(0).toLowerCase() + value.slice(1);
+  const parsed = GenerationJobStatusSchema.safeParse(normalized);
+  if (!parsed.success) {
+    context.addIssue({ code: "custom", message: `Unsupported generation status '${value}'.` });
+    return z.NEVER;
+  }
+  return parsed.data;
+});
+
+export const GenerationJobStatusEventSchema = z.object({
+  jobId: IdSchema,
+  projectId: IdSchema,
+  status: RealtimeStatusSchema,
+  updatedAt: IsoDateSchema,
+  attemptCount: z.number().int().nonnegative(),
+  nextAttemptAt: IsoDateSchema.nullable().optional(),
+  result: GenerationProposalSchema.nullable().optional(),
+  errorCode: z.string().min(1).nullable().optional(),
+  errorMessage: z.string().min(1).nullable().optional(),
+  correlationId: IdSchema
+});
+
 export const PlatformErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
@@ -84,4 +107,5 @@ export type ProjectAccess = z.infer<typeof ProjectAccessSchema>;
 export type GenerationJobRequest = z.infer<typeof GenerationJobRequestSchema>;
 export type GenerationJobStatus = z.infer<typeof GenerationJobStatusSchema>;
 export type GenerationJob = z.infer<typeof GenerationJobSchema>;
+export type GenerationJobStatusEvent = z.infer<typeof GenerationJobStatusEventSchema>;
 export type PlatformError = z.infer<typeof PlatformErrorSchema>;
