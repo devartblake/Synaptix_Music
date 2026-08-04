@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/platform/*.test.ts"
+    "test": "node --experimental-strip-types --test lib/platform/*.test.ts lib/editor/*.test.ts"
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.17",
