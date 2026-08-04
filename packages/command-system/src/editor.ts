@@ -1,6 +1,6 @@
 import type { MusicProject, Track } from "@synaptix/project-model";
 
-import { computeProjectChecksum, type ProjectRevision } from "./index";
+import { computeProjectChecksum, type ProjectRevision } from "./index.ts";
 
 export interface EditorCommand {
   readonly id: string;
