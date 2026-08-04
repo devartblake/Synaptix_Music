@@ -9,6 +9,8 @@ import {
   type PlatformRevisionEnvelope
 } from "./platform-sync.ts";
 
+const OPERATION_ID = "00000000-0000-4000-8000-000000000001";
+
 function envelope(projectId: string, revisionId: string): PlatformRevisionEnvelope {
   return {
     projectId,
@@ -24,9 +26,9 @@ function envelope(projectId: string, revisionId: string): PlatformRevisionEnvelo
     } as MusicProject,
     revision: {
       revisionId,
-      projectId,
       parentRevisionId: null,
       transactionId: "transaction-1",
+      commandIds: [],
       checksumSha256: "checksum",
       createdAt: "2026-08-04T16:00:00.000Z"
     }
@@ -42,7 +44,7 @@ test("accepted uploads leave the persistent queue", async () => {
   };
   const local = { save: async () => undefined, load: async () => null };
   const repository = new HybridProjectRepository(local, platform, queue);
-  await repository.saveAndQueue(envelope("project-1", "revision-1"), null, "key-1", "operation-1");
+  await repository.saveAndQueue(envelope("project-1", "revision-1"), null, "key-1", OPERATION_ID);
 
   const results = await repository.drain();
 
@@ -65,7 +67,12 @@ test("conflicting uploads remain queued for explicit resolution", async () => {
   };
   const local = { save: async () => undefined, load: async () => null };
   const repository = new HybridProjectRepository(local, platform, queue);
-  await repository.saveAndQueue(envelope("project-1", "revision-local"), "revision-0", "key-1", "operation-1");
+  await repository.saveAndQueue(
+    envelope("project-1", "revision-local"),
+    "revision-0",
+    "key-1",
+    OPERATION_ID
+  );
 
   const results = await repository.drain();
 
