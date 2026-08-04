@@ -87,6 +87,25 @@ export const GenerationJobStatusEventSchema = z.object({
   correlationId: IdSchema
 });
 
+export const GenerationJobListSchema = z.object({ jobs: z.array(GenerationJobSchema) });
+export const GenerationStatusReplayEventSchema = z.object({
+  eventId: IdSchema,
+  jobId: IdSchema,
+  status: RealtimeStatusSchema,
+  occurredAt: IsoDateSchema,
+  evidence: z.unknown(),
+  cursor: z.string().min(1)
+});
+export const GenerationStatusReplaySchema = z.object({
+  events: z.array(GenerationStatusReplayEventSchema)
+});
+export const GenerationStatusAcknowledgementSchema = z.object({
+  eventId: IdSchema,
+  cursor: z.string().min(1),
+  receivedAt: IsoDateSchema,
+  clientInstanceId: IdSchema
+});
+
 export const PlatformErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
@@ -108,4 +127,6 @@ export type GenerationJobRequest = z.infer<typeof GenerationJobRequestSchema>;
 export type GenerationJobStatus = z.infer<typeof GenerationJobStatusSchema>;
 export type GenerationJob = z.infer<typeof GenerationJobSchema>;
 export type GenerationJobStatusEvent = z.infer<typeof GenerationJobStatusEventSchema>;
+export type GenerationStatusReplayEvent = z.infer<typeof GenerationStatusReplayEventSchema>;
+export type GenerationStatusAcknowledgement = z.infer<typeof GenerationStatusAcknowledgementSchema>;
 export type PlatformError = z.infer<typeof PlatformErrorSchema>;
