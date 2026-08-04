@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "echo Storage tests are pending the browser test harness"
+    "test": "node --experimental-transform-types --test src/*.test.ts"
   },
   "dependencies": {
     "@synaptix/command-system": "0.1.0",

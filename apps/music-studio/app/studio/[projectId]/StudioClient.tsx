@@ -7,19 +7,24 @@ import {
   SetTrackPanCommand,
   SetTrackVolumeCommand,
   commitTransaction,
+  type ProjectRevision,
   type StudioCommand
 } from "@synaptix/command-system";
 import { BrowserAudioEngine } from "@synaptix/daw-engine";
+import { createEmptyProject, type Clip, type MusicProject, type Track } from "@synaptix/project-model";
+import { IndexedDbProjectStorage, LocalProjectRepository } from "@synaptix/project-storage";
 import {
-  createEmptyProject,
-  type Clip,
-  type MusicProject,
-  type Track
-} from "@synaptix/project-model";
+  HybridProjectRepository,
+  IndexedDbProjectSyncQueue,
+  type PlatformRevisionEnvelope,
+  type RevisionUploadResult
+} from "@synaptix/project-storage/platform-sync";
+
+import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-project-repository";
 import {
-  IndexedDbProjectStorage,
-  LocalProjectRepository
-} from "@synaptix/project-storage";
+  ProjectSyncCoordinator,
+  type ProjectSyncSnapshot
+} from "../../../lib/platform/project-sync-coordinator";
 
 const TRACK_NAMES = ["Drums", "Bass", "Harmony", "Lead Melody"] as const;
 const TOTAL_BARS = 16;
@@ -27,38 +32,27 @@ const PPQ = 960;
 const TICKS_PER_BAR = PPQ * 4;
 
 function midiClip(id: string, name: string, pitches: readonly number[]): Clip {
-  const notes = Array.from({ length: TOTAL_BARS }, (_, bar) =>
-    pitches.map((pitch, step) => ({
-      id: `${id}-note-${bar}-${step}`,
-      pitch,
-      velocity: step === 0 ? 108 : 88,
-      startTick: bar * TICKS_PER_BAR + step * PPQ,
-      durationTicks: Math.max(PPQ / 2, PPQ - 80)
-    }))
-  ).flat();
-
   return {
     id,
     kind: "midi",
     name,
-    range: {
-      start: { bar: 0, beat: 0, tick: 0 },
-      durationTicks: TOTAL_BARS * TICKS_PER_BAR
-    },
+    range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: TOTAL_BARS * TICKS_PER_BAR },
     loop: true,
-    notes
+    notes: Array.from({ length: TOTAL_BARS }, (_, bar) =>
+      pitches.map((pitch, step) => ({
+        id: `${id}-note-${bar}-${step}`,
+        pitch,
+        velocity: step === 0 ? 108 : 88,
+        startTick: bar * TICKS_PER_BAR + step * PPQ,
+        durationTicks: Math.max(PPQ / 2, PPQ - 80)
+      }))
+    ).flat()
   };
 }
 
 function createStarterProject(projectId: string): MusicProject {
   const project = createEmptyProject(projectId, { name: "Synaptix Generated Arrangement" });
-  const patterns = [
-    [36, 42, 38, 42],
-    [38, 38, 41, 43],
-    [50, 53, 57, 53],
-    [62, 65, 69, 67]
-  ] as const;
-
+  const patterns = [[36, 42, 38, 42], [38, 38, 41, 43], [50, 53, 57, 53], [62, 65, 69, 67]] as const;
   project.transport.loopRange = {
     start: { bar: 0, beat: 0, tick: 0 },
     durationTicks: TOTAL_BARS * TICKS_PER_BAR
@@ -71,22 +65,15 @@ function createStarterProject(projectId: string): MusicProject {
     solo: false,
     volumeDb: index === 0 ? -5 : -8,
     pan: index === 1 ? -0.15 : index === 3 ? 0.15 : 0,
-    devices: [
-      {
-        id: `device-${index + 1}`,
-        deviceType: index === 0 ? "synaptix-drum-synth" : "synaptix-poly-synth",
-        deviceVersion: "1.0.0",
-        enabled: true,
-        parameters: []
-      }
-    ],
+    devices: [{
+      id: `device-${index + 1}`,
+      deviceType: index === 0 ? "synaptix-drum-synth" : "synaptix-poly-synth",
+      deviceVersion: "1.0.0",
+      enabled: true,
+      parameters: []
+    }],
     clips: [midiClip(`clip-${index + 1}`, `${name} Generated Loop`, patterns[index])]
   }));
-  project.markers = [
-    { id: "section-intro", name: "Intro", position: { bar: 0, beat: 0, tick: 0 }, kind: "section" },
-    { id: "section-main", name: "Main", position: { bar: 4, beat: 0, tick: 0 }, kind: "section" },
-    { id: "section-tension", name: "Tension", position: { bar: 12, beat: 0, tick: 0 }, kind: "section" }
-  ];
   return project;
 }
 
@@ -109,54 +96,70 @@ function clipStyle(clip: Clip, project: MusicProject): React.CSSProperties {
   };
 }
 
+const INITIAL_SYNC: ProjectSyncSnapshot = {
+  state: "idle",
+  lastSyncedAt: null,
+  conflicts: [],
+  error: null
+};
+
 export default function StudioClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState(() => createStarterProject(projectId));
   const [playing, setPlaying] = useState(false);
   const [loopEnabled, setLoopEnabled] = useState(false);
-  const [storageStatus, setStorageStatus] = useState("Loading local project…");
+  const [storageStatus, setStorageStatus] = useState("Loading project…");
   const [hydrated, setHydrated] = useState(false);
+  const [sync, setSync] = useState(INITIAL_SYNC);
   const engine = useMemo(() => new BrowserAudioEngine(), []);
-  const repositoryRef = useRef<LocalProjectRepository | null>(null);
+  const localRef = useRef<LocalProjectRepository | null>(null);
+  const hybridRef = useRef<HybridProjectRepository | null>(null);
+  const coordinatorRef = useRef<ProjectSyncCoordinator | null>(null);
+  const latestEnvelopeRef = useRef<PlatformRevisionEnvelope | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const repository = new LocalProjectRepository(new IndexedDbProjectStorage());
-    repositoryRef.current = repository;
+    const local = new LocalProjectRepository(new IndexedDbProjectStorage());
+    const hybrid = new HybridProjectRepository(
+      local,
+      new HttpPlatformProjectRepository(),
+      new IndexedDbProjectSyncQueue()
+    );
+    const coordinator = new ProjectSyncCoordinator(hybrid, setSync);
+    localRef.current = local;
+    hybridRef.current = hybrid;
+    coordinatorRef.current = coordinator;
 
-    void repository
-      .load(projectId)
-      .then((stored) => {
-        if (cancelled) return;
-        if (stored) {
-          setProject(stored);
-          setLoopEnabled(stored.transport.loopEnabled);
-          setStorageStatus("Recovered from IndexedDB");
-        } else {
-          setStorageStatus("New local project");
-        }
+    void hybrid.load(projectId).then((stored) => {
+      if (cancelled) return;
+      if (stored) {
+        setProject(stored);
+        setLoopEnabled(stored.transport.loopEnabled);
+        setStorageStatus("Loaded local/cloud project");
+      } else {
+        setStorageStatus("New local project");
+      }
+      setHydrated(true);
+    }).catch((error: unknown) => {
+      if (!cancelled) {
+        setStorageStatus(error instanceof Error ? error.message : "Project storage unavailable");
         setHydrated(true);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setStorageStatus(error instanceof Error ? error.message : "Local storage unavailable");
-        setHydrated(true);
-      });
+      }
+    });
 
+    const stopCoordinator = coordinator.start();
     return () => {
       cancelled = true;
+      stopCoordinator();
     };
   }, [projectId]);
 
-  useEffect(() => {
-    engine.loadProject(project);
-  }, [engine, project]);
+  useEffect(() => engine.loadProject(project), [engine, project]);
 
   useEffect(() => {
-    if (!hydrated || !repositoryRef.current) return;
-    setStorageStatus("Saving…");
+    if (!hydrated || !localRef.current) return;
+    setStorageStatus("Saving locally…");
     const timeout = window.setTimeout(() => {
-      void repositoryRef.current
-        ?.save(project)
+      void localRef.current?.save(project)
         .then(() => setStorageStatus("Saved locally"))
         .catch((error: unknown) =>
           setStorageStatus(error instanceof Error ? error.message : "Autosave failed")
@@ -191,12 +194,47 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     }));
   }
 
+  async function queueRevision(nextProject: MusicProject, revision: ProjectRevision, expected: string): Promise<void> {
+    const envelope: PlatformRevisionEnvelope = {
+      projectId: nextProject.projectId,
+      project: nextProject,
+      revision
+    };
+    latestEnvelopeRef.current = envelope;
+    await hybridRef.current?.saveAndQueue(
+      envelope,
+      expected,
+      `project-revision:${nextProject.projectId}:${revision.revisionId}`,
+      `${nextProject.projectId}:${revision.revisionId}`
+    );
+    setStorageStatus("Revision saved and queued");
+    await coordinatorRef.current?.drain();
+  }
+
   async function commitMixerCommand(command: StudioCommand): Promise<void> {
-    const transaction = new CommandTransaction([command]);
-    const result = await commitTransaction(project, transaction);
+    const expected = project.revisionId;
+    const result = await commitTransaction(project, new CommandTransaction([command]));
     setProject(result.project);
-    await repositoryRef.current?.save(result.project, result.revision);
-    setStorageStatus("Revision saved locally");
+    await queueRevision(result.project, result.revision, expected);
+  }
+
+  async function useCloud(conflict: RevisionUploadResult): Promise<void> {
+    if (conflict.outcome !== "conflict") return;
+    await localRef.current?.save(conflict.remote.project, conflict.remote.revision);
+    setProject(conflict.remote.project);
+    setSync(INITIAL_SYNC);
+    setStorageStatus("Cloud revision selected");
+  }
+
+  async function keepMine(conflict: RevisionUploadResult): Promise<void> {
+    if (conflict.outcome !== "conflict" || !latestEnvelopeRef.current) return;
+    const envelope = latestEnvelopeRef.current;
+    await hybridRef.current?.saveAndQueue(
+      envelope,
+      conflict.currentRevisionId,
+      `conflict-retry:${envelope.projectId}:${envelope.revision.revisionId}:${conflict.currentRevisionId}`
+    );
+    await coordinatorRef.current?.drain();
   }
 
   function toggleLoop(): void {
@@ -209,21 +247,37 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     }));
   }
 
+  const syncLabel = sync.state === "syncing"
+    ? "Syncing…"
+    : sync.state === "offline"
+      ? "Offline"
+      : sync.state === "conflict"
+        ? "Conflict"
+        : sync.error ?? (sync.lastSyncedAt ? `Synced ${new Date(sync.lastSyncedAt).toLocaleTimeString()}` : "Local only");
+
   return (
     <main style={{ padding: 24, fontFamily: "system-ui", background: "#111318", color: "#f4f5f7", minHeight: "100vh" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0 }}>{project.metadata.name}</h1>
-          <small>
-            Project {project.projectId} · {project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus}
-          </small>
+          <small>Project {project.projectId} · {project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus} · {syncLabel}</small>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</button>
           <button onClick={stop}>Stop</button>
           <button onClick={toggleLoop}>Loop: {loopEnabled ? "On" : "Off"}</button>
+          <button onClick={() => void coordinatorRef.current?.drain()}>Sync now</button>
         </div>
       </header>
+
+      {sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
+        <section key={conflict.currentRevisionId} style={{ padding: 12, marginBottom: 16, border: "1px solid #b7791f", borderRadius: 8 }}>
+          <strong>Cloud revision conflict</strong>
+          <p style={{ margin: "6px 0" }}>Remote head: {conflict.currentRevisionId}. Choose which version should remain active.</p>
+          <button onClick={() => void useCloud(conflict)}>Use cloud</button>{" "}
+          <button onClick={() => void keepMine(conflict)}>Keep mine</button>
+        </section>
+      ))}
 
       <section aria-label="Arrangement timeline" style={{ border: "1px solid #343943", borderRadius: 8, overflow: "auto" }}>
         <div style={{ minWidth: 1120 }}>
@@ -233,7 +287,6 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               <div key={index} style={{ padding: 10, borderLeft: "1px solid #2a2f38", textAlign: "center" }}>{index + 1}</div>
             ))}
           </div>
-
           {project.tracks.map((track) => (
             <div key={track.id} style={{ display: "grid", gridTemplateColumns: "260px 1fr", minHeight: 96, borderBottom: "1px solid #2a2f38" }}>
               <div style={{ padding: 12, background: "#1a1e26", display: "grid", gap: 8 }}>
@@ -244,32 +297,14 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                 </div>
                 <label style={{ display: "grid", gridTemplateColumns: "54px 1fr 42px", gap: 6, fontSize: 12 }}>
                   Volume
-                  <input
-                    type="range"
-                    min={-36}
-                    max={6}
-                    step={1}
-                    value={track.volumeDb}
-                    onChange={(event) =>
-                      void commitMixerCommand(
-                        new SetTrackVolumeCommand(track.id, Number(event.target.value))
-                      )
-                    }
-                  />
+                  <input type="range" min={-36} max={6} step={1} value={track.volumeDb}
+                    onChange={(event) => void commitMixerCommand(new SetTrackVolumeCommand(track.id, Number(event.target.value)))} />
                   <span>{track.volumeDb} dB</span>
                 </label>
                 <label style={{ display: "grid", gridTemplateColumns: "54px 1fr 42px", gap: 6, fontSize: 12 }}>
                   Pan
-                  <input
-                    type="range"
-                    min={-1}
-                    max={1}
-                    step={0.1}
-                    value={track.pan}
-                    onChange={(event) =>
-                      void commitMixerCommand(new SetTrackPanCommand(track.id, Number(event.target.value)))
-                    }
-                  />
+                  <input type="range" min={-1} max={1} step={0.1} value={track.pan}
+                    onChange={(event) => void commitMixerCommand(new SetTrackPanCommand(track.id, Number(event.target.value)))} />
                   <span>{track.pan.toFixed(1)}</span>
                 </label>
               </div>
@@ -277,9 +312,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                 {track.clips.map((clip) => (
                   <div key={clip.id} style={clipStyle(clip, project)}>
                     <strong>{clip.name}</strong>
-                    <div style={{ fontSize: 12, opacity: 0.8 }}>
-                      {clip.kind === "midi" ? `${clip.notes.length} MIDI notes` : "Audio clip"}
-                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.8 }}>{clip.kind === "midi" ? `${clip.notes.length} MIDI notes` : "Audio clip"}</div>
                   </div>
                 ))}
               </div>
