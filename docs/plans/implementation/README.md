@@ -1,6 +1,6 @@
 # Implementation Stage Index
 
-This index records the completed Synaptix Music implementation slices and the next active integration work.
+This index records the completed Synaptix Music implementation slices and the next active work.
 
 ## Completed Stages
 
@@ -15,37 +15,37 @@ This index records the completed Synaptix Music implementation slices and the ne
 | Generation Conversion and Browser Transport | #7 | Converted proposals into one undoable revision and added the transport/editor shell |
 | MIDI Synthesis, Clip Visualization, and Autosave | #8 | Added audible scheduling, mixer controls, visible clips, and local autosave |
 | SynaptixPlay Platform Integration | #9 | Added typed platform contracts and the authenticated Next.js BFF boundary |
-| Generation Job Status Updates | #10–#12 | Added polling, SignalR, reconnect recovery, replay, acknowledgements, concurrent jobs, and idempotent application |
+| Generation Job Status Updates | #10–#13 | Added polling, SignalR, reconnect recovery, replay, acknowledgements, coalescing, and idempotent application |
+| Platform Project Synchronization | #14–#16 | Added hybrid local/cloud repositories, persistent offline queueing, BFF/backend APIs, reconnect drain, optimistic concurrency, conflict resolution, revision history, and archive/restore |
 
 ## Active Stage
 
-### Stage 10 — Platform Project Synchronization
+### Stage 11 — Editor Command Completion and Detailed MIDI Editing
 
-The active sequence introduces a repository abstraction spanning IndexedDB and the SynaptixPlay platform, revision upload/download contracts, optimistic concurrency, offline queues, and explicit conflict handling.
+The next sequence should complete command coverage for every editor mutation, expose undo/redo in the browser, and add piano-roll and drum-sequencer editing.
 
-## Generation Status Completion Criteria
+## Platform Synchronization Completion Criteria
 
-The completed status boundary now includes:
+The completed synchronization boundary includes:
 
-- durable polling and terminal-state handling;
-- player-scoped SignalR updates;
-- reconnect reconciliation;
-- concurrent active-job tracking;
-- durable event replay and acknowledgements;
-- deterministic proposal transaction/revision IDs;
-- duplicate completed-result protection;
-- deterministic transition coalescing and executable lifecycle tests.
+- IndexedDB-first loading and autosave;
+- cloud fallback when a local project is missing;
+- immutable canonical revision upload and download;
+- player-scoped idempotency and `If-Match` optimistic concurrency;
+- persistent offline queueing;
+- startup, online, periodic, and manual queue drain;
+- explicit keep-local or use-cloud conflict resolution;
+- project creation, revision history, revision retrieval, archive, and restore endpoints;
+- deterministic queue/conflict tests and deployment documentation.
 
 ## Expected Next Slices
 
-1. Add the cloud/local project repository abstraction.
-2. Add canonical project and revision upload/download BFF contracts.
-3. Add optimistic concurrency and conflict responses.
-4. Add an offline synchronization queue and reconnect drain.
-5. Add conflict resolution and project browser surfaces.
-6. Complete editor command coverage and browser undo/redo.
-7. Add piano-roll editing and MIDI-note commands.
-8. Define deterministic render contracts and background-worker execution.
+1. Add commands for mute, solo, loop, tempo, note, marker, and device edits.
+2. Expose browser undo/redo and keyboard shortcuts.
+3. Coalesce slider and drag gestures into one logical revision.
+4. Build piano-roll and drum-sequencer editing.
+5. Add instrument factories, effects routing, buses, and metering.
+6. Define deterministic render contracts and background-worker execution.
 
 ## Revision Date
 
