@@ -10,6 +10,16 @@ export {
   type AdaptiveRuntimeEvent,
   type AdaptiveTransition
 } from "./adaptive-game.ts";
+export {
+  buildAdaptiveGameAudioManifest,
+  findAdaptiveTransition,
+  planAdaptiveTransition,
+  selectAdaptiveState,
+  type AdaptivePackageBuildRequest,
+  type CertifiedAdaptiveArtifact,
+  type PlannedAdaptiveTransition,
+  type TransitionClock
+} from "./adaptive-runtime.ts";
 
 import { z } from "zod";
 
