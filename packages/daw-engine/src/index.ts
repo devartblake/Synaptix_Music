@@ -1,3 +1,14 @@
+export { BrowserProductionAudioGraph } from "./browser-production-graph.ts";
+export {
+  meterSnapshot,
+  normalizeMeterValue,
+  resolveInstrumentProfile,
+  SILENT_METER,
+  type InstrumentProfile,
+  type InstrumentProfileKind,
+  type MasterMeterSnapshot
+} from "./production-audio.ts";
+
 import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
 import * as Tone from "tone";
 
