@@ -1,13 +1,13 @@
 # Implementation Stage Index
 
-This index records the completed Synaptix Music implementation slices and the next active work.
+This index records completed Synaptix Music implementation slices and the current ordered work.
 
 ## Completed Stages
 
 | Stage | Pull request | Result |
 |---|---:|---|
 | Documentation foundation | #1 | Established the documentation taxonomy and expanded the initial README |
-| Foundation Slice 1 | #2 | Pinned toolchains, committed the npm lockfile, and established four-lane CI |
+| Foundation Slice 1 | #2 | Pinned toolchains, committed the lockfile, and established four-lane CI |
 | Canonical Project Schema v1 | #3 | Added strict TypeScript, JSON Schema, fixture, and Python project contracts |
 | Command, Transaction, Undo, and Revision System | #4 | Added serializable commands, atomic transactions, history, revisions, and checksums |
 | Local Project Storage | #5 | Added IndexedDB/in-memory persistence, revision storage, and integrity checks |
@@ -16,40 +16,60 @@ This index records the completed Synaptix Music implementation slices and the ne
 | MIDI Synthesis, Clip Visualization, and Autosave | #8 | Added audible scheduling, mixer controls, visible clips, and local autosave |
 | SynaptixPlay Platform Integration | #9 | Added typed platform contracts and the authenticated Next.js BFF boundary |
 | Generation Job Status Updates | #10–#13 | Added polling, SignalR, reconnect recovery, replay, acknowledgements, coalescing, and idempotent application |
-| Platform Project Synchronization | #14–#16 | Added hybrid local/cloud repositories, persistent offline queueing, BFF/backend APIs, reconnect drain, optimistic concurrency, conflict resolution, revision history, and archive/restore |
-| Editor Commands and Undo/Redo | #17–#18 | Added complete command-backed mixer and MIDI mutation coverage with reversible batch operations |
-| Piano Roll and Drum Workflow | #19–#21 | Added selection, snapping, marquee, zoom, velocity editing, duplication, and the command-backed drum step sequencer |
-| Audition, Transport, and History Hardening | #22–#24 | Added audition, panic, authoritative transport ticks, bounded single-flight history, persistence recovery, before-unload protection, and multi-tab leases |
+| Platform Project Synchronization | #14–#16 plus backend #500–#501 | Added hybrid repositories, offline queueing, BFF/backend APIs, optimistic concurrency, conflicts, revision history, archive, and restore |
+| Editor Commands and Undo/Redo | #17–#18 | Added command-backed mixer and MIDI mutation coverage with reversible batch operations |
+| Piano Roll and Drum Workflow | #19–#21 | Added selection, snapping, marquee, zoom, velocity editing, duplication, and drum sequencing |
+| Audition, Transport, and History Hardening | #22–#24 | Added audition, panic, authoritative ticks, bounded history, recovery, before-unload protection, and multi-tab leases |
+| Stage 12 Foundation — Production Audio and Render Contracts | #25 | Added device profiles, buses, shared effects, master metering, clipping evidence, and deterministic render contracts |
 
 ## Active Stage
 
 ### Stage 12 — Production Audio and Rendering
 
-The next sequence should harden the audio engine and establish deterministic production exports.
+**Active PR:** #26 — production graph integration, meter exposure, and command-backed device parameters.
 
-## Stage 11 Completion Criteria
+### Completed Stage 12 foundation
 
-The completed detailed MIDI-editor boundary includes:
+- Device-specific drum, bass, lead, and polyphonic instrument profiles
+- Explicit drum and music buses
+- Shared reverb return and master compression
+- Peak/RMS metering and clipping evidence
+- Versioned deterministic render manifests and results
+- Exact project revision, checksum, engine version, seed, range, scope, and output requirements
 
-- command-backed mixer, transport, MIDI-note, quantization, transposition, duplication, and drum-step edits;
-- browser undo/redo with keyboard shortcuts and bounded single-flight history;
-- piano-roll selection, snapping, note creation, movement, resizing, marquee selection, zoom, velocity editing, and duplication;
-- device-aware drum lanes, multi-bar patterns, accents, duplication, clearing, and playback-position feedback;
-- track-scoped audition, all-notes-off panic handling, and authoritative transport tick snapshots;
-- local/cloud revision persistence for every committed musical edit;
-- persistence failure recovery without command replay;
-- before-unload protection and project-scoped multi-tab edit coordination;
-- deterministic regression tests and milestone documentation.
+### Remaining Stage 12 sequence
 
-## Expected Next Slices
+1. Complete the active `BrowserAudioEngine` production-graph integration.
+2. Mount master meters and clipping state in the studio.
+3. Map canonical filter, envelope, send, bus, and master parameters into runtime nodes.
+4. Add command-backed device/effect controls and automation-safe parameter identifiers.
+5. Implement durable render-job API contracts, persistence, queueing, cancellation, retries, and worker leases.
+6. Implement deterministic offline WAV rendering and checksum evidence.
+7. Add stem rendering and preview packages.
+8. Add MP3/OGG conversion only after WAV certification.
+9. Add adaptive-game export manifests and Flutter/SynaptixPlay consumption contracts.
+10. Profile DSP workloads before assigning any kernel to Rust/WASM.
 
-1. Add device-specific instrument factories and drum mappings.
-2. Add effects routing, buses, master metering, and output limiting.
-3. Bind editor cursors and audition interactions to the authoritative transport subscription.
-4. Define deterministic render contracts and background-worker execution.
-5. Add WAV, MP3, OGG, stem, preview, and adaptive-game export packages.
-6. Profile DSP bottlenecks before introducing Rust/WebAssembly kernels.
+## Completion Estimate
+
+- Stages 1–11: complete
+- Stage 12: approximately 55–60% complete after the active integration slice
+- Full planned DAW roadmap: approximately 35–40% complete
+
+These estimates describe feature-scope completion, not production-readiness certification.
+
+## Stage 12 Exit Criteria
+
+Stage 12 is complete when:
+
+- browser preview and offline rendering consume the same canonical revision and parameter semantics;
+- render jobs are durable, idempotent, cancellable, observable, and recoverable;
+- deterministic WAV output is validated by artifact checksums;
+- master and stem exports are supported;
+- clipping and render warnings are visible and auditable;
+- project assets and licenses are resolved without mutable editor-state inference;
+- documentation, changelog, release notes, and operational runbooks are current.
 
 ## Revision Date
 
-2026-08-04
+2026-08-05

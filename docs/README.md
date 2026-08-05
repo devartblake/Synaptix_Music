@@ -1,71 +1,56 @@
 # Synaptix Music Documentation
 
-This directory contains durable project documentation for the Synaptix Music platform.
+This directory contains the durable architecture, implementation, development, operations, release, and compliance documentation for Synaptix Music.
+
+## Start Here
+
+- [Root project README](../README.md)
+- [Current roadmap and status](roadmap.md)
+- [Current system architecture](architecture/system-architecture.md)
+- [Architecture decision records](architecture/decisions/README.md)
+- [Local development guide](development/local-development.md)
+- [Implementation-stage index](plans/implementation/README.md)
+- [Alpha foundation release notes](releases/alpha-foundation.md)
+- [Project changelog](../CHANGELOG.md)
 
 ## Directory Structure
 
 ```text
 docs/
-├── plans/
-│   ├── product/          # Product scope, user workflows, and milestone plans
-│   ├── architecture/     # Proposed architecture and technology plans
-│   ├── implementation/   # Sequenced implementation plans and completed slices
-│   ├── research/         # Evaluations, prototypes, and external-project analysis
-│   └── archive/          # Superseded plans retained for historical context
-├── architecture/         # Accepted architecture decisions and system diagrams
-├── development/          # Setup, coding standards, testing, and contribution guides
-├── operations/           # Deployment, observability, runbooks, and recovery procedures
-└── legal/                # Licensing, asset provenance, and compliance guidance
+├── architecture/             # Accepted architecture, diagrams, and ADRs
+│   └── decisions/            # Architecture decision records
+├── development/              # Setup, testing, coding, and contribution guides
+├── operations/               # Deployment, observability, recovery, and runbooks
+├── releases/                 # Milestone and release notes
+├── legal/                    # Licensing, provenance, and compliance guidance
+└── plans/
+    ├── product/              # Product scope and user workflows
+    ├── architecture/         # Proposed architecture and technology plans
+    ├── implementation/       # Sequenced implementation plans and completed slices
+    ├── research/             # Evaluations and external-project analysis
+    └── archive/              # Superseded plans retained for history
 ```
-
-## Start Here
-
-- [Root project README](../README.md)
-- [Local development guide](development/local-development.md)
-- [Implementation-stage index](plans/implementation/README.md)
-- [Project changelog](../CHANGELOG.md)
-- [SynaptixPlay openDAW-informed architecture plan](plans/architecture/synaptixplay-opendaw-architecture-plan.md)
 
 ## Current Status
 
-Stages 1 through 8 are complete. Stage 9 establishes the SynaptixPlay client/BFF integration boundary and defines the required contracts for authentication, project access, entitlements, credit reservations, durable generation jobs, and normalized errors.
+Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is active.
 
-The remaining Stage 9 backend implementation belongs primarily in `TycoonTycoon_Backend`.
+Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, and deterministic render contracts.
+
+The active Stage 12 work integrates the production graph into the live engine and studio. The remaining production sequence is runtime parameter mapping, durable render jobs, deterministic offline WAV rendering, stems, lossy formats, and adaptive-game export packages.
+
+## Documentation Ownership
+
+| Document | Purpose |
+|---|---|
+| `README.md` | Repository entry point and local startup |
+| `docs/roadmap.md` | Current completion state and ordered remaining work |
+| `docs/architecture/system-architecture.md` | Accepted runtime and service boundaries |
+| `docs/architecture/decisions/` | Durable architecture decisions and rationale |
+| `docs/plans/implementation/README.md` | PR-to-stage implementation ledger |
+| `CHANGELOG.md` | User- and developer-visible change history |
+| `docs/releases/` | Milestone summaries and release readiness |
 
 ## Plan File Convention
 
-Use lowercase kebab-case names:
-
-```text
-<subject>-plan.md
-<subject>-implementation-plan.md
-<subject>-research.md
-```
-
-Every active plan should include:
-
-- Purpose and scope
-- Current status
-- Assumptions and constraints
-- Architecture or workflow
-- Ordered implementation phases
-- Risks and mitigations
-- Acceptance criteria
-- Revision date
-
-When a plan is completed and its durable decisions have been captured elsewhere, move it to `docs/plans/archive/` rather than deleting it.
-
-## Active Implementation Documents
-
-- [Implementation-stage index](plans/implementation/README.md)
-- [Stage 9 platform integration](plans/implementation/stage-9-platform-integration.md)
-
-## Completed Implementation Documents
-
-- [Foundation Slice 1](plans/implementation/foundation-slice-1.md)
-- [Canonical Project Schema v1](plans/implementation/canonical-project-schema-v1.md)
-- [Command Transaction History v1](plans/implementation/command-transaction-history-v1.md)
-- [Local Project Storage v1](plans/implementation/local-project-storage-v1.md)
-- [Procedural Generation Service v1](plans/implementation/procedural-generation-service-v1.md)
-- [Generation Commands and Transport v1](plans/implementation/generation-commands-and-transport-v1.md)
-- [MIDI Synthesis, Clip Visualization, and Autosave v1](plans/implementation/midi-synthesis-clip-autosave-v1.md)
+Use lowercase kebab-case names. Every active plan should include scope, current status, constraints, ordered work, risks, acceptance criteria, and revision date. When implementation is complete and durable decisions are captured elsewhere, move superseded plans to `docs/plans/archive/` rather than deleting them.
