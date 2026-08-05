@@ -17,35 +17,38 @@ This index records the completed Synaptix Music implementation slices and the ne
 | SynaptixPlay Platform Integration | #9 | Added typed platform contracts and the authenticated Next.js BFF boundary |
 | Generation Job Status Updates | #10–#13 | Added polling, SignalR, reconnect recovery, replay, acknowledgements, coalescing, and idempotent application |
 | Platform Project Synchronization | #14–#16 | Added hybrid local/cloud repositories, persistent offline queueing, BFF/backend APIs, reconnect drain, optimistic concurrency, conflict resolution, revision history, and archive/restore |
+| Editor Commands and Undo/Redo | #17–#18 | Added complete command-backed mixer and MIDI mutation coverage with reversible batch operations |
+| Piano Roll and Drum Workflow | #19–#21 | Added selection, snapping, marquee, zoom, velocity editing, duplication, and the command-backed drum step sequencer |
+| Audition, Transport, and History Hardening | #22–#24 | Added audition, panic, authoritative transport ticks, bounded single-flight history, persistence recovery, before-unload protection, and multi-tab leases |
 
 ## Active Stage
 
-### Stage 11 — Editor Command Completion and Detailed MIDI Editing
+### Stage 12 — Production Audio and Rendering
 
-The next sequence should complete command coverage for every editor mutation, expose undo/redo in the browser, and add piano-roll and drum-sequencer editing.
+The next sequence should harden the audio engine and establish deterministic production exports.
 
-## Platform Synchronization Completion Criteria
+## Stage 11 Completion Criteria
 
-The completed synchronization boundary includes:
+The completed detailed MIDI-editor boundary includes:
 
-- IndexedDB-first loading and autosave;
-- cloud fallback when a local project is missing;
-- immutable canonical revision upload and download;
-- player-scoped idempotency and `If-Match` optimistic concurrency;
-- persistent offline queueing;
-- startup, online, periodic, and manual queue drain;
-- explicit keep-local or use-cloud conflict resolution;
-- project creation, revision history, revision retrieval, archive, and restore endpoints;
-- deterministic queue/conflict tests and deployment documentation.
+- command-backed mixer, transport, MIDI-note, quantization, transposition, duplication, and drum-step edits;
+- browser undo/redo with keyboard shortcuts and bounded single-flight history;
+- piano-roll selection, snapping, note creation, movement, resizing, marquee selection, zoom, velocity editing, and duplication;
+- device-aware drum lanes, multi-bar patterns, accents, duplication, clearing, and playback-position feedback;
+- track-scoped audition, all-notes-off panic handling, and authoritative transport tick snapshots;
+- local/cloud revision persistence for every committed musical edit;
+- persistence failure recovery without command replay;
+- before-unload protection and project-scoped multi-tab edit coordination;
+- deterministic regression tests and milestone documentation.
 
 ## Expected Next Slices
 
-1. Add commands for mute, solo, loop, tempo, note, marker, and device edits.
-2. Expose browser undo/redo and keyboard shortcuts.
-3. Coalesce slider and drag gestures into one logical revision.
-4. Build piano-roll and drum-sequencer editing.
-5. Add instrument factories, effects routing, buses, and metering.
-6. Define deterministic render contracts and background-worker execution.
+1. Add device-specific instrument factories and drum mappings.
+2. Add effects routing, buses, master metering, and output limiting.
+3. Bind editor cursors and audition interactions to the authoritative transport subscription.
+4. Define deterministic render contracts and background-worker execution.
+5. Add WAV, MP3, OGG, stem, preview, and adaptive-game export packages.
+6. Profile DSP bottlenecks before introducing Rust/WebAssembly kernels.
 
 ## Revision Date
 
