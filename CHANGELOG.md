@@ -1,12 +1,30 @@
 # Changelog
 
-All notable Synaptix Music changes are documented here. The project is pre-release, so entries are grouped under `Unreleased` and reference the pull request that introduced each completed slice.
+All notable Synaptix Music changes are documented here. The project is pre-release, so entries are grouped under `Unreleased` and reference the pull request or milestone that introduced each completed slice.
 
 ## [Unreleased]
 
 ### Added
 
-#### Detailed MIDI editor and drum workflow complete — PRs #17–#24
+#### Documentation Synchronization Milestone
+
+- Added a current roadmap with completion estimates, ordered remaining work, and release gates.
+- Added the accepted system architecture covering browser, BFF, .NET platform, Python generation, and render-worker boundaries.
+- Added architecture decision records for the canonical project model, local-first synchronization, browser-preview/render separation, and canonical device parameters.
+- Added Alpha Foundation release notes and tag-readiness requirements.
+- Synchronized the root README, documentation index, and implementation-stage ledger with the actual repository state.
+
+#### Stage 12 foundation — PR #25
+
+- Added device-specific instrument profiles for drums, bass, lead, and general polyphonic tracks.
+- Added an explicit browser production graph with drum and music buses, a shared reverb return, master compression, and master output metering.
+- Added peak/RMS snapshots and clipping evidence.
+- Added versioned deterministic render manifests and results.
+- Required exact project revision, project checksum, rendering-engine version, deterministic seed, tick range, scope, output format, sample rate, bit depth, and effect-tail settings.
+- Added strict render artifact evidence, including SHA-256 checksums and byte lengths.
+- Added deterministic tests for routing profiles, metering, render defaults, invalid ranges, and missing artifact evidence.
+
+#### Detailed MIDI editor and drum workflow — PRs #17–#24
 
 - Added command-backed mixer, transport, MIDI-note, quantization, transposition, duplication, and drum-step edits.
 - Added bounded browser undo/redo with keyboard shortcuts, single-flight execution, explicit project anchors, and redo invalidation.
@@ -18,129 +36,90 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 - Added before-unload protection and project-scoped multi-tab editing leases.
 - Added deterministic command-history, piano-roll, drum-sequencer, persistence-recovery, and multi-tab tests.
 
-#### Task 2 complete — Generation-job status updates
+#### Platform project synchronization — PRs #14–#16 and backend PRs #500–#501
+
+- Added local-first hybrid project repositories and persistent IndexedDB synchronization queueing.
+- Added authenticated project-list, download, creation, revision-upload, revision-history, archive, and restore APIs.
+- Added idempotent writes and `If-Match` optimistic concurrency.
+- Added explicit conflict envelopes and user-controlled cloud/local resolution.
+- Added automatic startup, online, reconnect, periodic, and manual queue draining.
+
+#### Generation-job status updates — PRs #10–#13
 
 - Added polling, terminal-state handling, and authenticated BFF status reads.
 - Added player-scoped SignalR lifecycle delivery with automatic reconnect.
 - Added durable reconnect reconciliation, event replay cursors, and acknowledgements.
-- Added concurrent active-job tracking rather than assuming one active generation.
+- Added concurrent active-job tracking.
 - Added deterministic job-based command, transaction, and revision identifiers.
-- Added duplicate completed-proposal protection.
-- Added deterministic transition coalescing for rapid lifecycle updates.
-- Added executable lifecycle tests covering coalescing and idempotent application.
-
-#### PR #12 — Concurrent replay and acknowledgements
-
-- Added typed contracts for concurrent job lists, replay events, cursors, and acknowledgements.
-- Added BFF routes for active jobs, durable replay, and acknowledgement writes.
-- Added per-job reconnect reconciliation and cursor tracking.
-
-#### PR #11 — SignalR recovery and idempotent proposal application
-
-- Added the Microsoft SignalR browser client and automatic reconnect.
-- Added typed `MusicGenerationJobStatusChanged` validation.
-- Reconciled durable job state after initial connection and reconnect.
-- Added deterministic job-based transaction and revision identifiers.
-- Added duplicate-application protection for completed proposals.
-
-#### PR #10 — Generation job polling
-
-- Aligned the TypeScript lifecycle with queued, running, retry-scheduled, completed, failed, dead-letter, and cancelled backend states.
-- Added authenticated job-status BFF reads.
-- Added abortable polling, timeout handling, terminal-state detection, and status callbacks.
+- Added duplicate completed-proposal protection and transition coalescing.
 
 #### PR #9 — SynaptixPlay platform integration boundary
 
 - Added `@synaptix/platform-contracts` with strict schemas for users, entitlements, project access, credit reservations, generation jobs, and normalized errors.
-- Added a typed browser client for generation-job submission.
-- Added a Next.js backend-for-frontend route that validates requests and forwards authentication, correlation IDs, and idempotency keys.
-- Added server-only SynaptixPlay API configuration.
+- Added a typed browser client and authenticated Next.js backend-for-frontend boundary.
 - Preserved the Python generation service as a private server-to-server dependency.
-- Added Stage 9 architecture and integration documentation.
 
 #### PR #8 — MIDI synthesis, clip visualization, and autosave
 
 - Added Tone.js scheduling for canonical MIDI clips and notes.
 - Added per-track channels and polyphonic synthesizers.
 - Applied volume, pan, mute, and solo state to the audio graph.
-- Added visible generated clip regions to the 16-bar arrangement timeline.
-- Added command-backed volume and pan edits with revision persistence.
-- Added IndexedDB project restore, debounced autosave, and local storage status.
+- Added visible generated clip regions and IndexedDB autosave.
 
 #### PR #7 — Generation conversion and browser transport
 
 - Converted validated generation proposals into one canonical command transaction.
 - Added generated tempo, markers, and provenance to the project revision.
-- Added project mismatch and non-empty-project safety guards.
-- Expanded the browser audio engine with initialize, load, play, pause, stop, seek, loop, snapshot, and dispose operations.
-- Added the first four-track browser arrangement shell.
+- Added the browser audio transport and four-track editor shell.
 
 #### PR #6 — Procedural generation service v1
 
 - Added a deterministic Python/FastAPI procedural composer.
 - Added strict Pydantic and TypeScript/Zod generation contracts.
-- Added seeded electronic trivia/game-show arrangements.
-- Added intro, main, tension, and victory sections.
-- Added drums, bass, harmony, and melody MIDI tracks.
-- Added deterministic, structural, API, and validation tests.
+- Added seeded electronic trivia/game-show arrangements with drums, bass, harmony, and melody.
 
 #### PR #5 — Local project storage v1
 
-- Added the `@synaptix/project-storage` package.
-- Added IndexedDB and in-memory storage adapters.
-- Added latest project and immutable revision snapshots.
-- Added project and revision schema validation and SHA-256 integrity checks.
-- Added save, load, list, remove, revision listing, and revision restore operations.
+- Added IndexedDB and in-memory adapters, immutable revision snapshots, validation, checksum verification, and recovery operations.
 
 #### PR #4 — Command transaction history v1
 
-- Added serializable commands for tracks, mixer values, and clips.
-- Added atomic transactions with reverse-order rollback.
-- Added snapshot-based undo and redo history.
-- Added revision lineage, injected identifiers and timestamps, canonical JSON, and SHA-256 checksums.
+- Added serializable commands, atomic transactions, rollback, undo/redo history, revision lineage, canonical JSON, and SHA-256 checksums.
 
 #### PR #3 — Canonical Project Schema v1
 
-- Replaced the placeholder project model with a strict versioned Zod contract.
-- Added musical positions, transport, tempo and time-signature maps, typed tracks, clips, notes, devices, assets, markers, and generation provenance.
-- Added strict JSON Schema Draft 2020-12 and a representative fixture.
-- Added equivalent Python/Pydantic contracts and cross-runtime validation tests.
+- Added strict versioned TypeScript/Zod, JSON Schema, fixture, and Python/Pydantic project contracts.
 
 #### PR #2 — Foundation Slice 1
 
 - Pinned Node, npm, Python, and Rust toolchains.
-- Added and enforced a committed npm lockfile.
-- Added root build, type-check, lint, test, package-boundary, Docker, and CI commands.
-- Added Python Ruff/Pytest validation and health/readiness tests.
-- Added Rust formatting, Clippy, tests, and WASM target checks.
-- Added pinned PostgreSQL and Redis containers with health checks.
-- Expanded GitHub Actions into independent TypeScript, Python, Rust, and Docker jobs.
+- Added the committed npm lockfile and four-lane CI.
+- Added Docker health checks, Python validation, Rust/WASM checks, and package-boundary enforcement.
 
 #### PR #1 — Documentation organization
 
-- Expanded the initial repository README.
-- Established `docs/plans/` as the canonical plan location.
-- Added architecture, implementation, product, research, and archive plan categories.
-- Moved the openDAW-informed architecture plan into the architecture plan directory.
-- Added the documentation organization and naming guide.
+- Established `docs/plans/` and the architecture, implementation, product, research, and archive categories.
 
 ### Changed
 
-- Updated local-development instructions to use the pinned Node/npm/Python/Rust versions.
-- Updated documentation to mark generation-job status updates and platform project synchronization complete.
-- Marked the detailed MIDI editor, drum workflow, audition, and editor-history milestone complete.
-- Added a consolidated implementation-stage index.
+- Updated the repository entry points to mark Stages 1–11 complete and Stage 12 active.
+- Replaced obsolete Stage 9 next-step text with the current production-audio and rendering sequence.
+- Clarified that browser Web Audio is a preview runtime and not production-render evidence.
+- Added a formal documentation ownership model and ADR process.
 
 ### Fixed
 
-- Corrected repeated npm workspace lockfile drift when new packages were introduced.
+- Corrected repeated npm workspace lockfile drift when packages were introduced.
 - Upgraded GitHub Actions to Node 24-compatible action versions.
-- Disabled or restored npm caching appropriately during lockfile synchronization.
-- Corrected Ruff import ordering and formatting failures in Python generation and schema tests.
-- Corrected npm workspace dependency declarations that used the unsupported `workspace:*` protocol.
-- Corrected TypeScript contract-export mismatches between generator and project models.
-- Corrected Node ESM test resolution for the command-system editor history.
+- Corrected Ruff import ordering and formatting failures.
+- Corrected unsupported npm `workspace:*` dependency declarations.
+- Corrected TypeScript contract exports and `.ts` ESM test resolution.
+- Corrected strict-TypeScript meter-value narrowing in the production audio foundation.
+
+## Active Work
+
+PR #26 integrates the production graph into `BrowserAudioEngine`, exposes master meter subscriptions, and adds command-backed device/effect parameter boundaries.
 
 ## Release Policy
 
-The first tagged release should be created only after the standalone browser editor, local persistence, procedural generation, platform job integration, project synchronization, and deterministic rendering path are validated together.
+The first tagged alpha requires the standalone browser editor, local persistence, procedural generation, platform job integration, project synchronization, production audio graph, and at least one deterministic offline WAV rendering path to be validated together.
