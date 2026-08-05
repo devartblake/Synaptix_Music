@@ -276,9 +276,11 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </button>
           <label>Tempo <input type="number" min={20} max={300} value={project.tempoMap[0]?.bpm ?? 120}
             onChange={(event) => {
-              const next = Number(event.target.value);
+              const raw = event.currentTarget.value;
+              const next = event.currentTarget.valueAsNumber;
               const current = project.tempoMap[0]?.bpm ?? 120;
-              if (Number.isFinite(next) && next !== current) void execute(new SetTempoEditorCommand(current, next));
+              if (raw === "" || !Number.isFinite(next) || next < 20 || next > 300 || next === current) return;
+              void execute(new SetTempoEditorCommand(current, next));
             }} style={{ width: 64 }} /></label>
           <button onClick={() => void coordinatorRef.current?.drain()}>Sync now</button>
         </div>

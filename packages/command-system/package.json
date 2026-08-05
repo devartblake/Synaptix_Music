@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./editor": "./src/editor.ts",
-    "./midi": "./src/midi.ts"
+    "./midi": "./src/midi.ts",
+    "./device": "./src/device.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

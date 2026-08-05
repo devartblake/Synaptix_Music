@@ -12,6 +12,12 @@ export {
 import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
 import * as Tone from "tone";
 
+import {
+  BrowserProductionAudioGraph,
+  type ProductionInstrumentRuntime
+} from "./browser-production-graph.ts";
+import type { MasterMeterSnapshot } from "./production-audio.ts";
+
 export interface TransportSnapshot {
   initialized: boolean;
   playing: boolean;
@@ -29,6 +35,7 @@ export interface NoteAuditionRequest {
 }
 
 export type TransportListener = (snapshot: TransportSnapshot) => void;
+export type MasterMeterListener = (snapshot: MasterMeterSnapshot) => void;
 
 export interface AudioTransport {
   initialize(): Promise<void>;
@@ -41,13 +48,10 @@ export interface AudioTransport {
   auditionNote(request: NoteAuditionRequest): Promise<void>;
   allNotesOff(): void;
   snapshot(): TransportSnapshot;
+  meter(): MasterMeterSnapshot;
   subscribe(listener: TransportListener, intervalMs?: number): () => void;
+  subscribeMeter(listener: MasterMeterListener, intervalMs?: number): () => void;
   dispose(): void;
-}
-
-interface TrackRuntime {
-  channel: Tone.Channel;
-  synth: Tone.PolySynth;
 }
 
 function positionToTicks(position: MusicalPosition, beatsPerBar = 4, ppq = 960): number {
@@ -60,16 +64,15 @@ function trackAudible(track: Track, tracks: readonly Track[]): boolean {
 }
 
 function clampMidiValue(value: number, minimum: number, maximum: number): number {
-  if (!Number.isFinite(value)) {
-    throw new Error("MIDI audition values must be finite numbers.");
-  }
+  if (!Number.isFinite(value)) throw new Error("MIDI audition values must be finite numbers.");
   return Math.min(maximum, Math.max(minimum, value));
 }
 
 export class BrowserAudioEngine implements AudioTransport {
   private initialized = false;
   private project: MusicProject | null = null;
-  private readonly runtimes = new Map<string, TrackRuntime>();
+  private readonly graph = new BrowserProductionAudioGraph();
+  private readonly runtimes = new Map<string, ProductionInstrumentRuntime>();
   private scheduledEventIds: number[] = [];
   private readonly subscriptions = new Set<ReturnType<typeof setInterval>>();
 
@@ -102,31 +105,21 @@ export class BrowserAudioEngine implements AudioTransport {
   private rebuildAudioGraph(project: MusicProject): void {
     this.clearScheduledEvents();
     this.disposeRuntimes();
-
     const beatsPerBar = project.timeSignatureMap[0]?.numerator ?? 4;
     const ppq = project.transport.ticksPerQuarterNote;
 
     for (const track of project.tracks) {
       if (track.kind !== "instrument") continue;
-
-      const channel = new Tone.Channel({
-        volume: track.volumeDb,
-        pan: track.pan,
-        mute: !trackAudible(track, project.tracks)
-      }).toDestination();
-      const synth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: track.name.toLowerCase().includes("bass") ? "square" : "triangle" },
-        envelope: { attack: 0.01, decay: 0.12, sustain: 0.35, release: 0.2 }
-      }).connect(channel);
-
-      this.runtimes.set(track.id, { channel, synth });
+      const runtime = this.graph.createInstrument(track);
+      runtime.channel.mute = !trackAudible(track, project.tracks);
+      this.runtimes.set(track.id, runtime);
 
       for (const clip of track.clips) {
         if (clip.kind !== "midi") continue;
         const clipStartTicks = positionToTicks(clip.range.start, beatsPerBar, ppq);
         for (const note of clip.notes) {
           const eventId = Tone.getTransport().schedule((time) => {
-            synth.triggerAttackRelease(
+            runtime.synth.triggerAttackRelease(
               Tone.Frequency(note.pitch, "midi").toFrequency(),
               `${note.durationTicks}i`,
               time,
@@ -139,61 +132,34 @@ export class BrowserAudioEngine implements AudioTransport {
     }
   }
 
-  async play(): Promise<void> {
-    await this.initialize();
-    Tone.getTransport().start();
-  }
-
-  pause(): void {
-    Tone.getTransport().pause();
-    this.allNotesOff();
-  }
-
-  stop(): void {
-    const transport = Tone.getTransport();
-    transport.stop();
-    transport.seconds = 0;
-    this.allNotesOff();
-  }
+  async play(): Promise<void> { await this.initialize(); Tone.getTransport().start(); }
+  pause(): void { Tone.getTransport().pause(); this.allNotesOff(); }
+  stop(): void { const transport = Tone.getTransport(); transport.stop(); transport.seconds = 0; this.allNotesOff(); }
 
   seek(position: MusicalPosition): void {
-    if (!this.project) {
-      throw new Error("A project must be loaded before seeking.");
-    }
-    const ticks = positionToTicks(
+    if (!this.project) throw new Error("A project must be loaded before seeking.");
+    Tone.getTransport().ticks = positionToTicks(
       position,
       this.project.timeSignatureMap[0]?.numerator ?? 4,
       this.project.transport.ticksPerQuarterNote
     );
-    Tone.getTransport().ticks = ticks;
   }
 
-  setLoop(enabled: boolean): void {
-    Tone.getTransport().loop = enabled;
-  }
+  setLoop(enabled: boolean): void { Tone.getTransport().loop = enabled; }
 
   async auditionNote({ trackId, pitch, velocity = 100, durationSeconds = 0.18 }: NoteAuditionRequest): Promise<void> {
     await this.initialize();
     const runtime = this.runtimes.get(trackId);
-    if (!runtime) {
-      throw new Error(`Track runtime ${trackId} is not available for audition.`);
-    }
-    const safePitch = clampMidiValue(Math.round(pitch), 0, 127);
-    const safeVelocity = clampMidiValue(velocity, 1, 127) / 127;
-    const safeDuration = clampMidiValue(durationSeconds, 0.03, 2);
+    if (!runtime) throw new Error(`Track runtime ${trackId} is not available for audition.`);
     runtime.synth.triggerAttackRelease(
-      Tone.Frequency(safePitch, "midi").toFrequency(),
-      safeDuration,
+      Tone.Frequency(clampMidiValue(Math.round(pitch), 0, 127), "midi").toFrequency(),
+      clampMidiValue(durationSeconds, 0.03, 2),
       undefined,
-      safeVelocity
+      clampMidiValue(velocity, 1, 127) / 127
     );
   }
 
-  allNotesOff(): void {
-    for (const runtime of this.runtimes.values()) {
-      runtime.synth.releaseAll();
-    }
-  }
+  allNotesOff(): void { for (const runtime of this.runtimes.values()) runtime.synth.releaseAll(); }
 
   snapshot(): TransportSnapshot {
     const transport = Tone.getTransport();
@@ -207,41 +173,38 @@ export class BrowserAudioEngine implements AudioTransport {
     };
   }
 
+  meter(): MasterMeterSnapshot { return this.graph.meter(); }
+
   subscribe(listener: TransportListener, intervalMs = 33): () => void {
     const safeInterval = Math.max(16, Math.round(intervalMs));
     listener(this.snapshot());
     const timer = setInterval(() => listener(this.snapshot()), safeInterval);
     this.subscriptions.add(timer);
-    return () => {
-      clearInterval(timer);
-      this.subscriptions.delete(timer);
-    };
+    return () => { clearInterval(timer); this.subscriptions.delete(timer); };
+  }
+
+  subscribeMeter(listener: MasterMeterListener, intervalMs = 50): () => void {
+    return this.graph.subscribeMeter(listener, intervalMs);
   }
 
   private clearScheduledEvents(): void {
     const transport = Tone.getTransport();
-    for (const eventId of this.scheduledEventIds) {
-      transport.clear(eventId);
-    }
+    for (const eventId of this.scheduledEventIds) transport.clear(eventId);
     this.scheduledEventIds = [];
   }
 
   private disposeRuntimes(): void {
-    for (const runtime of this.runtimes.values()) {
-      runtime.synth.dispose();
-      runtime.channel.dispose();
-    }
+    for (const runtime of this.runtimes.values()) runtime.dispose();
     this.runtimes.clear();
   }
 
   dispose(): void {
     this.stop();
-    for (const timer of this.subscriptions) {
-      clearInterval(timer);
-    }
+    for (const timer of this.subscriptions) clearInterval(timer);
     this.subscriptions.clear();
     this.clearScheduledEvents();
     this.disposeRuntimes();
+    this.graph.dispose();
     this.project = null;
     this.initialized = false;
   }
