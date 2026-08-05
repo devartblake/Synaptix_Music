@@ -111,15 +111,28 @@ export class ProjectTabLease {
   private readonly tabId = crypto.randomUUID();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private readonly seen = new Map<string, number>();
+  private readonly projectId: string;
+  private readonly channel: BroadcastChannelLike;
+  private readonly onCompetingTab: (tabId: string | null) => void;
+  private readonly now: () => number;
+  private readonly heartbeatMs: number;
+  private readonly expiryMs: number;
 
   constructor(
-    private readonly projectId: string,
-    private readonly channel: BroadcastChannelLike,
-    private readonly onCompetingTab: (tabId: string | null) => void,
-    private readonly now: () => number = Date.now,
-    private readonly heartbeatMs = 2_000,
-    private readonly expiryMs = 6_000
-  ) {}
+    projectId: string,
+    channel: BroadcastChannelLike,
+    onCompetingTab: (tabId: string | null) => void,
+    now: () => number = Date.now,
+    heartbeatMs = 2_000,
+    expiryMs = 6_000
+  ) {
+    this.projectId = projectId;
+    this.channel = channel;
+    this.onCompetingTab = onCompetingTab;
+    this.now = now;
+    this.heartbeatMs = heartbeatMs;
+    this.expiryMs = expiryMs;
+  }
 
   start(): () => void {
     this.channel.addEventListener("message", this.onMessage);
