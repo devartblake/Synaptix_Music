@@ -6,6 +6,18 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Detailed MIDI editor and drum workflow complete — PRs #17–#24
+
+- Added command-backed mixer, transport, MIDI-note, quantization, transposition, duplication, and drum-step edits.
+- Added bounded browser undo/redo with keyboard shortcuts, single-flight execution, explicit project anchors, and redo invalidation.
+- Added piano-roll selection, snapping, note creation, movement, resizing, velocity editing, marquee selection, zoom, and duplication.
+- Added a command-backed drum step sequencer with device-aware lane mappings, multi-bar patterns, velocity/accent controls, duplication, clearing, and playback-position feedback.
+- Added track-scoped MIDI audition, authoritative transport tick snapshots, and all-notes-off panic handling.
+- Added browser-session recovery state for saving, unsaved, and failed revisions.
+- Added retry of the same pending revision envelope without replaying the musical command.
+- Added before-unload protection and project-scoped multi-tab editing leases.
+- Added deterministic command-history, piano-roll, drum-sequencer, persistence-recovery, and multi-tab tests.
+
 #### Task 2 complete — Generation-job status updates
 
 - Added polling, terminal-state handling, and authenticated BFF status reads.
@@ -115,7 +127,8 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 ### Changed
 
 - Updated local-development instructions to use the pinned Node/npm/Python/Rust versions.
-- Updated documentation to mark generation-job status updates complete and Stage 10 project synchronization active.
+- Updated documentation to mark generation-job status updates and platform project synchronization complete.
+- Marked the detailed MIDI editor, drum workflow, audition, and editor-history milestone complete.
 - Added a consolidated implementation-stage index.
 
 ### Fixed
@@ -126,6 +139,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 - Corrected Ruff import ordering and formatting failures in Python generation and schema tests.
 - Corrected npm workspace dependency declarations that used the unsupported `workspace:*` protocol.
 - Corrected TypeScript contract-export mismatches between generator and project models.
+- Corrected Node ESM test resolution for the command-system editor history.
 
 ## Release Policy
 
