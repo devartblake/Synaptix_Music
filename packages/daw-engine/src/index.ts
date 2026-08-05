@@ -16,7 +16,7 @@ import {
   BrowserProductionAudioGraph,
   type ProductionInstrumentRuntime
 } from "./browser-production-graph.ts";
-import type { MasterMeterSnapshot } from "./production-audio.ts";
+import { SILENT_METER, type MasterMeterSnapshot } from "./production-audio.ts";
 
 export interface TransportSnapshot {
   initialized: boolean;
@@ -68,22 +68,38 @@ function clampMidiValue(value: number, minimum: number, maximum: number): number
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function browserAudioAvailable(): boolean {
+  return typeof window !== "undefined" && typeof window.AudioContext !== "undefined";
+}
+
 export class BrowserAudioEngine implements AudioTransport {
   private initialized = false;
   private project: MusicProject | null = null;
-  private readonly graph = new BrowserProductionAudioGraph();
+  private graph: BrowserProductionAudioGraph | null = null;
   private readonly runtimes = new Map<string, ProductionInstrumentRuntime>();
   private scheduledEventIds: number[] = [];
   private readonly subscriptions = new Set<ReturnType<typeof setInterval>>();
 
+  private ensureGraph(): BrowserProductionAudioGraph {
+    if (!browserAudioAvailable()) {
+      throw new Error("Browser audio is only available after client hydration.");
+    }
+    this.graph ??= new BrowserProductionAudioGraph();
+    return this.graph;
+  }
+
   async initialize(): Promise<void> {
     if (this.initialized) return;
+    this.ensureGraph();
     await Tone.start();
     this.initialized = true;
   }
 
   loadProject(project: MusicProject): void {
     this.project = structuredClone(project);
+    if (!browserAudioAvailable()) return;
+
+    this.ensureGraph();
     const transport = Tone.getTransport();
     transport.PPQ = project.transport.ticksPerQuarterNote;
     transport.bpm.value = project.tempoMap[0]?.bpm ?? 120;
@@ -103,6 +119,7 @@ export class BrowserAudioEngine implements AudioTransport {
   }
 
   private rebuildAudioGraph(project: MusicProject): void {
+    const graph = this.ensureGraph();
     this.clearScheduledEvents();
     this.disposeRuntimes();
     const beatsPerBar = project.timeSignatureMap[0]?.numerator ?? 4;
@@ -110,7 +127,7 @@ export class BrowserAudioEngine implements AudioTransport {
 
     for (const track of project.tracks) {
       if (track.kind !== "instrument") continue;
-      const runtime = this.graph.createInstrument(track);
+      const runtime = graph.createInstrument(track);
       runtime.channel.mute = !trackAudible(track, project.tracks);
       this.runtimes.set(track.id, runtime);
 
@@ -133,11 +150,22 @@ export class BrowserAudioEngine implements AudioTransport {
   }
 
   async play(): Promise<void> { await this.initialize(); Tone.getTransport().start(); }
-  pause(): void { Tone.getTransport().pause(); this.allNotesOff(); }
-  stop(): void { const transport = Tone.getTransport(); transport.stop(); transport.seconds = 0; this.allNotesOff(); }
+  pause(): void {
+    if (!browserAudioAvailable()) return;
+    Tone.getTransport().pause();
+    this.allNotesOff();
+  }
+  stop(): void {
+    if (!browserAudioAvailable()) return;
+    const transport = Tone.getTransport();
+    transport.stop();
+    transport.seconds = 0;
+    this.allNotesOff();
+  }
 
   seek(position: MusicalPosition): void {
     if (!this.project) throw new Error("A project must be loaded before seeking.");
+    if (!browserAudioAvailable()) return;
     Tone.getTransport().ticks = positionToTicks(
       position,
       this.project.timeSignatureMap[0]?.numerator ?? 4,
@@ -145,7 +173,10 @@ export class BrowserAudioEngine implements AudioTransport {
     );
   }
 
-  setLoop(enabled: boolean): void { Tone.getTransport().loop = enabled; }
+  setLoop(enabled: boolean): void {
+    if (!browserAudioAvailable()) return;
+    Tone.getTransport().loop = enabled;
+  }
 
   async auditionNote({ trackId, pitch, velocity = 100, durationSeconds = 0.18 }: NoteAuditionRequest): Promise<void> {
     await this.initialize();
@@ -162,6 +193,17 @@ export class BrowserAudioEngine implements AudioTransport {
   allNotesOff(): void { for (const runtime of this.runtimes.values()) runtime.synth.releaseAll(); }
 
   snapshot(): TransportSnapshot {
+    if (!browserAudioAvailable()) {
+      return {
+        initialized: false,
+        playing: false,
+        positionSeconds: 0,
+        positionTicks: 0,
+        tempo: this.project?.tempoMap[0]?.bpm ?? 120,
+        loopEnabled: this.project?.transport.loopEnabled ?? false
+      };
+    }
+
     const transport = Tone.getTransport();
     return {
       initialized: this.initialized,
@@ -173,7 +215,7 @@ export class BrowserAudioEngine implements AudioTransport {
     };
   }
 
-  meter(): MasterMeterSnapshot { return this.graph.meter(); }
+  meter(): MasterMeterSnapshot { return this.graph?.meter() ?? SILENT_METER; }
 
   subscribe(listener: TransportListener, intervalMs = 33): () => void {
     const safeInterval = Math.max(16, Math.round(intervalMs));
@@ -184,10 +226,18 @@ export class BrowserAudioEngine implements AudioTransport {
   }
 
   subscribeMeter(listener: MasterMeterListener, intervalMs = 50): () => void {
-    return this.graph.subscribeMeter(listener, intervalMs);
+    const safeInterval = Math.max(16, Math.round(intervalMs));
+    listener(this.meter());
+    const timer = setInterval(() => listener(this.meter()), safeInterval);
+    this.subscriptions.add(timer);
+    return () => { clearInterval(timer); this.subscriptions.delete(timer); };
   }
 
   private clearScheduledEvents(): void {
+    if (!browserAudioAvailable()) {
+      this.scheduledEventIds = [];
+      return;
+    }
     const transport = Tone.getTransport();
     for (const eventId of this.scheduledEventIds) transport.clear(eventId);
     this.scheduledEventIds = [];
@@ -204,7 +254,8 @@ export class BrowserAudioEngine implements AudioTransport {
     this.subscriptions.clear();
     this.clearScheduledEvents();
     this.disposeRuntimes();
-    this.graph.dispose();
+    this.graph?.dispose();
+    this.graph = null;
     this.project = null;
     this.initialized = false;
   }
