@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "echo No tests yet"
+    "test": "node --experimental-transform-types --test src/*.test.ts"
   },
   "dependencies": {
     "@synaptix/project-model": "0.1.0",
