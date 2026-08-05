@@ -1,3 +1,16 @@
+export {
+  ADAPTIVE_GAME_AUDIO_CONTRACT_VERSION,
+  AdaptiveCuePointSchema,
+  AdaptiveGameAudioManifestSchema,
+  AdaptiveMusicStateSchema,
+  AdaptiveRuntimeEventSchema,
+  AdaptiveTransitionSchema,
+  type AdaptiveGameAudioManifest,
+  type AdaptiveMusicState,
+  type AdaptiveRuntimeEvent,
+  type AdaptiveTransition
+} from "./adaptive-game.ts";
+
 import { z } from "zod";
 
 export const RENDER_CONTRACT_VERSION = "1.0.0" as const;
