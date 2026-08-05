@@ -58,8 +58,7 @@ export function resolveInstrumentProfile(track: Track): InstrumentProfile {
 }
 
 export function normalizeMeterValue(value: number | readonly number[]): number {
-  if (Array.isArray(value)) return Math.max(...value);
-  return value;
+  return typeof value === "number" ? value : Math.max(...value);
 }
 
 export function meterSnapshot(peak: number | readonly number[], rms: number | readonly number[]): MasterMeterSnapshot {
