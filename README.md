@@ -1,66 +1,62 @@
 # Synaptix Music
 
-Synaptix Music is the multi-runtime music-production foundation for **SynaptixPlay**. It combines a browser-based digital audio workstation, deterministic procedural composition, local-first project storage, SynaptixPlay platform integration contracts, and future server-rendering and Rust/WebAssembly DSP capabilities.
+Synaptix Music is the multi-runtime music-production system for **SynaptixPlay**. It combines a browser DAW, deterministic procedural composition, local-first project persistence, SynaptixPlay platform synchronization, production-oriented audio routing, and versioned render contracts.
 
-The project is intentionally narrower than a general-purpose desktop DAW. Its primary use cases are editable generated music, trivia and game-show loops, stingers, adaptive music states, and creator-safe exports.
+The product is intentionally narrower than a general-purpose desktop DAW. Its primary use cases are editable generated music, trivia and game-show loops, stingers, adaptive music states, and creator-safe exports.
 
 ## Current Capabilities
 
 The repository currently provides:
 
-- A Next.js/React browser studio with transport controls and a four-track arrangement view
-- Tone.js MIDI scheduling, polyphonic synthesis, track channels, volume, pan, mute, and solo
-- Generated MIDI clip visualization on a 16-bar timeline
-- A strict cross-runtime canonical project schema implemented in TypeScript/Zod, JSON Schema, and Python/Pydantic
-- Serializable project commands, atomic transactions, undo/redo history, revisions, lineage, and SHA-256 checksums
-- IndexedDB and in-memory project storage with schema and integrity verification
-- Debounced local autosave and immutable local revision persistence
-- A deterministic Python/FastAPI procedural generator for electronic trivia/game-show arrangements
-- Conversion of generation proposals into one undoable canonical command transaction and revision
-- A typed SynaptixPlay platform-integration boundary with a Next.js BFF route
+- A Next.js/React browser studio with arrangement, piano-roll, and drum-step-sequencer workflows
+- Command-backed mixer, transport, MIDI-note, quantization, transposition, duplication, and drum-step editing
+- Bounded browser undo/redo, keyboard shortcuts, persistence recovery, and multi-tab editing protection
+- Tone.js MIDI scheduling, device-aware synthesis, note audition, panic/all-notes-off, and authoritative transport ticks
+- A strict canonical project schema shared across TypeScript/Zod, JSON Schema, and Python/Pydantic
+- Immutable checksummed project revisions and deterministic command transactions
+- IndexedDB local storage, immutable revision history, offline synchronization queueing, and cloud conflict resolution
+- SynaptixPlay BFF and .NET platform APIs for durable project synchronization and generation-job lifecycle delivery
+- A deterministic Python/FastAPI procedural generator for electronic trivia and game-show arrangements
+- Production audio profiles, drum/music buses, shared effects, master compression, peak/RMS metering, and clipping evidence
+- Versioned deterministic render request and result contracts
 - Reproducible TypeScript, Python, Rust, Docker, and GitHub Actions toolchains
 
 ## Architecture at a Glance
 
 | Layer | Primary technology | Responsibility |
 |---|---|---|
-| Studio application | Next.js, React, TypeScript | DAW UI, project lifecycle, browser BFF, generator controls |
-| Browser audio | Tone.js, Web Audio | Transport, MIDI scheduling, synthesis, mixing, and preview playback |
-| DAW domain | Framework-neutral TypeScript packages | Project model, commands, revisions, storage, and contracts |
-| Generation | Python, FastAPI | Deterministic procedural composition and future AI inference |
-| Platform integration | Next.js BFF and SynaptixPlay .NET API | Identity, project authorization, entitlements, credits, jobs, and audit |
-| DSP acceleration | Rust, WebAssembly | Future resampling, stretching, pitch shifting, filters, and render kernels |
-| Data and jobs | PostgreSQL, Redis, object storage | Future server metadata, queues, media, stems, previews, and exports |
-| Production rendering | Background workers, FFmpeg | Future deterministic WAV, MP3, OGG, stem, and adaptive-game exports |
+| Studio application | Next.js, React, TypeScript | Arrangement, piano roll, step sequencer, mixer, project lifecycle, BFF routes |
+| Browser audio | Tone.js, Web Audio | Preview transport, scheduling, synthesis, buses, effects, audition, and metering |
+| DAW domain | Framework-neutral TypeScript packages | Canonical model, commands, revisions, storage, platform and render contracts |
+| Generation | Python, FastAPI | Deterministic procedural composition and future private model inference |
+| Platform integration | Next.js BFF and SynaptixPlay .NET API | Identity, authorization, durable jobs, project synchronization, audit, and concurrency |
+| DSP acceleration | Rust, WebAssembly | Profile-driven future DSP kernels where measured bottlenecks justify them |
+| Production rendering | Background workers and FFmpeg-compatible tooling | Deterministic WAV-first rendering, stems, previews, and adaptive exports |
 
 ## Repository Layout
 
 ```text
 Synaptix_Music/
-├── apps/
-│   └── music-studio/          # Next.js browser studio and BFF routes
+├── apps/music-studio/          # Next.js browser studio and BFF routes
 ├── packages/
-│   ├── project-model/         # Canonical schema v1
+│   ├── project-model/          # Canonical schema v1
 │   ├── command-system/        # Commands, transactions, history, revisions
-│   ├── project-storage/       # IndexedDB and in-memory persistence
-│   ├── generator-contracts/   # Procedural-generation contracts and conversion
-│   ├── platform-contracts/    # SynaptixPlay integration contracts
-│   ├── daw-engine/            # Tone.js transport, scheduling, and synthesis
-│   └── ...                    # Shared framework-neutral packages
-├── services/
-│   ├── generation-api/        # Python/FastAPI procedural generator
-│   └── render-worker/         # Future server-rendering boundary
+│   ├── project-storage/       # IndexedDB, hybrid repository, offline sync queue
+│   ├── generator-contracts/   # Generation proposals and canonical conversion
+│   ├── platform-contracts/    # SynaptixPlay API and lifecycle contracts
+│   ├── daw-engine/            # Transport, scheduling, production audio graph
+│   ├── render-contracts/      # Deterministic render manifests and results
+│   └── shared-types/          # Cross-package shared types
+├── services/generation-api/   # Python/FastAPI procedural generator
+├── services/render-worker/    # Production-render worker boundary
 ├── crates/                    # Rust DSP and WASM bindings
-├── schemas/                   # Cross-runtime JSON schemas and fixtures
+├── schemas/                   # Cross-runtime schemas and fixtures
 ├── infrastructure/            # Docker and deployment support
-├── docs/                      # Architecture, development, and implementation docs
-├── CHANGELOG.md               # Consolidated project history
+├── docs/                      # Architecture, ADRs, plans, development, releases
 └── .github/                   # CI and repository automation
 ```
 
 ## Supported Toolchain
-
-The repository pins and validates:
 
 - Node.js `22.14.0`
 - npm `11.4.2`
@@ -68,204 +64,86 @@ The repository pins and validates:
 - Rust `1.88.0`
 - Docker with Docker Compose
 
-Using the pinned versions is strongly recommended because CI enforces the npm engine range and the committed lockfile.
-
 ## Run Locally
-
-### 1. Clone and configure
 
 ```bash
 git clone https://github.com/devartblake/Synaptix_Music.git
 cd Synaptix_Music
-cp .env.example .env.local
-```
-
-On Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-For standalone browser development, the SynaptixPlay platform API can remain unavailable until you exercise the Stage 9 generation-job BFF route. The browser DAW, local project storage, and direct Python generator can run independently.
-
-### 2. Install the JavaScript workspace
-
-Use the pinned npm version:
-
-```bash
 npm install --global npm@11.4.2
 npm ci --no-audit --no-fund
-```
-
-### 3. Start the browser studio
-
-```bash
 npm run dev
 ```
 
 Open:
 
 ```text
-http://localhost:3000
-```
-
-A studio project route uses:
-
-```text
-http://localhost:3000/studio/<project-id>
-```
-
-For example:
-
-```text
 http://localhost:3000/studio/local-demo
 ```
 
-The browser will initialize audio only after a user interaction. Project snapshots and revisions are stored locally in IndexedDB.
-
-### 4. Start the Python generation API
-
-In a second terminal:
-
-```bash
-cd services/generation-api
-python -m venv .venv
-```
-
-Linux or macOS:
-
-```bash
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8100
-```
-
-Windows PowerShell:
-
-```powershell
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8100
-```
-
-Verify the service:
-
-```text
-http://localhost:8100/healthz
-http://localhost:8100/readyz
-http://localhost:8100/docs
-```
-
-### 5. Start local infrastructure when needed
-
-PostgreSQL and Redis are not required for the current local-first editor workflow, but they can be started for platform and job-infrastructure work:
-
-```bash
-docker compose -f infrastructure/docker/docker-compose.yml up -d --wait
-docker compose -f infrastructure/docker/docker-compose.yml ps
-```
-
-Stop and remove local volumes:
-
-```bash
-docker compose -f infrastructure/docker/docker-compose.yml down --volumes
-```
-
-### 6. Configure SynaptixPlay Stage 9 integration
-
-The Next.js BFF uses the server-only variable:
+For cloud synchronization, configure:
 
 ```env
 SYNAPTIX_PLATFORM_API_URL=http://localhost:8080
 ```
 
-The corresponding SynaptixPlay .NET API must eventually provide:
+The browser studio remains locally usable when the platform API is unavailable. IndexedDB persistence, editing, transport, and preview audio do not require PostgreSQL or Redis.
 
-```text
-POST /api/music/generation/jobs
-GET  /api/music/generation/jobs/{jobId}
-GET  /api/music/projects/{projectId}/access
-GET  /api/music/entitlements
+Start the Python generation API separately when needed:
+
+```bash
+cd services/generation-api
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8100
 ```
 
-The browser must not call the private Python generation service directly in the integrated production flow.
+See [Local development](docs/development/local-development.md) for the complete Windows, Linux, Docker, and platform setup.
 
-## Validation Commands
-
-Run the same aggregate TypeScript checks used by CI:
+## Validation
 
 ```bash
 npm run ci
 ```
 
-Individual commands:
+CI independently validates TypeScript, Python, Rust/WASM, and Docker Compose.
 
-```bash
-npm run check:boundaries
-npm run typecheck
-npm run build
-npm run test
-npm run lint
-```
+## Current Development Stage
 
-Python validation:
+Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is active.
 
-```bash
-cd services/generation-api
-ruff check app tests
-ruff format --check app tests
-pytest
-```
+Completed Stage 12 foundation work includes:
 
-Rust validation:
+- device-specific instrument profiles;
+- drum and music buses with shared reverb and master compression;
+- peak/RMS metering and clipping evidence;
+- versioned deterministic render manifests and result contracts.
 
-```bash
-cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-rustup target add wasm32-unknown-unknown
-cargo check --workspace --target wasm32-unknown-unknown
-```
-
-Docker validation:
-
-```bash
-docker compose -f infrastructure/docker/docker-compose.yml config --quiet
-docker compose -f infrastructure/docker/docker-compose.yml up -d --wait
-docker compose -f infrastructure/docker/docker-compose.yml down --volumes
-```
+The active integration slice connects that graph to `BrowserAudioEngine`, exposes master meters in the studio, and adds command-backed device/effect parameters. Remaining Stage 12 work centers on runtime parameter mapping, durable render jobs, deterministic offline WAV rendering, stems, lossy exports, and adaptive-game packages.
 
 ## Documentation
 
 - [Documentation index](docs/README.md)
-- [Local development guide](docs/development/local-development.md)
+- [Current roadmap and status](docs/roadmap.md)
+- [Current architecture](docs/architecture/system-architecture.md)
+- [Architecture decisions](docs/architecture/decisions/README.md)
 - [Implementation-stage index](docs/plans/implementation/README.md)
-- [openDAW-informed architecture plan](docs/plans/architecture/synaptixplay-opendaw-architecture-plan.md)
+- [Alpha release notes](docs/releases/alpha-foundation.md)
 - [Project changelog](CHANGELOG.md)
-
-All plan documents belong under `docs/plans/` and use lowercase kebab-case filenames.
 
 ## Design Rules
 
-- Keep the canonical DAW model independent of React, Next.js, Tone.js, and Python.
+- Keep the canonical project model independent of React, Next.js, Tone.js, and Python.
 - Hide Tone.js behind audio-engine interfaces.
-- Route meaningful edits through commands and revisions rather than direct UI mutation.
-- Exchange versioned contracts between TypeScript, Python, Rust, and .NET services.
-- Keep the Python generator private in the production platform flow.
-- Separate browser preview playback from future deterministic production rendering.
-- Introduce Rust/WASM only for measured DSP bottlenecks.
-- Keep large audio objects in object storage rather than PostgreSQL.
-
-## Current Development Stage
-
-Stages 1 through 8 are complete. Stage 9 establishes the SynaptixPlay platform-integration boundary. The remaining Stage 9 backend work belongs primarily in the existing SynaptixPlay .NET repository: authorization, entitlement checks, credit reservations, durable job persistence, audit evidence, and private Python dispatch.
-
-Likely next Synaptix Music slices include generation-job status polling, applying completed platform proposals to the editor, dedicated mute/solo/loop commands, browser undo/redo controls, piano-roll editing, device-specific synth factories, and rendering contracts.
+- Route meaningful edits through commands and immutable revisions.
+- Exchange versioned contracts between TypeScript, Python, Rust, and .NET.
+- Keep local editing operational when network and platform services are unavailable.
+- Separate browser preview playback from deterministic production rendering.
+- Introduce Rust/WASM only after profiling identifies a material DSP bottleneck.
+- Store large rendered audio objects outside PostgreSQL.
 
 ## Licensing and Clean-Room Development
 
-openDAW is available under AGPL terms or a commercial license. This repository must remain an independently authored implementation based on general architectural patterns, public standards, and license-compatible dependencies.
+openDAW is available under AGPL terms or a commercial license. Synaptix Music remains an independently authored implementation based on general architectural patterns, public standards, and license-compatible dependencies.
 
-Do not copy substantial AGPL-licensed openDAW source into a closed-source SynaptixPlay product without legal review or an appropriate commercial agreement.
+Do not copy substantial AGPL-licensed source into a closed-source SynaptixPlay product without legal review or an appropriate commercial agreement.
