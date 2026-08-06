@@ -55,6 +55,19 @@ function noteName(pitch: number): string {
   return `${names[pitch % 12]}${Math.floor(pitch / 12) - 1}`;
 }
 
+function clampResizeDelta(clip: MidiClip, noteIds: readonly string[], requestedDelta: number): number {
+  const selectedNotes = clip.notes.filter((note) => noteIds.includes(note.id));
+  if (selectedNotes.length === 0) return 0;
+
+  const minimumDelta = Math.max(...selectedNotes.map((note) => 1 - note.durationTicks));
+  const maximumDelta = Math.min(
+    ...selectedNotes.map(
+      (note) => clip.range.durationTicks - note.startTick - note.durationTicks
+    )
+  );
+  return Math.max(minimumDelta, Math.min(requestedDelta, maximumDelta));
+}
+
 export function PianoRoll({ project, trackId, clipId, onExecute, onClose }: PianoRollProps) {
   const track = project.tracks.find((value) => value.id === trackId);
   const clip = track?.clips.find((value) => value.id === clipId);
@@ -111,7 +124,10 @@ function PianoRollEditor({ trackId, clip, onExecute, onClose }: {
     const rawTicks = Math.round(((event.clientX - drag.startX) / editorWidth) * clip.range.durationTicks);
     const deltaTicks = snapEnabled ? Math.round(rawTicks / gridTicks) * gridTicks : rawTicks;
     if (drag.mode === "resize") {
-      if (deltaTicks !== 0) await onExecute(new ResizeMidiNotesCommand(trackId, clip.id, drag.noteIds, deltaTicks));
+      const safeDeltaTicks = clampResizeDelta(clip, drag.noteIds, deltaTicks);
+      if (safeDeltaTicks !== 0) {
+        await onExecute(new ResizeMidiNotesCommand(trackId, clip.id, drag.noteIds, safeDeltaTicks));
+      }
       return;
     }
     const deltaPitch = -Math.round((event.clientY - drag.startY) / rowHeight);
