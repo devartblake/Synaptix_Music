@@ -4,18 +4,87 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: music-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed scopes
+    runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    outputs:
+      typescript: ${{ steps.scope.outputs.typescript }}
+      python: ${{ steps.scope.outputs.python }}
+      rust: ${{ steps.scope.outputs.rust }}
+      docker: ${{ steps.scope.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected stacks
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "typescript=true" >> "$GITHUB_OUTPUT"
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" > /tmp/synaptix-music-changed.txt
+
+          cat /tmp/synaptix-music-changed.txt
+
+          typescript=false
+          python=false
+          rust=false
+          docker=false
+
+          if grep -Eq '^(apps/|packages/|package(-lock)?\.json$|turbo\.json$|tsconfig.*\.json$|\.nvmrc$|\.prettier|eslint|scripts/)' /tmp/synaptix-music-changed.txt; then
+            typescript=true
+          fi
+
+          if grep -Eq '^(services/generation-api/|\.python-version$)' /tmp/synaptix-music-changed.txt; then
+            python=true
+          fi
+
+          if grep -Eq '^(crates/|Cargo\.(toml|lock)$)' /tmp/synaptix-music-changed.txt; then
+            rust=true
+          fi
+
+          if grep -Eq '^(infrastructure/|apps/|packages/|services/|crates/|\.env\.example$|.*Dockerfile.*$)' /tmp/synaptix-music-changed.txt; then
+            docker=true
+          fi
+
+          if grep -Eq '^\.github/workflows/ci\.yml$' /tmp/synaptix-music-changed.txt; then
+            typescript=true
+            python=true
+            rust=true
+            docker=true
+          fi
+
+          echo "typescript=$typescript" >> "$GITHUB_OUTPUT"
+          echo "python=$python" >> "$GITHUB_OUTPUT"
+          echo "rust=$rust" >> "$GITHUB_OUTPUT"
+          echo "docker=$docker" >> "$GITHUB_OUTPUT"
+
   typescript:
     name: TypeScript
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.typescript == 'true' }}
+    runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -28,7 +97,9 @@ jobs:
 
   python:
     name: Python
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.python == 'true' }}
+    runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     defaults:
       run:
         working-directory: services/generation-api
@@ -47,7 +118,9 @@ jobs:
 
   rust:
     name: Rust
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.rust == 'true' }}
+    runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
@@ -63,7 +136,9 @@ jobs:
 
   docker:
     name: Docker Compose
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.docker == 'true' }}
+    runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v5
       - run: docker compose -f infrastructure/docker/docker-compose.yml config --quiet
