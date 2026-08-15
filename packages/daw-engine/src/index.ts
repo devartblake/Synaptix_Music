@@ -2,12 +2,29 @@ export { BrowserProductionAudioGraph } from "./browser-production-graph.ts";
 export {
   meterSnapshot,
   normalizeMeterValue,
+  primaryDevice,
+  resolveEffectiveInstrumentSettings,
   resolveInstrumentProfile,
   SILENT_METER,
+  type EffectiveInstrumentSettings,
   type InstrumentProfile,
   type InstrumentProfileKind,
   type MasterMeterSnapshot
 } from "./production-audio.ts";
+export {
+  clampDeviceParameterValue,
+  deviceParameterDefinition,
+  DEVICE_PARAMETER_DEFINITIONS,
+  ENVELOPE_ATTACK_PARAMETER,
+  ENVELOPE_DECAY_PARAMETER,
+  ENVELOPE_RELEASE_PARAMETER,
+  ENVELOPE_SUSTAIN_PARAMETER,
+  FILTER_FREQUENCY_PARAMETER,
+  resolveDeviceParameterValue,
+  REVERB_SEND_PARAMETER,
+  type DeviceParameterDefinition,
+  type DeviceParameterUnit
+} from "./device-parameters.ts";
 
 import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
 import * as Tone from "tone";

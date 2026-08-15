@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectRevision } from "@synaptix/command-system";
+import { SetDeviceEnabledEditorCommand, SetDeviceParameterEditorCommand } from "@synaptix/command-system/device";
 import {
   EditorCommandHistory,
   SetLoopEnabledEditorCommand,
@@ -13,7 +14,18 @@ import {
   SetTrackVolumeEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
-import { BrowserAudioEngine } from "@synaptix/daw-engine";
+import {
+  BrowserAudioEngine,
+  DEVICE_PARAMETER_DEFINITIONS,
+  ENVELOPE_ATTACK_PARAMETER,
+  ENVELOPE_DECAY_PARAMETER,
+  ENVELOPE_RELEASE_PARAMETER,
+  ENVELOPE_SUSTAIN_PARAMETER,
+  FILTER_FREQUENCY_PARAMETER,
+  primaryDevice,
+  resolveEffectiveInstrumentSettings,
+  REVERB_SEND_PARAMETER
+} from "@synaptix/daw-engine";
 import { createEmptyProject, type Clip, type MusicProject, type Track } from "@synaptix/project-model";
 import { IndexedDbProjectStorage, LocalProjectRepository } from "@synaptix/project-storage";
 import {
@@ -25,6 +37,7 @@ import {
 
 import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-project-repository";
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
+import { MasterMeter } from "./MasterMeter";
 import { PianoRoll } from "./PianoRoll";
 
 const TRACK_NAMES = ["Drums", "Bass", "Harmony", "Lead Melody"] as const;
@@ -53,7 +66,7 @@ function midiClip(id: string, name: string, pitches: readonly number[]): Clip {
 
 function createStarterProject(projectId: string): MusicProject {
   const project = createEmptyProject(projectId, { name: "Synaptix Generated Arrangement" });
-  const patterns = [[36, 42, 38, 42], [38, 38, 41, 43], [50, 53, 57, 53], [62, 65, 69, 67]] as const;
+  const patterns = [[36, 46, 38, 42], [45, 45, 48, 50], [57, 60, 64, 67], [72, 76, 79, 77]] as const;
   project.transport.loopRange = { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: TOTAL_BARS * TICKS_PER_BAR };
   project.tracks = TRACK_NAMES.map<Track>((name, index) => ({
     id: `track-${index + 1}`,
@@ -94,8 +107,20 @@ function clipStyle(clip: Clip, project: MusicProject): React.CSSProperties {
   };
 }
 
+type NumericSettingsKey = "filterFrequency" | "attack" | "decay" | "sustain" | "release" | "reverbSend";
+
+const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
+  [FILTER_FREQUENCY_PARAMETER]: "filterFrequency",
+  [ENVELOPE_ATTACK_PARAMETER]: "attack",
+  [ENVELOPE_DECAY_PARAMETER]: "decay",
+  [ENVELOPE_SUSTAIN_PARAMETER]: "sustain",
+  [ENVELOPE_RELEASE_PARAMETER]: "release",
+  [REVERB_SEND_PARAMETER]: "reverbSend"
+};
+
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
 type Gesture = { trackId: string; field: "volume" | "pan"; initial: number };
+type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
 
 export default function StudioClient({ projectId }: { projectId: string }) {
@@ -113,6 +138,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const latestEnvelopeRef = useRef<PlatformRevisionEnvelope | null>(null);
   const historyRef = useRef(new EditorCommandHistory());
   const gestureRef = useRef<Gesture | null>(null);
+  const deviceGestureRef = useRef<DeviceGesture | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -247,6 +273,67 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     await execute(command);
   }
 
+  function previewDeviceParameter(trackId: string, deviceId: string, parameterId: string, value: number): void {
+    setProject((current) => ({
+      ...current,
+      tracks: current.tracks.map((candidate) => candidate.id !== trackId ? candidate : {
+        ...candidate,
+        devices: candidate.devices.map((candidateDevice) => candidateDevice.id !== deviceId ? candidateDevice : {
+          ...candidateDevice,
+          parameters: candidateDevice.parameters.some((parameter) => parameter.id === parameterId)
+            ? candidateDevice.parameters.map((parameter) => parameter.id === parameterId ? { ...parameter, value } : parameter)
+            : [...candidateDevice.parameters, { id: parameterId, value }]
+        })
+      })
+    }));
+  }
+
+  function beginDeviceGesture(trackId: string, deviceId: string, parameterId: string, initial: number): void {
+    deviceGestureRef.current = { trackId, deviceId, parameterId, initial };
+  }
+
+  async function endDeviceGesture(trackId: string, deviceId: string, parameterId: string, next: number): Promise<void> {
+    const gesture = deviceGestureRef.current;
+    deviceGestureRef.current = null;
+    if (!gesture || gesture.trackId !== trackId || gesture.deviceId !== deviceId
+      || gesture.parameterId !== parameterId || gesture.initial === next) return;
+    await execute(new SetDeviceParameterEditorCommand(trackId, deviceId, parameterId, gesture.initial, next));
+  }
+
+  function formatParameterValue(unit: "hz" | "seconds" | "ratio", value: number): string {
+    if (unit === "hz") return `${Math.round(value)} Hz`;
+    if (unit === "seconds") return `${value.toFixed(3)} s`;
+    return value.toFixed(2);
+  }
+
+  function renderDeviceControls(track: Track): React.ReactNode {
+    const device = primaryDevice(track);
+    if (!device) return null;
+    const settings = resolveEffectiveInstrumentSettings(track);
+
+    return (
+      <div style={{ display: "grid", gap: 6, borderTop: "1px solid #2a2f38", paddingTop: 8, marginTop: 4 }}>
+        <button onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
+          Device {device.enabled ? "On" : "Off"}
+        </button>
+        {DEVICE_PARAMETER_DEFINITIONS.map((definition) => {
+          const value = settings[PARAMETER_SETTINGS_KEY[definition.id]];
+          const step = definition.unit === "hz" ? 10 : definition.unit === "ratio" ? 0.01 : 0.001;
+          return (
+            <label key={definition.id} style={{ display: "grid", gridTemplateColumns: "80px 1fr 60px", gap: 6, fontSize: 12 }}>
+              {definition.label}
+              <input type="range" min={definition.minimum} max={definition.maximum} step={step} value={value}
+                onPointerDown={() => beginDeviceGesture(track.id, device.id, definition.id, value)}
+                onChange={(event) => previewDeviceParameter(track.id, device.id, definition.id, Number(event.target.value))}
+                onPointerUp={(event) => void endDeviceGesture(track.id, device.id, definition.id, Number(event.currentTarget.value))} />
+              <span>{formatParameterValue(definition.unit, value)}</span>
+            </label>
+          );
+        })}
+      </div>
+    );
+  }
+
   async function play(): Promise<void> { await engine.play(); setPlaying(true); }
   function pause(): void { engine.pause(); setPlaying(false); }
   function stop(): void { engine.stop(); setPlaying(false); }
@@ -284,6 +371,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             }} style={{ width: 64 }} /></label>
           <button onClick={() => void coordinatorRef.current?.drain()}>Sync now</button>
         </div>
+        <MasterMeter engine={engine} />
       </header>
 
       {sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
@@ -325,6 +413,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                     onPointerUp={(event) => void endGesture(value.id, "pan", Number(event.currentTarget.value))} />
                   <span>{value.pan.toFixed(1)}</span>
                 </label>
+                {renderDeviceControls(value)}
               </div>
               <div style={{ position: "relative", minHeight: 96, backgroundImage: "repeating-linear-gradient(to right, transparent 0, transparent calc(6.25% - 1px), #252a33 calc(6.25% - 1px), #252a33 6.25%)" }}>
                 {value.clips.map((clip) => <div key={clip.id} style={clipStyle(clip, project)} onDoubleClick={() => clip.kind === "midi" && setActiveClip({ trackId: value.id, clipId: clip.id })}>

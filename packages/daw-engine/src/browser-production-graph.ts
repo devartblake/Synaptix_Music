@@ -3,7 +3,7 @@ import * as Tone from "tone";
 
 import {
   meterSnapshot,
-  resolveInstrumentProfile,
+  resolveEffectiveInstrumentSettings,
   SILENT_METER,
   type MasterMeterSnapshot
 } from "./production-audio.ts";
@@ -12,6 +12,7 @@ export interface ProductionInstrumentRuntime {
   synth: Tone.PolySynth;
   filter: Tone.Filter;
   channel: Tone.Channel;
+  reverbSend: Tone.Gain;
   dispose(): void;
 }
 
@@ -20,7 +21,7 @@ export type MasterMeterListener = (snapshot: MasterMeterSnapshot) => void;
 export class BrowserProductionAudioGraph {
   private readonly musicBus = new Tone.Gain(1);
   private readonly drumsBus = new Tone.Gain(1);
-  private readonly reverb = new Tone.Reverb({ decay: 1.8, wet: 0.16 });
+  private readonly reverb = new Tone.Reverb({ decay: 1.8, wet: 1 });
   private readonly compressor = new Tone.Compressor({ threshold: -10, ratio: 3, attack: 0.01, release: 0.15 });
   private readonly peakMeter = new Tone.Meter({ smoothing: 0.05, normalRange: false });
   private readonly rmsMeter = new Tone.Meter({ smoothing: 0.85, normalRange: false });
@@ -30,8 +31,6 @@ export class BrowserProductionAudioGraph {
   constructor() {
     this.musicBus.connect(this.compressor);
     this.drumsBus.connect(this.compressor);
-    this.musicBus.connect(this.reverb);
-    this.drumsBus.connect(this.reverb);
     this.reverb.connect(this.compressor);
     this.compressor.connect(this.peakMeter);
     this.peakMeter.connect(this.rmsMeter);
@@ -39,32 +38,37 @@ export class BrowserProductionAudioGraph {
   }
 
   createInstrument(track: Track): ProductionInstrumentRuntime {
-    const profile = resolveInstrumentProfile(track);
+    const settings = resolveEffectiveInstrumentSettings(track);
     const channel = new Tone.Channel({ volume: track.volumeDb, pan: track.pan, mute: track.muted });
-    const filter = new Tone.Filter(profile.filterFrequency, "lowpass");
+    const filter = new Tone.Filter(settings.filterFrequency, "lowpass");
     const synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: profile.oscillator },
+      oscillator: { type: settings.oscillator },
       envelope: {
-        attack: profile.attack,
-        decay: profile.decay,
-        sustain: profile.sustain,
-        release: profile.release
+        attack: settings.attack,
+        decay: settings.decay,
+        sustain: settings.sustain,
+        release: settings.release
       }
     });
+    const reverbSend = new Tone.Gain(settings.reverbSend);
 
     synth.connect(filter);
     filter.connect(channel);
-    channel.connect(profile.destinationBus === "drums" ? this.drumsBus : this.musicBus);
+    channel.connect(settings.destinationBus === "drums" ? this.drumsBus : this.musicBus);
+    channel.connect(reverbSend);
+    reverbSend.connect(this.reverb);
 
     const runtime: ProductionInstrumentRuntime = {
       synth,
       filter,
       channel,
+      reverbSend,
       dispose: () => {
         this.runtimes.delete(runtime);
         synth.dispose();
         filter.dispose();
         channel.dispose();
+        reverbSend.dispose();
       }
     };
     this.runtimes.add(runtime);

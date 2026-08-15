@@ -138,6 +138,8 @@ export type MusicalPosition = z.infer<typeof MusicalPositionSchema>;
 export type MusicProject = z.infer<typeof MusicProjectSchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Clip = z.infer<typeof ClipSchema>;
+export type Device = z.infer<typeof DeviceSchema>;
+export type DeviceParameter = z.infer<typeof DeviceParameterSchema>;
 
 export interface CreateEmptyProjectOptions {
   revisionId?: string;
