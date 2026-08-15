@@ -6,13 +6,22 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Stage 12 render-job PostgreSQL persistence — commit c3b3d98
+
+- Added the `@synaptix/render-worker` service (`services/render-worker`) with `PostgresRenderJobStore`, a durable, concurrency-safe counterpart to the in-memory `RenderJobQueue`.
+- Leasing uses `SELECT ... FOR UPDATE SKIP LOCKED` so multiple worker processes can lease concurrently without double-claiming a job; verified with a dedicated concurrent-leasing test against a real database.
+- Extracted `resolveFailureOutcome`, the retry/dead-letter decision logic, into a pure function shared by both `RenderJobQueue` and `PostgresRenderJobStore` so the two implementations cannot silently diverge on business rules.
+- Added a SQL migration (`db/migrations/0001_render_jobs.sql`) for `render_jobs` and `render_job_events`, applied idempotently via `applyMigrations()`.
+- Added 14 integration tests, gracefully skipped when no database is configured and run for real via `RENDER_WORKER_TEST_DATABASE_URL`. Wired a Postgres service container into the CI TypeScript job so these run for real instead of always skipping, and added `services/render-worker/` to the CI TypeScript path-detection pattern.
+- An HTTP submission/status API, BFF wiring, and an actual render worker that executes rendering are not yet implemented.
+
 #### Stage 12 render-job control plane contracts — commit 25f4c94
 
 - Added `RenderJob` and `RenderJobEvent` contracts (status lifecycle, lease fields, retry/dead-letter fields, structured events) alongside the existing render manifest/result contracts.
 - Added `RenderJobQueue`, a tested in-memory state machine: idempotent submission keyed by idempotency key with render-ID conflict detection, FIFO leasing that respects scheduled retry times, heartbeat-extendable worker leases, exponential-backoff retry up to a configurable attempt limit, dead-lettering, expired-lease reclamation, and an append-only event log for observability.
 - Extracted the existing render manifest/result schemas out of `render-contracts`'s barrel file into their own module so the new job contracts can depend on them without a circular import.
 - Added 28 deterministic tests across the render-contracts package (17 new) covering the full job lifecycle, retry backoff, ownership/authorization failures, and lease expiry.
-- PostgreSQL persistence, an HTTP submission/status API, and an actual render worker are not yet implemented — this slice is contracts and in-process queueing logic only, matching how Stage 12's foundation and Stage 13's groundwork were bootstrapped.
+- This slice was contracts and in-process queueing logic only, matching how Stage 12's foundation and Stage 13's groundwork were bootstrapped; PostgreSQL persistence followed immediately after (see below).
 
 #### Stage 12 master meter and device parameter binding — commit 15f13a4
 
@@ -165,7 +174,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ## Active Work
 
-Stage 12 (Production Audio and Rendering): build PostgreSQL persistence, an HTTP submission/status API, and BFF wiring for the render-job control plane (contracts and the in-memory queue state machine are done), then an actual render worker and deterministic offline WAV rendering. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
+Stage 12 (Production Audio and Rendering): build an HTTP submission/status API and BFF wiring for the render-job control plane (contracts, the in-memory queue, and PostgreSQL persistence are all done), then an actual render worker and deterministic offline WAV rendering. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
 
 ## Release Policy
 

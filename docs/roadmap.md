@@ -9,9 +9,9 @@ Synaptix Music has completed its foundational editor, project, synchronization, 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
-- Stage 12: 70% complete; production-graph integration, master-meter mounting, and canonical device-parameter binding are done, and the render-job control plane has a tested contract and in-memory state machine. PostgreSQL persistence, the HTTP/worker wiring, and deterministic offline WAV rendering remain
+- Stage 12: 75% complete; production-graph integration, master-meter mounting, canonical device-parameter binding, and durable render-job persistence (in-memory and PostgreSQL-backed, both tested) are done. An HTTP submission/status API, BFF wiring, an actual render worker, and deterministic offline WAV rendering remain
 - Stage 13: early groundwork only (contracts, package builder, transition planning, and platform persistence/BFF routes); publication is blocked until Stage 12 produces certified render artifacts
-- Full planned DAW roadmap: 40–45% complete
+- Full planned DAW roadmap: 42–47% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
 
@@ -75,6 +75,7 @@ The percentages represent planned functional scope. They do not represent produc
 - Master meter and clipping indicator mounted in the studio header, with a floor-clamped reading that settles to silence instead of drifting
 - Canonical filter-frequency, envelope (attack/decay/sustain/release), and reverb-send device parameters with defined ranges, bound to live runtime nodes via a per-instrument reverb send. Oscillator waveform and dedicated bus/master trim controls remain deferred — they are categorical or project-level rather than per-device, and need their own parameter concept
 - A tested, in-memory render-job control-plane state machine: idempotent submission, FIFO leasing, heartbeat-extendable worker leases, exponential-backoff retry, dead-lettering, expired-lease reclamation, and a structured event log
+- A durable, concurrency-safe PostgreSQL-backed counterpart (`@synaptix/render-worker`) implementing the same control-plane rules with `SELECT ... FOR UPDATE SKIP LOCKED` leasing, verified against a real database including under concurrent access
 
 ### Adaptive game-audio contracts (Stage 13 groundwork)
 
@@ -87,7 +88,7 @@ The percentages represent planned functional scope. They do not represent produc
 
 ### Stage 12 — Production Audio and Rendering
 
-Current active slice: the durable render-job control plane. A tested, in-memory `RenderJobQueue` state machine exists (submission, leasing, heartbeats, retries, dead-lettering, lease reclamation, events); remaining work is PostgreSQL-backed persistence, an HTTP submission/status API, and an actual render worker.
+Current active slice: the durable render-job control plane. Both an in-memory `RenderJobQueue` and a concurrency-safe PostgreSQL-backed `PostgresRenderJobStore` (new `services/render-worker` package) exist and are tested against a real database, sharing the same retry/dead-letter decision logic; remaining work is an HTTP submission/status API, BFF wiring, and an actual render worker that executes rendering.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
 
@@ -111,7 +112,7 @@ Contract, package-builder, transition-planning, and platform/BFF work is impleme
 - ~~Worker leases and heartbeat recovery~~ Done (`lease`/`heartbeat`/`reclaimExpiredLeases`).
 - ~~Retry and dead-letter handling~~ Done (exponential backoff, max-attempts dead-lettering).
 - ~~Structured render evidence and observability~~ Done (`RenderResult` linkage, append-only event log).
-- PostgreSQL persistence — not started; the queue is in-memory only.
+- ~~PostgreSQL persistence~~ Done: `PostgresRenderJobStore` in the new `@synaptix/render-worker` service uses `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent leasing across worker processes, and shares `resolveFailureOutcome` with the in-memory queue so retry/dead-letter rules cannot drift between the two. Verified with 14 integration tests against a real Postgres instance, including a concurrent-leasing test proving no job is double-claimed. CI now runs these against a Postgres service container instead of skipping them.
 - HTTP submission/status API and BFF wiring — not started.
 - An actual render worker that executes rendering — not started.
 
