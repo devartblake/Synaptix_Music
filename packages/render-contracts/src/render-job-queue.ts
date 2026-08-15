@@ -1,8 +1,8 @@
 import {
-  computeRetryDelayMs,
   DEFAULT_LEASE_DURATION_MS,
   DEFAULT_MAX_ATTEMPTS,
   RENDER_JOB_CONTRACT_VERSION,
+  resolveFailureOutcome,
   type RenderJob,
   type RenderJobEvent,
   type RenderJobEventType,
@@ -76,23 +76,15 @@ export class RenderJobQueue {
 
   private scheduleRetryOrDeadLetter(job: RenderJob, errorMessage: string, result: RenderResult | null): void {
     const timestamp = this.now();
+    const outcome = resolveFailureOutcome(job.attempt, job.maxAttempts, errorMessage, timestamp);
     job.lastError = errorMessage;
     job.result = result ?? job.result;
     job.updatedAt = timestamp.toISOString();
     job.leaseOwnerId = null;
     job.leaseExpiresAt = null;
-
-    if (job.attempt >= job.maxAttempts) {
-      job.status = "dead_letter";
-      job.nextAttemptAt = null;
-      this.emit(job.jobId, "dead_lettered", job.attempt, errorMessage);
-      return;
-    }
-
-    const delayMs = computeRetryDelayMs(job.attempt);
-    job.status = "queued";
-    job.nextAttemptAt = addMilliseconds(timestamp, delayMs).toISOString();
-    this.emit(job.jobId, "retry_scheduled", job.attempt, `Retrying in ${delayMs}ms: ${errorMessage}`);
+    job.status = outcome.status;
+    job.nextAttemptAt = outcome.nextAttemptAt;
+    this.emit(job.jobId, outcome.eventType, job.attempt, outcome.detail);
   }
 
   submit(manifest: RenderManifest, idempotencyKey: string, options: RenderJobSubmitOptions = {}): RenderJob {

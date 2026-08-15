@@ -71,3 +71,30 @@ export function computeRetryDelayMs(
   const exponential = baseDelayMs * 2 ** (attempt - 1);
   return Math.min(exponential, maxDelayMs);
 }
+
+export interface FailureOutcome {
+  status: "queued" | "dead_letter";
+  nextAttemptAt: string | null;
+  eventType: "retry_scheduled" | "dead_lettered";
+  detail: string;
+}
+
+// Shared by the in-memory RenderJobQueue and the Postgres-backed store so
+// retry/dead-letter decisions can never drift between implementations.
+export function resolveFailureOutcome(
+  attempt: number,
+  maxAttempts: number,
+  errorMessage: string,
+  now: Date
+): FailureOutcome {
+  if (attempt >= maxAttempts) {
+    return { status: "dead_letter", nextAttemptAt: null, eventType: "dead_lettered", detail: errorMessage };
+  }
+  const delayMs = computeRetryDelayMs(attempt);
+  return {
+    status: "queued",
+    nextAttemptAt: new Date(now.getTime() + delayMs).toISOString(),
+    eventType: "retry_scheduled",
+    detail: `Retrying in ${delayMs}ms: ${errorMessage}`
+  };
+}

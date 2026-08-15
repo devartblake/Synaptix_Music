@@ -52,7 +52,7 @@ jobs:
           rust=false
           docker=false
 
-          if grep -Eq '^(apps/|packages/|package(-lock)?\.json$|turbo\.json$|tsconfig.*\.json$|\.nvmrc$|\.prettier|eslint|scripts/)' /tmp/synaptix-music-changed.txt; then
+          if grep -Eq '^(apps/|packages/|services/render-worker/|package(-lock)?\.json$|turbo\.json$|tsconfig.*\.json$|\.nvmrc$|\.prettier|eslint|scripts/)' /tmp/synaptix-music-changed.txt; then
             typescript=true
           fi
 
@@ -85,6 +85,22 @@ jobs:
     needs: changes
     if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.typescript == 'true' }}
     runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: synaptix_music_test
+          POSTGRES_USER: synaptix
+          POSTGRES_PASSWORD: synaptix
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synaptix -d synaptix_music_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      RENDER_WORKER_TEST_DATABASE_URL: postgresql://synaptix:synaptix@localhost:5432/synaptix_music_test
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
