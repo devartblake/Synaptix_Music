@@ -6,6 +6,43 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Stage 12 render-job control plane contracts — commit 25f4c94
+
+- Added `RenderJob` and `RenderJobEvent` contracts (status lifecycle, lease fields, retry/dead-letter fields, structured events) alongside the existing render manifest/result contracts.
+- Added `RenderJobQueue`, a tested in-memory state machine: idempotent submission keyed by idempotency key with render-ID conflict detection, FIFO leasing that respects scheduled retry times, heartbeat-extendable worker leases, exponential-backoff retry up to a configurable attempt limit, dead-lettering, expired-lease reclamation, and an append-only event log for observability.
+- Extracted the existing render manifest/result schemas out of `render-contracts`'s barrel file into their own module so the new job contracts can depend on them without a circular import.
+- Added 28 deterministic tests across the render-contracts package (17 new) covering the full job lifecycle, retry backoff, ownership/authorization failures, and lease expiry.
+- PostgreSQL persistence, an HTTP submission/status API, and an actual render worker are not yet implemented — this slice is contracts and in-process queueing logic only, matching how Stage 12's foundation and Stage 13's groundwork were bootstrapped.
+
+#### Stage 12 master meter and device parameter binding — commit 15f13a4
+
+- Mounted `MasterMeter` in the studio header, exposing live peak/RMS/clipping state.
+- Added a canonical device-parameter catalog (filter frequency, envelope ADSR, reverb send) with defined ranges, clamping, and override resolution shared between profile defaults and live runtime nodes.
+- Restructured the reverb bus into a proper per-instrument send (`Tone.Gain` per device) instead of a fixed whole-bus connection, enabling the new reverb-send control.
+- Added a per-track device panel in the studio UI (enable toggle, filter, ADSR, and reverb-send sliders) wired through the existing reversible device commands.
+- Added `Device`/`DeviceParameter` type exports to `@synaptix/project-model`.
+- Oscillator waveform and dedicated bus/master trim controls are intentionally out of scope for this slice: the command system only carries numeric per-device values, and bus/master gain is project-level rather than per-device.
+
+#### CI efficiency phase — PR #33
+
+- Added path-aware Synaptix Music CI validation so unrelated workspaces are not revalidated on every change.
+- Added the Synaptix CI operating-model runbook.
+
+#### Stage 13 adaptive game audio — PRs #29–#31
+
+- Added framework-neutral adaptive package contracts covering named music states, normalized intensity, master/stem artifact references, loop boundaries, entry/exit cues, semantic cue points, and immutable linkage to an exact project revision and SHA-256 checksum.
+- Added deterministic adaptive package assembly from certified render-artifact metadata, including loop/cue defaults, deduplicated stem identifiers, and sorted semantic tags.
+- Added state selection by normalized intensity and required tags, directed transition lookup, and immediate/beat/bar/phrase/cue-point transition planning with minimum source-playback enforcement.
+- Added SynaptixPlay platform persistence contracts and authenticated Next.js BFF proxy routes for listing, publishing, and reading adaptive package versions and artifact delivery grants.
+- Added deterministic tests for package assembly, selection, lookup, scheduling, and invalid evidence.
+- This slice produces validated package metadata and transition timing only; it does not decode or play audio, and packages cannot be published until Stage 12 produces certified render artifacts.
+
+#### Stage 12 production graph integration — PR #26
+
+- Integrated the production audio graph into `BrowserAudioEngine`, preserving transport scheduling and audition while adding device-profile instrument selection, drum/music bus routing, shared reverb and master compression, master peak/RMS snapshots, clipping evidence, and disposable meter subscriptions.
+- Added reversible editor commands for enabling/disabling a device and adding/updating numeric device parameters, participating in the existing revision, undo/redo, IndexedDB, and platform-synchronization pipeline.
+- Added `MasterMeter`, a browser-facing master level display with peak, RMS, and clipping indication (not yet mounted in the studio shell).
+
 #### Documentation Synchronization Milestone
 
 - Added a current roadmap with completion estimates, ordered remaining work, and release gates.
@@ -115,10 +152,20 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 - Corrected unsupported npm `workspace:*` dependency declarations.
 - Corrected TypeScript contract exports and `.ts` ESM test resolution.
 - Corrected strict-TypeScript meter-value narrowing in the production audio foundation.
+- Lazily initialized the browser production audio graph so server-side and pre-interaction construction of `BrowserAudioEngine` no longer touches the Web Audio API (PR #28).
+- Clamped piano roll resize gestures to valid note bounds (PR #32).
+- Fixed environment-variable loading: shared root `.env.local` values (including `SYNAPTIX_PLATFORM_API_URL`) never reached the Next.js server process because Next only reads `.env*` files from its own app directory, not the monorepo root. Every platform sync attempt failed with `platform_unavailable` and a 502. `next.config.ts` now loads the monorepo-root env files via `@next/env` (commit 3f997aa).
+- Replaced raw JSON error envelopes surfaced in the sync status line with the extracted `message` field (commit 3f997aa).
+- Fixed the master meter reporting drifting, non-physical dBFS readings (e.g. -1300 dBFS) instead of settling to silence after playback stops, by clamping sub-floor meter readings to -Infinity (commit 15f13a4).
+- Aligned the music-studio app's test runner with the rest of the monorepo (`--experimental-transform-types`), fixing a TypeScript parameter-property incompatibility that only surfaced once a test imported `platform-project-repository.ts` (commit 3f997aa).
+
+### Changed
+
+- Refreshed the local-demo starter arrangement's note patterns in `createStarterProject()` (commit 15f13a4).
 
 ## Active Work
 
-PR #26 integrates the production graph into `BrowserAudioEngine`, exposes master meter subscriptions, and adds command-backed device/effect parameter boundaries.
+Stage 12 (Production Audio and Rendering): build PostgreSQL persistence, an HTTP submission/status API, and BFF wiring for the render-job control plane (contracts and the in-memory queue state machine are done), then an actual render worker and deterministic offline WAV rendering. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
 
 ## Release Policy
 

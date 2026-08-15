@@ -33,11 +33,11 @@ docs/
 
 ## Current Status
 
-Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is active.
+Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is active, and Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — has started in parallel.
 
-Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, and deterministic render contracts.
+Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, deterministic render contracts, a production audio graph integrated into the live browser engine with reversible device/parameter commands, a mounted studio master meter, and canonical filter/envelope/reverb-send device-parameter binding.
 
-The active Stage 12 work integrates the production graph into the live engine and studio. The remaining production sequence is runtime parameter mapping, durable render jobs, deterministic offline WAV rendering, stems, lossy formats, and adaptive-game export packages.
+The active Stage 12 work is the durable render-job control plane: contracts and a tested in-memory queue state machine (idempotent submission, leasing, heartbeats, retries, dead-lettering) are implemented; PostgreSQL persistence, an HTTP API, and an actual render worker remain, followed by deterministic offline WAV rendering, stems, and lossy formats. In parallel, Stage 13 has implemented adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes; publication is blocked until Stage 12 produces certified render artifacts.
 
 ## Documentation Ownership
 

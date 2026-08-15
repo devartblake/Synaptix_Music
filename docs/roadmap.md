@@ -1,16 +1,17 @@
 # Synaptix Music Roadmap and Current Status
 
-**Revision date:** 2026-08-05
+**Revision date:** 2026-08-15
 
 ## Executive Summary
 
-Synaptix Music has completed its foundational editor, project, synchronization, generation, and browser-audio milestones. The active program is Stage 12 — Production Audio and Rendering.
+Synaptix Music has completed its foundational editor, project, synchronization, generation, and browser-audio milestones. The active program is Stage 12 — Production Audio and Rendering. Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — has also started in parallel: its contract, package-builder, transition-planning, and platform/BFF layers are implemented ahead of the Stage 12 render pipeline they ultimately depend on.
 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
-- Stage 12: 55–60% complete after the active production-audio integration slice
-- Full planned DAW roadmap: 35–40% complete
+- Stage 12: 70% complete; production-graph integration, master-meter mounting, and canonical device-parameter binding are done, and the render-job control plane has a tested contract and in-memory state machine. PostgreSQL persistence, the HTTP/worker wiring, and deterministic offline WAV rendering remain
+- Stage 13: early groundwork only (contracts, package builder, transition planning, and platform persistence/BFF routes); publication is blocked until Stage 12 produces certified render artifacts
+- Full planned DAW roadmap: 40–45% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
 
@@ -69,38 +70,50 @@ The percentages represent planned functional scope. They do not represent produc
 - Master compression
 - Peak/RMS metering and clipping evidence
 - Versioned deterministic render manifests and results
+- Production graph integrated into the live `BrowserAudioEngine`, with lazy initialization and disposable meter subscriptions
+- Reversible command-backed device enablement and numeric device/effect parameters
+- Master meter and clipping indicator mounted in the studio header, with a floor-clamped reading that settles to silence instead of drifting
+- Canonical filter-frequency, envelope (attack/decay/sustain/release), and reverb-send device parameters with defined ranges, bound to live runtime nodes via a per-instrument reverb send. Oscillator waveform and dedicated bus/master trim controls remain deferred — they are categorical or project-level rather than per-device, and need their own parameter concept
+- A tested, in-memory render-job control-plane state machine: idempotent submission, FIFO leasing, heartbeat-extendable worker leases, exponential-backoff retry, dead-lettering, expired-lease reclamation, and a structured event log
+
+### Adaptive game-audio contracts (Stage 13 groundwork)
+
+- Framework-neutral adaptive package contracts: states, normalized intensity, loop/cue points, transition rules, and immutable linkage to a project revision and checksum
+- Deterministic package assembly from certified render-artifact metadata
+- State selection, directed transition lookup, and immediate/beat/bar/phrase/cue-point transition planning
+- SynaptixPlay platform persistence contracts and authenticated BFF proxy routes for listing, publishing, and reading adaptive package versions and delivery grants
 
 ## Active Work
 
 ### Stage 12 — Production Audio and Rendering
 
-Current active slice:
+Current active slice: the durable render-job control plane. A tested, in-memory `RenderJobQueue` state machine exists (submission, leasing, heartbeats, retries, dead-lettering, lease reclamation, events); remaining work is PostgreSQL-backed persistence, an HTTP submission/status API, and an actual render worker.
 
-- integrate the production graph into `BrowserAudioEngine`;
-- expose master peak/RMS/clipping state in the studio;
-- add reversible device enablement and numeric parameter commands;
-- map canonical device/effect parameters to live runtime nodes.
+### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
+
+Contract, package-builder, transition-planning, and platform/BFF work is implemented. This slice does not yet decode or play audio, and packages cannot be published until Stage 12 produces certified render artifacts. Remaining work: package authorization/versioning/retention/signed delivery, the Flutter runtime loader and cache, beat/bar/phrase playback scheduling, layered stem mixing, stingers/ducking, telemetry, and cross-device certification.
 
 ## Remaining Ordered Work
 
-### 1. Complete production preview integration
+### 1. Complete production preview integration — done
 
-- Mount the studio master meter
-- Bind filter, oscillator, envelope, send, bus, and master controls
-- Define parameter ranges and canonical IDs
-- Add automation-safe parameter semantics
-- Add meter and runtime-parameter regression tests
+- ~~Mount the studio master meter~~ Done, with a silence floor fix so it settles instead of drifting.
+- ~~Bind filter, envelope, and send controls~~ Done. Oscillator waveform and bus/master trim are intentionally deferred (categorical/project-level, not per-device).
+- ~~Define parameter ranges and canonical IDs~~ Done via a shared device-parameter catalog.
+- ~~Add meter and runtime-parameter regression tests~~ Done.
 
-### 2. Durable render-job control plane
+### 2. Durable render-job control plane — in progress
 
-- Render-job API contracts
-- PostgreSQL persistence
-- Idempotent submission
-- Queue state machine
-- Cancellation and timeouts
-- Worker leases and heartbeat recovery
-- Retry and dead-letter handling
-- Structured render evidence and observability
+- ~~Render-job API contracts~~ Done (`RenderJobSchema`, `RenderJobEventSchema`).
+- ~~Idempotent submission~~ Done (idempotency-key-keyed, conflict-checked against the render ID).
+- ~~Queue state machine~~ Done (`RenderJobQueue`: submit, lease, heartbeat, report result, cancel).
+- ~~Cancellation and timeouts~~ Done (explicit cancel; lease-expiry timeout).
+- ~~Worker leases and heartbeat recovery~~ Done (`lease`/`heartbeat`/`reclaimExpiredLeases`).
+- ~~Retry and dead-letter handling~~ Done (exponential backoff, max-attempts dead-lettering).
+- ~~Structured render evidence and observability~~ Done (`RenderResult` linkage, append-only event log).
+- PostgreSQL persistence — not started; the queue is in-memory only.
+- HTTP submission/status API and BFF wiring — not started.
+- An actual render worker that executes rendering — not started.
 
 ### 3. Deterministic offline WAV rendering
 
@@ -126,6 +139,8 @@ Current active slice:
 - Adaptive state packages
 - Flutter/SynaptixPlay consumption contracts
 - Game-runtime transition and intensity metadata
+
+Adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes are already implemented as Stage 13 groundwork; publication is blocked on certified Stage 12 render artifacts (items 2–3 above). Remaining Stage 13 scope: authorization/versioning/retention/signed delivery, the Flutter runtime loader, playback scheduling, stem mixing, stingers, and telemetry.
 
 ### 6. Asset and licensing system
 
