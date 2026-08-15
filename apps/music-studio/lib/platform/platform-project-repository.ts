@@ -5,10 +5,21 @@ import type {
   RevisionUploadResult
 } from "@synaptix/project-storage/platform-sync";
 
+export function extractErrorMessage(body: string, status: number): string {
+  if (!body) return `Platform project request failed with ${status}.`;
+  try {
+    const parsed = JSON.parse(body) as { message?: unknown };
+    if (typeof parsed.message === "string" && parsed.message.length > 0) return parsed.message;
+  } catch {
+    // Not a JSON error envelope; fall through to the raw body.
+  }
+  return body;
+}
+
 function requireOk(response: Response): Promise<Response> {
   if (response.ok) return Promise.resolve(response);
   return response.text().then((body) => {
-    throw new Error(body || `Platform project request failed with ${response.status}.`);
+    throw new Error(extractErrorMessage(body, response.status));
   });
 }
 

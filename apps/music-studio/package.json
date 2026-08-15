@@ -6,10 +6,11 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/platform/*.test.ts lib/editor/*.test.ts"
+    "test": "node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts"
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.17",
+    "@next/env": "^15.4.0",
     "@synaptix/command-system": "0.1.0",
     "@synaptix/daw-engine": "0.1.0",
     "@synaptix/platform-contracts": "0.1.0",
