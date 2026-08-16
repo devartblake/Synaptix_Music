@@ -1,0 +1,146 @@
+
+> test
+> node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts
+
+(node:535196) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:529808) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:529808) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/drum-step-sequencer-model.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
+# Subtest: resolves device drum mapping overrides
+ok 1 - resolves device drum mapping overrides
+  ---
+  duration_ms: 1.3077
+  ...
+# Subtest: finds notes at exact steps and within bars
+ok 2 - finds notes at exact steps and within bars
+  ---
+  duration_ms: 0.755
+  ...
+# Subtest: cycles velocity through soft normal and accent
+ok 3 - cycles velocity through soft normal and accent
+  ---
+  duration_ms: 0.1762
+  ...
+# Subtest: computes looping playback cursor
+ok 4 - computes looping playback cursor
+  ---
+  duration_ms: 0.1427
+  ...
+# (node:535392) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:535392) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/editor-session-coordinator.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
+# Subtest: failed persistence can retry the same revision without replaying a command
+ok 5 - failed persistence can retry the same revision without replaying a command
+  ---
+  duration_ms: 7.6421
+  ...
+# Subtest: failed retry preserves the pending revision and unload warning
+ok 6 - failed retry preserves the pending revision and unload warning
+  ---
+  duration_ms: 0.8913
+  ...
+# Subtest: competing project tab puts the current editor into read-only mode
+ok 7 - competing project tab puts the current editor into read-only mode
+  ---
+  duration_ms: 1.3709
+  ...
+# (node:535400) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:535400) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/piano-roll-interactions.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
+# Subtest: normalizes marquee coordinates and selects intersecting notes
+ok 8 - normalizes marquee coordinates and selects intersecting notes
+  ---
+  duration_ms: 2.6819
+  ...
+# Subtest: clamps zoom and notes to supported bounds
+ok 9 - clamps zoom and notes to supported bounds
+  ---
+  duration_ms: 0.205
+  ...
+# Subtest: preserves relative clipboard timing
+ok 10 - preserves relative clipboard timing
+  ---
+  duration_ms: 0.1182
+  ...
+# (node:535384) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:535384) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/piano-roll-model.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
+# Subtest: snapTick rounds to the nearest grid and clamps to clip bounds
+ok 11 - snapTick rounds to the nearest grid and clamps to clip bounds
+  ---
+  duration_ms: 1.3486
+  ...
+# Subtest: toggleSelection supports replacement and additive toggles
+ok 12 - toggleSelection supports replacement and additive toggles
+  ---
+  duration_ms: 0.6694
+  ...
+# Subtest: pointer conversion maps coordinates to valid pitch and ticks
+ok 13 - pointer conversion maps coordinates to valid pitch and ticks
+  ---
+  duration_ms: 0.1624
+  ...
+# (node:534864) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:534864) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/generation-status-coalescer.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
+# Subtest: selectNewestMeaningfulStatus prefers the newest transition
+ok 14 - selectNewestMeaningfulStatus prefers the newest transition
+  ---
+  duration_ms: 1.314
+  ...
+# Subtest: coalesceGenerationStatuses keeps one meaningful state per concurrent job
+ok 15 - coalesceGenerationStatuses keeps one meaningful state per concurrent job
+  ---
+  duration_ms: 9.6174
+  ...
+# Subtest: AppliedGenerationJobSet prevents duplicate completed proposal application
+ok 16 - AppliedGenerationJobSet prevents duplicate completed proposal application
+  ---
+  duration_ms: 0.2105
+  ...
+# (node:535348) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:535348) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/platform-project-repository.test.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
+# Subtest: extracts the message field from a JSON error envelope
+ok 17 - extracts the message field from a JSON error envelope
+  ---
+  duration_ms: 1.4933
+  ...
+# Subtest: falls back to the raw body when it is not a JSON error envelope
+ok 18 - falls back to the raw body when it is not a JSON error envelope
+  ---
+  duration_ms: 0.199
+  ...
+# Subtest: falls back to a generic status message when the body is empty
+ok 19 - falls back to a generic status message when the body is empty
+  ---
+  duration_ms: 0.1188
+  ...
+# Subtest: falls back to the raw body when the JSON has no usable message field
+ok 20 - falls back to the raw body when the JSON has no usable message field
+  ---
+  duration_ms: 0.147
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 267.7757

@@ -1,0 +1,82 @@
+
+> @synaptix/command-system@0.1.0 test
+> node --experimental-transform-types --test src/*.test.ts
+
+(node:487932) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:488788) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: device enabled edits are reversible
+ok 1 - device enabled edits are reversible
+  ---
+  duration_ms: 12.5659
+  ...
+# Subtest: device parameter edits add or update values and are reversible
+ok 2 - device parameter edits add or update values and are reversible
+  ---
+  duration_ms: 0.7609
+  ...
+# Subtest: device parameter commands fail closed for non-finite values
+ok 3 - device parameter commands fail closed for non-finite values
+  ---
+  duration_ms: 0.5091
+  ...
+# (node:489024) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: history enforces a bounded undo depth
+ok 4 - history enforces a bounded undo depth
+  ---
+  duration_ms: 27.6852
+  ...
+# Subtest: new edits invalidate redo history
+ok 5 - new edits invalidate redo history
+  ---
+  duration_ms: 6.0174
+  ...
+# Subtest: history must be reset before switching projects
+ok 6 - history must be reset before switching projects
+  ---
+  duration_ms: 2.1364
+  ...
+# Subtest: failed command construction leaves history unchanged
+ok 7 - failed command construction leaves history unchanged
+  ---
+  duration_ms: 0.3131
+  ...
+# (node:488896) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: add and remove MIDI notes are reversible
+ok 8 - add and remove MIDI notes are reversible
+  ---
+  duration_ms: 10.383
+  ...
+# Subtest: multi-note movement resize velocity and transpose are reversible
+ok 9 - multi-note movement resize velocity and transpose are reversible
+  ---
+  duration_ms: 1.6438
+  ...
+# Subtest: quantize and duplicate preserve deterministic batch behavior
+ok 10 - quantize and duplicate preserve deterministic batch behavior
+  ---
+  duration_ms: 1.7689
+  ...
+# Subtest: drum step toggling and clearing are reversible
+ok 11 - drum step toggling and clearing are reversible
+  ---
+  duration_ms: 0.9349
+  ...
+# Subtest: invalid MIDI edits fail closed
+ok 12 - invalid MIDI edits fail closed
+  ---
+  duration_ms: 1.1615
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 396.0204

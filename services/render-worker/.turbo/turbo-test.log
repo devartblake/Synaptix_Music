@@ -1,0 +1,121 @@
+
+> @synaptix/render-worker@0.1.0 test
+> node --experimental-transform-types --test --test-concurrency=1 src/*.test.ts
+
+(node:534056) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:534988) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: render-job HTTP API (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+ok 1 - render-job HTTP API (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+  ---
+  duration_ms: 1.7304
+  ...
+# (node:534660) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: rendering the same project and manifest twice is byte-identical
+ok 2 - rendering the same project and manifest twice is byte-identical
+  ---
+  duration_ms: 188.8428
+  ...
+# Subtest: produces a valid RenderResult with one master artifact
+ok 3 - produces a valid RenderResult with one master artifact
+  ---
+  duration_ms: 27.8487
+  ...
+# Subtest: artifact metadata matches the encoded bytes
+ok 4 - artifact metadata matches the encoded bytes
+  ---
+  duration_ms: 8.5772
+  ...
+# Subtest: a note produces silence before its onset and signal during sustain
+ok 5 - a note produces silence before its onset and signal during sustain
+  ---
+  duration_ms: 9.3678
+  ...
+# Subtest: a muted track is silent in the master mix
+ok 6 - a muted track is silent in the master mix
+  ---
+  duration_ms: 9.1337
+  ...
+# Subtest: soloing one track silences the others in the master mix
+ok 7 - soloing one track silences the others in the master mix
+  ---
+  duration_ms: 17.6243
+  ...
+# Subtest: notes starting outside the render range are excluded
+ok 8 - notes starting outside the render range are excluded
+  ---
+  duration_ms: 8.0489
+  ...
+# Subtest: stems scope renders one artifact per requested track and ignores mute
+ok 9 - stems scope renders one artifact per requested track and ignores mute
+  ---
+  duration_ms: 12.5546
+  ...
+# Subtest: requesting an unknown stem track fails closed
+ok 10 - requesting an unknown stem track fails closed
+  ---
+  duration_ms: 1.107
+  ...
+# Subtest: a projectId or revisionId mismatch between the manifest and project fails closed
+ok 11 - a projectId or revisionId mismatch between the manifest and project fails closed
+  ---
+  duration_ms: 0.634
+  ...
+# Subtest: normalization scales the output to the requested peak level
+ok 12 - normalization scales the output to the requested peak level
+  ---
+  duration_ms: 28.0569
+  ...
+# (node:535504) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: PostgresRenderJobStore (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+ok 13 - PostgresRenderJobStore (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+  ---
+  duration_ms: 1.0395
+  ...
+# (node:533360) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: WAV header describes the format correctly
+ok 14 - WAV header describes the format correctly
+  ---
+  duration_ms: 4.0597
+  ...
+# Subtest: 16-bit samples round-trip through full-scale values
+ok 15 - 16-bit samples round-trip through full-scale values
+  ---
+  duration_ms: 0.3469
+  ...
+# Subtest: out-of-range samples are hard-clipped rather than wrapping
+ok 16 - out-of-range samples are hard-clipped rather than wrapping
+  ---
+  duration_ms: 0.2477
+  ...
+# Subtest: 24-bit and 32-bit encodings use the requested bit depth and byte layout
+ok 17 - 24-bit and 32-bit encodings use the requested bit depth and byte layout
+  ---
+  duration_ms: 0.2247
+  ...
+# Subtest: mismatched channel lengths fail closed
+ok 18 - mismatched channel lengths fail closed
+  ---
+  duration_ms: 0.4035
+  ...
+# (node:534380) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: render worker loop (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+ok 19 - render worker loop (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+  ---
+  duration_ms: 1.5085
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2780.1649

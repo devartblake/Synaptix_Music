@@ -1,0 +1,82 @@
+
+> @synaptix/daw-engine@0.1.0 test
+> node --experimental-transform-types --test src/*.test.ts
+
+(node:533932) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:532332) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: browser audio engine construction is safe without a browser AudioContext
+ok 1 - browser audio engine construction is safe without a browser AudioContext
+  ---
+  duration_ms: 22.1246
+  ...
+# (node:534084) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: clamping keeps values within the canonical parameter range
+ok 2 - clamping keeps values within the canonical parameter range
+  ---
+  duration_ms: 1.2827
+  ...
+# Subtest: clamping is a no-op for unknown parameter identifiers
+ok 3 - clamping is a no-op for unknown parameter identifiers
+  ---
+  duration_ms: 0.1885
+  ...
+# Subtest: resolving a device parameter prefers the stored override, clamped to range
+ok 4 - resolving a device parameter prefers the stored override, clamped to range
+  ---
+  duration_ms: 0.2591
+  ...
+# Subtest: resolving a device parameter falls back to the default when unset or non-finite
+ok 5 - resolving a device parameter falls back to the default when unset or non-finite
+  ---
+  duration_ms: 0.1766
+  ...
+# Subtest: every canonical definition exposes a finite, ordered range
+ok 6 - every canonical definition exposes a finite, ordered range
+  ---
+  duration_ms: 0.3843
+  ...
+# (node:530832) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: device-specific profiles route drums and bass deterministically
+ok 7 - device-specific profiles route drums and bass deterministically
+  ---
+  duration_ms: 1.662
+  ...
+# Subtest: master meter reports clipping from stereo values
+ok 8 - master meter reports clipping from stereo values
+  ---
+  duration_ms: 1.2556
+  ...
+# Subtest: master meter clamps sub-floor readings to silence instead of reporting drifting negative values
+ok 9 - master meter clamps sub-floor readings to silence instead of reporting drifting negative values
+  ---
+  duration_ms: 0.318
+  ...
+# Subtest: master meter leaves audible readings just above the silence floor untouched
+ok 10 - master meter leaves audible readings just above the silence floor untouched
+  ---
+  duration_ms: 0.1635
+  ...
+# Subtest: effective instrument settings fall back to profile defaults without overrides
+ok 11 - effective instrument settings fall back to profile defaults without overrides
+  ---
+  duration_ms: 0.2605
+  ...
+# Subtest: effective instrument settings apply and clamp canonical device parameter overrides
+ok 12 - effective instrument settings apply and clamp canonical device parameter overrides
+  ---
+  duration_ms: 0.4229
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2343.4546

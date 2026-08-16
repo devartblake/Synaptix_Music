@@ -1,0 +1,4 @@
+
+> @synaptix/audio-runtime@0.1.0 build
+> tsc --noEmit
+
