@@ -6,6 +6,19 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Stage 12 render-job HTTP API, BFF wiring, and offline WAV rendering — commits c3ffdc9, 513b7b9
+
+- Added a private, server-to-server render-job HTTP API (`services/render-worker/src/http-server.ts`): `POST /render-jobs` (idempotent submission), `GET /render-jobs`/`GET /render-jobs/:id` (list/status), `POST /render-jobs/:id/cancel`, `GET /render-jobs/:id/events`. Not internet-facing, matching the Python generation-api's private-dependency posture.
+- Added Next.js BFF routes at `/api/platform/render-jobs/*` proxying directly to the render-worker HTTP API via a new `RENDER_WORKER_API_URL` env var, requiring end-user authentication. This deliberately deviates from the generation-jobs/adaptive-packages convention of routing everything through `SYNAPTIX_PLATFORM_API_URL` (the .NET SynaptixPlay backend) — that backend is a separate, large, unfamiliar production solution (also hosting KMS, Wallet, and Compliance) that doesn't need to be extended for a resource that has no multi-tenant authorization requirement yet.
+- Added a deterministic, dependency-free offline WAV renderer (`offline-renderer.ts`): reuses `resolveEffectiveInstrumentSettings` from `@synaptix/daw-engine` (via a new Tone.js-free `./production-audio` subpath export) for canonical device/parameter semantics per ADR-0003, then does its own pure-JS oscillator/ADSR/one-pole-filter synthesis, mute/solo/pan/volume mixing, master-or-stems scope handling, tick-range restriction, peak normalization, and clipping detection. Does not model reverb or master compression — documented as a dry-signal-only simplification, not an oversight.
+- Added a RIFF/WAVE PCM `wav-encoder.ts` (16/24/32-bit) and SHA-256 artifact checksumming.
+- Added a worker loop (`worker.ts`): `processNextJob` leases one job, heartbeats for the duration of the render (so a slow render isn't reclaimed by another worker), executes the renderer, and reports the result through the control plane's existing retry/dead-letter rules; `runWorker` polls it continuously. Takes an injected `ProjectLoader` and `ArtifactSink` — no real implementations exist yet (see below).
+- Added `FilesystemArtifactSink`, a local-disk placeholder for artifact storage pending real object-storage upload and signed delivery.
+- Added a minimal `main.ts` entry point that boots the HTTP API; does not auto-start the worker loop, since there is no real `ProjectLoader` to wire in yet.
+- Added 24 new tests (42 total in the package): full HTTP lifecycle tests against a real running server, 11 offline-renderer tests (determinism, silence gating, mute/solo, range filtering, stems, normalization, fail-closed error handling), 5 WAV-encoder tests, and 5 worker-loop tests including a heartbeat-during-slow-render race test — all verified against a real, disposable Postgres instance.
+- Fixed a test-isolation bug: Node's test runner executes test **files** concurrently by default, so two files sharing one database and each truncating its tables in `beforeEach` were racing each other. Added `--test-concurrency=1` to the package's test script.
+- **Known gaps, not implemented in this slice:** a real `ProjectLoader` that fetches an exact project revision from the platform backend (blocked on an undecided service-to-service authentication strategy — background workers don't have an end user's session token); real object-storage upload with signed delivery; reverb/master-compression modeling in the renderer.
+
 #### Stage 12 render-job PostgreSQL persistence — commit c3b3d98
 
 - Added the `@synaptix/render-worker` service (`services/render-worker`) with `PostgresRenderJobStore`, a durable, concurrency-safe counterpart to the in-memory `RenderJobQueue`.
@@ -174,7 +187,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ## Active Work
 
-Stage 12 (Production Audio and Rendering): build an HTTP submission/status API and BFF wiring for the render-job control plane (contracts, the in-memory queue, and PostgreSQL persistence are all done), then an actual render worker and deterministic offline WAV rendering. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
+Stage 12 (Production Audio and Rendering): the render-job control plane, offline WAV renderer, and worker loop are all implemented and tested. What's left: decide a service-to-service authentication strategy so a real `ProjectLoader` can fetch project revisions from the platform backend, wire up real object-storage upload with signed delivery in place of `FilesystemArtifactSink`, model reverb/master compression in the offline renderer, then stems and lossy exports. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
 
 ## Release Policy
 

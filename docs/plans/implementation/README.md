@@ -29,12 +29,13 @@ This index records completed Synaptix Music implementation slices and the curren
 | Stage 12 — Master Meter and Device Parameter Binding | 15f13a4 | Mounted the master meter in the studio header, added a canonical filter/envelope/reverb-send device-parameter catalog with defined ranges bound to live runtime nodes via a per-instrument reverb send, fixed the meter reporting non-physical values instead of settling to silence, and refreshed the local-demo starter patterns |
 | Stage 12 — Render-Job Control Plane Contracts | 25f4c94 | Added `RenderJob`/`RenderJobEvent` schemas and a tested, in-memory `RenderJobQueue` state machine: idempotent submission, FIFO leasing, heartbeat-extendable leases, exponential-backoff retry, dead-lettering, expired-lease reclamation, and a structured event log |
 | Stage 12 — Render-Job PostgreSQL Persistence | c3b3d98 | Added the `@synaptix/render-worker` service with a concurrency-safe `PostgresRenderJobStore` (`SELECT ... FOR UPDATE SKIP LOCKED` leasing), a migration, and 14 integration tests verified against a real Postgres instance including concurrent leasing; wired a Postgres service container into CI so these run for real instead of skipping |
+| Stage 12 — Render-Job HTTP API, BFF Wiring, and Offline WAV Rendering | c3ffdc9, 513b7b9 | Added a private render-job HTTP API and Next.js BFF routes (direct proxy, not through the .NET backend); a deterministic pure-JS offline WAV renderer sharing canonical device/parameter semantics with the browser preview; and a worker loop (`processNextJob`/`runWorker`) tying leasing, heartbeats, rendering, and result reporting together. 42 tests verified against a real Postgres instance, including a full submit-through-completion lifecycle and a heartbeat-during-slow-render test. No real `ProjectLoader` or object-storage upload yet — see Stage 12 exit criteria notes |
 
 ## Active Stage
 
 ### Stage 12 — Production Audio and Rendering
 
-Production-graph integration, command-backed device/effect controls, master-meter mounting, and canonical device-parameter binding are complete (#26, #28, 15f13a4). The active slice is the durable render-job control plane: contracts, an in-memory state machine (25f4c94), and a concurrency-safe PostgreSQL-backed store are implemented and tested. An HTTP submission/status API, BFF wiring, and an actual render worker remain.
+Production-graph integration, command-backed device/effect controls, master-meter mounting, and canonical device-parameter binding are complete (#26, #28, 15f13a4). The render-job control plane, the deterministic offline WAV renderer, and the worker loop are all implemented and tested. The active slice is closing the two remaining gaps: a real `ProjectLoader` (blocked on a service-to-service authentication decision for the platform backend) and real object-storage upload/signed delivery (currently a local-filesystem placeholder).
 
 ### Completed Stage 12 foundation
 
@@ -49,6 +50,8 @@ Production-graph integration, command-backed device/effect controls, master-mete
 - Canonical filter-frequency, envelope, and reverb-send device parameters with defined ranges, bound to live runtime nodes
 - `RenderJob`/`RenderJobEvent` contracts and a tested in-memory `RenderJobQueue` state machine (submission, leasing, heartbeats, retries, dead-lettering, lease reclamation)
 - A concurrency-safe `PostgresRenderJobStore` (`@synaptix/render-worker`) sharing the same retry/dead-letter rules, verified with 14 integration tests against a real database and wired into CI via a Postgres service container
+- A private render-job HTTP API (submit/status/list/cancel/events) and Next.js BFF routes at `/api/platform/render-jobs/*` proxying it directly (not through the .NET backend — see the exit-criteria notes)
+- A deterministic offline WAV renderer (`renderProjectOffline`) sharing canonical device/parameter semantics with the browser preview, and a worker loop (`processNextJob`/`runWorker`) that leases, heartbeats, renders, and reports results
 
 ### Remaining Stage 12 sequence
 
@@ -56,9 +59,9 @@ Production-graph integration, command-backed device/effect controls, master-mete
 2. ~~Mount master meters and clipping state in the studio.~~ Done.
 3. ~~Map canonical filter, envelope, and send parameters into runtime nodes.~~ Done. Oscillator waveform and bus/master trim are deferred as categorical/project-level controls, not per-device parameters.
 4. ~~Add canonical parameter identifiers for the existing command-backed device/effect controls.~~ Done via the shared device-parameter catalog.
-5. Implement durable render-job persistence, an HTTP API, and worker wiring. **In progress** — contracts, the in-memory state machine, and PostgreSQL persistence are done; the HTTP submission/status API, BFF wiring, and the actual render worker are not started.
-6. Implement deterministic offline WAV rendering and checksum evidence.
-7. Add stem rendering and preview packages.
+5. ~~Implement durable render-job persistence, an HTTP API, and worker wiring.~~ Done: contracts, the in-memory and PostgreSQL-backed stores, the HTTP API, and BFF wiring are all implemented and tested.
+6. ~~Implement deterministic offline WAV rendering and checksum evidence.~~ Mostly done: the renderer, encoder, and worker loop exist and are verified deterministic; still missing a real `ProjectLoader` (platform-backend fetch, blocked on an auth decision) and reverb/compression modeling (dry signal only, a documented simplification).
+7. Add stem rendering and preview packages. Stems are already supported by the offline renderer's scope handling; what remains is real object-storage upload, naming/manifests, and signed delivery (`FilesystemArtifactSink` is a local-disk placeholder).
 8. Add MP3/OGG conversion only after WAV certification.
 9. Profile DSP workloads before assigning any kernel to Rust/WASM.
 
@@ -83,9 +86,9 @@ Groundwork is implemented (#29–#31): adaptive package contracts and validation
 ## Completion Estimate
 
 - Stages 1–11: complete
-- Stage 12: approximately 75% complete; production-graph integration, master-meter mounting, device-parameter binding, and durable render-job persistence (in-memory and PostgreSQL-backed) are done — the HTTP submission/status API, BFF wiring, the actual render worker, and offline WAV rendering remain
+- Stage 12: approximately 85% complete; production-graph integration, device-parameter binding, the render-job control plane (contracts, both stores, HTTP API, BFF wiring), the offline WAV renderer, and the worker loop are all done and tested — a real project loader (auth decision pending), real artifact storage, reverb/compression modeling, and stems/lossy exports remain
 - Stage 13: early groundwork only (contracts, builder, transition planning, platform/BFF routes); blocked on Stage 12 certified artifacts before publication
-- Full planned DAW roadmap: approximately 42–47% complete
+- Full planned DAW roadmap: approximately 48–52% complete
 
 These estimates describe feature-scope completion, not production-readiness certification.
 
