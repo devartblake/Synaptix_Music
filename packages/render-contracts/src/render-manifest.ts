@@ -68,3 +68,6 @@ export const RenderResultSchema = z.object({
 
 export type RenderManifest = z.infer<typeof RenderManifestSchema>;
 export type RenderResult = z.infer<typeof RenderResultSchema>;
+export type RenderArtifact = z.infer<typeof RenderArtifactSchema>;
+export type RenderScope = z.infer<typeof RenderScopeSchema>;
+export type RenderOutput = z.infer<typeof RenderOutputSchema>;

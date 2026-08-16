@@ -8,9 +8,11 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types --test src/*.test.ts"
+    "test": "node --experimental-transform-types --test --test-concurrency=1 src/*.test.ts"
   },
   "dependencies": {
+    "@synaptix/daw-engine": "0.1.0",
+    "@synaptix/project-model": "0.1.0",
     "@synaptix/render-contracts": "0.1.0",
     "pg": "^8.23.0",
     "zod": "^4.0.0"

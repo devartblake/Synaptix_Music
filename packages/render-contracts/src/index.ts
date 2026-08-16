@@ -29,8 +29,11 @@ export {
   RenderRangeSchema,
   RenderResultSchema,
   RenderScopeSchema,
+  type RenderArtifact,
   type RenderManifest,
-  type RenderResult
+  type RenderOutput,
+  type RenderResult,
+  type RenderScope
 } from "./render-manifest.ts";
 export {
   computeRetryDelayMs,
