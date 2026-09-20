@@ -40,6 +40,7 @@ import { ApplyGeneratedArrangementEditorCommand } from "../../../lib/editor/appl
 import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-project-repository";
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
 import { GenerationWorkspace } from "./GenerationWorkspace";
+import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
 import { MasterMeter } from "./MasterMeter";
 import { PianoRoll } from "./PianoRoll";
 
@@ -125,7 +126,7 @@ const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, c
 type Gesture = { trackId: string; field: "volume" | "pan"; initial: number };
 type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
-type Workspace = "arrangement" | "generation";
+type Workspace = "arrangement" | "generation" | "adaptive";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState(() => createStarterProject(projectId));
@@ -404,7 +405,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <p className="panel-label" style={{ marginTop: 22 }}>SynaptixPlay</p>
           <nav className="studio-nav">
             <button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></button>
-            <button disabled title="Adaptive authoring is scheduled for Stage 13"><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></button>
+            <button aria-current={workspace === "adaptive" ? "page" : undefined} onClick={() => setWorkspace("adaptive")}><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></button>
             <button disabled title="Publication remains gated by certification"><span><span className="nav-glyph">R</span>Render & publish</span></button>
           </nav>
           <section className="sidebar-card" aria-label="Adaptive audio preview">
@@ -491,6 +492,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onApply={applyGeneratedVariation}
         onClose={() => setWorkspace("arrangement")}
       />}
+      {workspace === "adaptive" && <AdaptiveStatesWorkspace project={project} onClose={() => setWorkspace("arrangement")} />}
         </section>
 
         <aside className="studio-inspector" aria-label="Project inspector">
