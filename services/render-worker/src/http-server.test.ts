@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { after, before, beforeEach, test } from "node:test";
 
-import { RENDER_CONTRACT_VERSION, type RenderManifest } from "@synaptix/render-contracts";
+import {
+  RENDER_CONTRACT_VERSION,
+  type RenderManifest,
+  type RenderResult
+} from "@synaptix/render-contracts";
 import { Pool } from "pg";
 
 import { createRenderJobHttpServer } from "./http-server.ts";
@@ -22,7 +26,13 @@ function manifest(renderId: string): RenderManifest {
     seed: 42,
     scope: { kind: "master" },
     range: { startTick: 0, endTick: 3840 },
-    output: { format: "wav", sampleRate: 48000, bitDepth: 24, normalizePeakDbfs: null, includeTailSeconds: 2 },
+    output: {
+      format: "wav",
+      sampleRate: 48000,
+      bitDepth: 24,
+      normalizePeakDbfs: null,
+      includeTailSeconds: 2
+    },
     requestedAt: "2026-08-15T00:00:00.000Z"
   };
 }
@@ -32,7 +42,12 @@ if (!connectionString) {
 } else {
   const pool = new Pool({ connectionString });
   const store = new PostgresRenderJobStore(pool);
-  const server = createRenderJobHttpServer(store);
+  const artifactDelivery = {
+    async createDownloadUrl(renderId: string, fileName: string): Promise<string> {
+      return `https://objects.example/renders/${renderId}/${fileName}?signed=true`;
+    }
+  };
+  const server = createRenderJobHttpServer(store, artifactDelivery);
   let baseUrl = "";
 
   before(async () => {
@@ -47,7 +62,9 @@ if (!connectionString) {
   });
 
   after(async () => {
-    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve()))
+    );
     await pool.end();
   });
 
@@ -95,7 +112,10 @@ if (!connectionString) {
 
     const eventsResponse = await fetch(`${baseUrl}/render-jobs/${job.jobId}/events`);
     const eventsBody = await eventsResponse.json();
-    assert.deepEqual(eventsBody.events.map((event: { type: string }) => event.type), ["submitted"]);
+    assert.deepEqual(
+      eventsBody.events.map((event: { type: string }) => event.type),
+      ["submitted"]
+    );
   });
 
   test("resubmitting the same idempotency key and render returns the same job", async () => {
@@ -119,6 +139,47 @@ if (!connectionString) {
     assert.equal((await response.json()).code, "render_job_not_found");
   });
 
+  test("creates a signed delivery URL only for an artifact recorded on the completed job", async () => {
+    const renderId = "10000000-0000-4000-8000-000000000000";
+    const artifactId = "20000000-0000-4000-8000-000000000000";
+    const submitted = await store.submit(manifest(renderId), "delivery-key");
+    await store.lease("worker-a");
+    const result: RenderResult = {
+      contractVersion: RENDER_CONTRACT_VERSION,
+      renderId,
+      status: "completed",
+      artifacts: [
+        {
+          artifactId,
+          renderId,
+          trackId: null,
+          fileName: "master.wav",
+          mediaType: "audio/wav",
+          byteLength: 44,
+          checksumSha256: "b".repeat(64),
+          durationSeconds: 1
+        }
+      ],
+      warnings: [],
+      errorCode: null,
+      errorMessage: null,
+      completedAt: new Date().toISOString()
+    };
+    await store.reportResult(submitted.jobId, "worker-a", result);
+
+    const response = await fetch(
+      `${baseUrl}/render-jobs/${submitted.jobId}/artifacts/${artifactId}/download-url`
+    );
+    assert.equal(response.status, 200);
+    assert.match((await response.json()).downloadUrl, /master\.wav\?signed=true$/);
+
+    const missing = await fetch(
+      `${baseUrl}/render-jobs/${submitted.jobId}/artifacts/30000000-0000-4000-8000-000000000000/download-url`
+    );
+    assert.equal(missing.status, 404);
+    assert.equal((await missing.json()).code, "render_artifact_not_found");
+  });
+
   test("cancel stops a queued job and rejects a second cancel with a 409", async () => {
     const renderId = "10000000-0000-4000-8000-000000000000";
     const job = await fetch(`${baseUrl}/render-jobs`, {
@@ -127,11 +188,15 @@ if (!connectionString) {
       body: JSON.stringify({ manifest: manifest(renderId) })
     }).then((response) => response.json());
 
-    const cancelResponse = await fetch(`${baseUrl}/render-jobs/${job.jobId}/cancel`, { method: "POST" });
+    const cancelResponse = await fetch(`${baseUrl}/render-jobs/${job.jobId}/cancel`, {
+      method: "POST"
+    });
     assert.equal(cancelResponse.status, 200);
     assert.equal((await cancelResponse.json()).status, "cancelled");
 
-    const secondCancel = await fetch(`${baseUrl}/render-jobs/${job.jobId}/cancel`, { method: "POST" });
+    const secondCancel = await fetch(`${baseUrl}/render-jobs/${job.jobId}/cancel`, {
+      method: "POST"
+    });
     assert.equal(secondCancel.status, 409);
     assert.equal((await secondCancel.json()).code, "render_job_conflict");
   });

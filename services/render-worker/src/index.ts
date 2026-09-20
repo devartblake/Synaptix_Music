@@ -1,6 +1,14 @@
 export { FilesystemArtifactSink } from "./filesystem-artifact-sink.ts";
 export { applyCompressor, type CompressorOptions, type CompressorOutcome } from "./compressor.ts";
 export { createRenderJobHttpServer } from "./http-server.ts";
+export {
+  MinioArtifactStore,
+  minioArtifactStoreFromEnv,
+  renderArtifactObjectName,
+  type ArtifactDelivery,
+  type MinioArtifactStoreOptions,
+  type MinioClientLike
+} from "./minio-artifact-store.ts";
 export { applyMigrations } from "./migrate.ts";
 export {
   renderProjectOffline,

@@ -9,7 +9,7 @@ Synaptix Music has completed its foundational editor, project, synchronization, 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
-- Stage 12: 88% complete; production-graph integration, master-meter mounting, canonical device-parameter binding, durable render-job persistence, an HTTP submission/status API, BFF wiring, a deterministic offline WAV renderer with reverb/master compression, and a worker loop tying leasing to rendering are all done and tested. What remains: a real project loader wired to the platform backend (blocked on a service-to-service auth decision), real artifact storage/signed delivery (currently a local-filesystem placeholder), and stems/lossy export packaging
+- Stage 12: 90% complete; production-graph integration, master-meter mounting, canonical device-parameter binding, durable render-job persistence, HTTP/BFF control planes, deterministic offline WAV rendering with reverb/master compression, the worker loop, MinIO artifact storage, and signed delivery are implemented. What remains: a real project loader wired to the platform backend (blocked on a service-to-service auth decision), production storage provisioning, and stems/lossy export packaging
 - Stage 13: early groundwork only (contracts, package builder, transition planning, and platform persistence/BFF routes); publication is blocked until Stage 12 produces certified render artifacts
 - Full planned DAW roadmap: 48–52% complete
 
@@ -91,7 +91,7 @@ The percentages represent planned functional scope. They do not represent produc
 
 ### Stage 12 — Production Audio and Rendering
 
-Current active slice: closing out the render pipeline. The render-job control plane (contracts, in-memory and PostgreSQL-backed stores, HTTP API, BFF wiring), the deterministic offline WAV renderer with reverb/master compression, and the worker loop are all implemented and tested. Two gaps block genuine end-to-end use from the browser: (1) the worker has no real `ProjectLoader` — fetching an exact project revision from the platform backend needs a service-to-service authentication strategy that hasn't been decided (background workers don't have an end user's session), and (2) rendered artifacts are written to local disk as a placeholder rather than uploaded to real object storage with signed delivery.
+Current active slice: closing out the render pipeline. The control plane, deterministic offline WAV renderer with master effects, worker loop, MinIO artifact storage, and signed delivery are implemented and tested. The remaining code blocker for genuine end-to-end rendering is the missing real `ProjectLoader`: fetching an exact platform revision requires a service-to-service authentication decision because background workers do not have an end-user session. Production MinIO credential provisioning and deployment verification remain operational work.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
 
@@ -129,7 +129,7 @@ Contract, package-builder, transition-planning, and platform/BFF work is impleme
 - ~~An actual render worker that executes rendering~~ Done: `processNextJob`/`runWorker` lease a job, heartbeat through the render, execute the renderer, and report the result through the control plane.
 - Load an exact project revision — **not done**. The worker takes an injected `ProjectLoader`; no implementation fetches a real revision from the platform backend yet (see the service-to-service auth gap above). Verified so far only via fixture-backed loaders in tests.
 - ~~Model reverb send and master compression~~ Done: deterministic Freeverb-style stereo processing and browser-aligned stereo-linked compression are applied to master renders. Stem renders intentionally remain dry.
-- Artifact storage is a local-filesystem placeholder (`FilesystemArtifactSink`), not real object storage with signed delivery — that's item 4 below.
+- MinIO-backed artifact storage and signed delivery are implemented behind environment configuration; production least-privilege credentials and end-to-end deployment verification remain.
 
 ### 4. Stems and previews
 
