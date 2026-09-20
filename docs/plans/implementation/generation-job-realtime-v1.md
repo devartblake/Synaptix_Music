@@ -37,5 +37,8 @@ Cookie authentication or an access-token factory may be used depending on deploy
 
 - Server-side event sequence numbers and replay cursor.
 - Cross-device applied-job registry synchronization.
-- Applying generation results to non-empty projects.
 - Partial-track and section regeneration conflict resolution.
+
+## Studio integration update
+
+The UI.2 generation workspace now restores and follows durable project jobs, previews completed proposals, and applies a complete generated variation to non-empty projects through a reversible arrangement-replacement editor command. This is intentionally whole-arrangement replacement; partial regeneration remains deferred.
