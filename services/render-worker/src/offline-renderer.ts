@@ -1,9 +1,19 @@
 import { createHash } from "node:crypto";
 
-import { resolveEffectiveInstrumentSettings, type EffectiveInstrumentSettings } from "@synaptix/daw-engine/production-audio";
+import {
+  resolveEffectiveInstrumentSettings,
+  type EffectiveInstrumentSettings
+} from "@synaptix/daw-engine/production-audio";
 import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
-import { RENDER_CONTRACT_VERSION, type RenderArtifact, type RenderManifest, type RenderResult } from "@synaptix/render-contracts";
+import {
+  RENDER_CONTRACT_VERSION,
+  type RenderArtifact,
+  type RenderManifest,
+  type RenderResult
+} from "@synaptix/render-contracts";
 
+import { applyCompressor } from "./compressor.ts";
+import { applyReverb } from "./reverb.ts";
 import { encodeWav, type StereoBuffer } from "./wav-encoder.ts";
 
 export interface RenderedArtifact {
@@ -20,12 +30,23 @@ export interface OfflineRenderOutcome {
  * Deterministic offline PCM synthesis, independent of the browser's Tone.js
  * preview graph (see ADR-0003): same canonical device/routing semantics via
  * resolveEffectiveInstrumentSettings, but its own pure-JS oscillator/envelope
- * math so it never depends on a Web Audio implementation. Reverb and master
- * compression are not modeled yet — this renders the dry signal only; that
- * is a documented follow-up, not an oversight.
+ * math so it never depends on a Web Audio implementation. Its deterministic
+ * reverb and compressor share the production graph's routing and parameter
+ * semantics without claiming sample-for-sample parity with Tone.js.
  */
 
-const OSCILLATORS: Record<EffectiveInstrumentSettings["oscillator"], (cyclePhase: number) => number> = {
+const MASTER_REVERB_DECAY_SECONDS = 1.8;
+const MASTER_COMPRESSOR = {
+  thresholdDb: -10,
+  ratio: 3,
+  attackSeconds: 0.01,
+  releaseSeconds: 0.15
+} as const;
+
+const OSCILLATORS: Record<
+  EffectiveInstrumentSettings["oscillator"],
+  (cyclePhase: number) => number
+> = {
   sine: (cycle) => Math.sin(2 * Math.PI * cycle),
   square: (cycle) => (cycle < 0.5 ? 1 : -1),
   sawtooth: (cycle) => 2 * cycle - 1,
@@ -41,12 +62,17 @@ function midiToFrequency(pitch: number): number {
   return 440 * 2 ** ((pitch - 69) / 12);
 }
 
-function envelopeValue(settings: EffectiveInstrumentSettings, timeSeconds: number, noteDurationSeconds: number): number {
+function envelopeValue(
+  settings: EffectiveInstrumentSettings,
+  timeSeconds: number,
+  noteDurationSeconds: number
+): number {
   const { attack, decay, sustain, release } = settings;
   if (timeSeconds < 0) return 0;
   if (timeSeconds < attack) return attack > 0 ? timeSeconds / attack : 1;
   const sinceDecayStart = timeSeconds - attack;
-  if (sinceDecayStart < decay) return decay > 0 ? 1 - (1 - sustain) * (sinceDecayStart / decay) : sustain;
+  if (sinceDecayStart < decay)
+    return decay > 0 ? 1 - (1 - sustain) * (sinceDecayStart / decay) : sustain;
   if (timeSeconds < noteDurationSeconds) return sustain;
   const sinceRelease = timeSeconds - noteDurationSeconds;
   if (sinceRelease >= release) return 0;
@@ -111,7 +137,8 @@ function renderTrackBuffer(
         const timeSeconds = sampleIndex / sampleRate;
         const raw = oscillatorValue(settings.oscillator, timeSeconds * frequency);
         filtered += alpha * (raw - filtered);
-        const value = filtered * envelopeValue(settings, timeSeconds, noteDurationSeconds) * velocityGain;
+        const value =
+          filtered * envelopeValue(settings, timeSeconds, noteDurationSeconds) * velocityGain;
         left[targetSample] = (left[targetSample] ?? 0) + value;
         right[targetSample] = (right[targetSample] ?? 0) + value;
       }
@@ -137,6 +164,13 @@ function mixInto(target: StereoBuffer, source: StereoBuffer): void {
   }
 }
 
+function mixIntoScaled(target: StereoBuffer, source: StereoBuffer, gain: number): void {
+  for (let i = 0; i < target.left.length; i++) {
+    target.left[i] = (target.left[i] ?? 0) + (source.left[i] ?? 0) * gain;
+    target.right[i] = (target.right[i] ?? 0) + (source.right[i] ?? 0) * gain;
+  }
+}
+
 function peakAmplitude(buffer: StereoBuffer): number {
   let peak = 0;
   for (const channel of [buffer.left, buffer.right]) {
@@ -145,7 +179,12 @@ function peakAmplitude(buffer: StereoBuffer): number {
   return peak;
 }
 
-function applyNormalization(buffer: StereoBuffer, targetDbfs: number | null, warnings: string[], label: string): void {
+function applyNormalization(
+  buffer: StereoBuffer,
+  targetDbfs: number | null,
+  warnings: string[],
+  label: string
+): void {
   if (targetDbfs === null) return;
   const peak = peakAmplitude(buffer);
   if (peak === 0) {
@@ -171,7 +210,10 @@ function clampAndDetectClipping(buffer: StereoBuffer): boolean {
 }
 
 function slugify(name: string): string {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return slug.length > 0 ? slug : "track";
 }
 
@@ -183,7 +225,8 @@ function buildArtifact(
   warnings: string[]
 ): RenderedArtifact {
   applyNormalization(buffer, manifest.output.normalizePeakDbfs, warnings, fileName);
-  if (clampAndDetectClipping(buffer)) warnings.push(`Clipping occurred while rendering '${fileName}'.`);
+  if (clampAndDetectClipping(buffer))
+    warnings.push(`Clipping occurred while rendering '${fileName}'.`);
 
   const bytes = encodeWav(buffer, manifest.output.sampleRate, manifest.output.bitDepth);
   const checksumSha256 = createHash("sha256").update(bytes).digest("hex");
@@ -203,12 +246,19 @@ function buildArtifact(
   };
 }
 
-export function renderProjectOffline(project: MusicProject, manifest: RenderManifest): OfflineRenderOutcome {
+export function renderProjectOffline(
+  project: MusicProject,
+  manifest: RenderManifest
+): OfflineRenderOutcome {
   if (project.projectId !== manifest.projectId) {
-    throw new Error(`Manifest projectId '${manifest.projectId}' does not match project '${project.projectId}'.`);
+    throw new Error(
+      `Manifest projectId '${manifest.projectId}' does not match project '${project.projectId}'.`
+    );
   }
   if (project.revisionId !== manifest.revisionId) {
-    throw new Error(`Manifest revisionId '${manifest.revisionId}' does not match project revision '${project.revisionId}'.`);
+    throw new Error(
+      `Manifest revisionId '${manifest.revisionId}' does not match project revision '${project.revisionId}'.`
+    );
   }
 
   const ppq = project.transport.ticksPerQuarterNote;
@@ -218,7 +268,10 @@ export function renderProjectOffline(project: MusicProject, manifest: RenderMani
   const range: TickRange = { startTick: manifest.range.startTick, endTick: manifest.range.endTick };
 
   const rangeSeconds = ticksToSeconds(range.endTick - range.startTick, ppq, bpm);
-  const totalSamples = Math.max(1, Math.round((rangeSeconds + manifest.output.includeTailSeconds) * sampleRate));
+  const totalSamples = Math.max(
+    1,
+    Math.round((rangeSeconds + manifest.output.includeTailSeconds) * sampleRate)
+  );
 
   const instrumentTracks = project.tracks.filter((track) => track.kind === "instrument");
   const warnings: string[] = [];
@@ -227,15 +280,51 @@ export function renderProjectOffline(project: MusicProject, manifest: RenderMani
   if (manifest.scope.kind === "stems") {
     for (const trackId of manifest.scope.trackIds) {
       const track = instrumentTracks.find((candidate) => candidate.id === trackId);
-      if (!track) throw new Error(`Track '${trackId}' was not found or is not an instrument track.`);
-      const buffer = renderTrackBuffer(track, project.tracks, range, totalSamples, sampleRate, ppq, beatsPerBar, bpm, true);
-      artifacts.push(buildArtifact(manifest, buffer, track.id, `${slugify(track.name)}.wav`, warnings));
+      if (!track)
+        throw new Error(`Track '${trackId}' was not found or is not an instrument track.`);
+      const buffer = renderTrackBuffer(
+        track,
+        project.tracks,
+        range,
+        totalSamples,
+        sampleRate,
+        ppq,
+        beatsPerBar,
+        bpm,
+        true
+      );
+      artifacts.push(
+        buildArtifact(manifest, buffer, track.id, `${slugify(track.name)}.wav`, warnings)
+      );
     }
   } else {
-    const master: StereoBuffer = { left: new Float64Array(totalSamples), right: new Float64Array(totalSamples) };
+    let master: StereoBuffer = {
+      left: new Float64Array(totalSamples),
+      right: new Float64Array(totalSamples)
+    };
+    const reverbSend: StereoBuffer = {
+      left: new Float64Array(totalSamples),
+      right: new Float64Array(totalSamples)
+    };
     for (const track of instrumentTracks) {
-      mixInto(master, renderTrackBuffer(track, project.tracks, range, totalSamples, sampleRate, ppq, beatsPerBar, bpm, false));
+      const trackBuffer = renderTrackBuffer(
+        track,
+        project.tracks,
+        range,
+        totalSamples,
+        sampleRate,
+        ppq,
+        beatsPerBar,
+        bpm,
+        false
+      );
+      mixInto(master, trackBuffer);
+      mixIntoScaled(reverbSend, trackBuffer, resolveEffectiveInstrumentSettings(track).reverbSend);
     }
+    mixInto(master, applyReverb(reverbSend, MASTER_REVERB_DECAY_SECONDS, sampleRate));
+    const compressed = applyCompressor(master, MASTER_COMPRESSOR, sampleRate);
+    master = compressed.buffer;
+    warnings.push(...compressed.warnings);
     artifacts.push(buildArtifact(manifest, master, null, "master.wav", warnings));
   }
 

@@ -119,7 +119,7 @@ Completed Stage 12 foundation work includes:
 - peak/RMS metering and clipping evidence;
 - versioned deterministic render manifests and result contracts.
 
-The active integration slice connects that graph to `BrowserAudioEngine`, exposes master meters in the studio, and adds command-backed device/effect parameters. Remaining Stage 12 work centers on runtime parameter mapping, durable render jobs, deterministic offline WAV rendering, stems, lossy exports, and adaptive-game packages.
+Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, and deterministic offline WAV rendering with reverb and master compression. Remaining work centers on the real platform `ProjectLoader`, object storage and signed delivery, stem/preview packaging, and lossy exports.
 
 ## Documentation
 
