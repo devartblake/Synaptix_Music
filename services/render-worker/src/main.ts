@@ -2,6 +2,7 @@ import { Pool } from "pg";
 
 import { createRenderJobHttpServer } from "./http-server.ts";
 import { applyMigrations } from "./migrate.ts";
+import { minioArtifactStoreFromEnv } from "./minio-artifact-store.ts";
 import { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
 // Boots the render-job HTTP API. Does not start the worker polling loop:
@@ -18,10 +19,12 @@ async function main(): Promise<void> {
   await applyMigrations(pool);
 
   const store = new PostgresRenderJobStore(pool);
-  const server = createRenderJobHttpServer(store);
+  const artifactStore = minioArtifactStoreFromEnv();
+  const server = createRenderJobHttpServer(store, artifactStore ?? undefined);
 
   await new Promise<void>((resolve) => server.listen(port, resolve));
   console.log(`render-worker HTTP API listening on :${port}`);
+  console.log(`render-worker artifact delivery ${artifactStore ? "enabled" : "disabled"}`);
 
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.on(signal, () => {

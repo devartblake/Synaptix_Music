@@ -36,7 +36,7 @@ This index records completed Synaptix Music implementation slices and the curren
 
 ### Stage 12 — Production Audio and Rendering
 
-Production-graph integration, command-backed device/effect controls, master-meter mounting, and canonical device-parameter binding are complete (#26, #28, 15f13a4). The render-job control plane, the deterministic offline WAV renderer, and the worker loop are all implemented and tested. The active slice is closing the two remaining gaps: a real `ProjectLoader` (blocked on a service-to-service authentication decision for the platform backend) and real object-storage upload/signed delivery (currently a local-filesystem placeholder).
+Production-graph integration, command-backed device/effect controls, master-meter mounting, canonical device-parameter binding, the render-job control plane, the deterministic offline WAV renderer, the worker loop, and MinIO artifact storage/signed delivery are implemented and tested. The remaining code gap is a real `ProjectLoader`, blocked on a service-to-service authentication decision for the platform backend. Production object-storage credential provisioning remains operational work.
 
 ### Completed Stage 12 foundation
 
@@ -62,7 +62,7 @@ Production-graph integration, command-backed device/effect controls, master-mete
 4. ~~Add canonical parameter identifiers for the existing command-backed device/effect controls.~~ Done via the shared device-parameter catalog.
 5. ~~Implement durable render-job persistence, an HTTP API, and worker wiring.~~ Done: contracts, the in-memory and PostgreSQL-backed stores, the HTTP API, and BFF wiring are all implemented and tested.
 6. ~~Implement deterministic offline WAV rendering, reverb/master compression, and checksum evidence.~~ Mostly done: the renderer, effects, encoder, and worker loop exist and are verified deterministic; still missing a real `ProjectLoader` (platform-backend fetch, blocked on an auth decision).
-7. Add stem rendering and preview packages. Stems are already supported by the offline renderer's scope handling; what remains is real object-storage upload, naming/manifests, and signed delivery (`FilesystemArtifactSink` is a local-disk placeholder).
+7. Add stem rendering and preview packages. Stems and MinIO-backed signed delivery are supported; naming/manifests, preview packaging, retention enforcement, and production credential provisioning remain.
 8. Add MP3/OGG conversion only after WAV certification.
 9. Profile DSP workloads before assigning any kernel to Rust/WASM.
 
@@ -87,7 +87,7 @@ Groundwork is implemented (#29–#31): adaptive package contracts and validation
 ## Completion Estimate
 
 - Stages 1–11: complete
-- Stage 12: approximately 88% complete; production-graph integration, device-parameter binding, the render-job control plane (contracts, both stores, HTTP API, BFF wiring), the offline WAV renderer with reverb/master compression, and the worker loop are all done and tested — a real project loader (auth decision pending), real artifact storage, and stems/lossy export packaging remain
+- Stage 12: approximately 90% complete; production-graph integration, device-parameter binding, the render-job control plane, offline WAV rendering with master effects, the worker loop, MinIO artifact storage, and signed delivery are implemented — a real project loader (auth decision pending), production storage provisioning, and stems/lossy export packaging remain
 - Stage 13: early groundwork only (contracts, builder, transition planning, platform/BFF routes); blocked on Stage 12 certified artifacts before publication
 - Full planned DAW roadmap: approximately 48–52% complete
 

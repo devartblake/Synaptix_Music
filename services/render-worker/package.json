@@ -14,6 +14,7 @@
     "@synaptix/daw-engine": "0.1.0",
     "@synaptix/project-model": "0.1.0",
     "@synaptix/render-contracts": "0.1.0",
+    "minio": "^8.0.7",
     "pg": "^8.23.0",
     "zod": "^4.0.0"
   },

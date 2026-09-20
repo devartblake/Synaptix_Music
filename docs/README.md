@@ -7,6 +7,7 @@ This directory contains the durable architecture, implementation, development, o
 - [Root project README](../README.md)
 - [Current roadmap and status](roadmap.md)
 - [Current system architecture](architecture/system-architecture.md)
+- [VST and extensible audio plug-in integration decision](plans/architecture/vst-plugin-integration-options-v1.md)
 - [Architecture decision records](architecture/decisions/README.md)
 - [Local development guide](development/local-development.md)
 - [Implementation-stage index](plans/implementation/README.md)
@@ -37,7 +38,7 @@ Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is a
 
 Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, deterministic render contracts, a production audio graph integrated into the live browser engine with reversible device/parameter commands, a mounted studio master meter, and canonical filter/envelope/reverb-send device-parameter binding.
 
-The render-job control plane (contracts, in-memory and PostgreSQL-backed stores, a private HTTP API, and direct BFF wiring), a deterministic offline WAV renderer with reverb/master compression sharing canonical device/parameter semantics with the browser preview, and a worker loop tying leasing to rendering are all implemented and tested. What remains before this is usable end-to-end from the browser: a real project loader wired to the platform backend (blocked on a service-to-service authentication decision), real artifact storage with signed delivery, and stems/lossy export packaging. In parallel, Stage 13 has implemented adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes; publication is blocked until Stage 12 produces certified render artifacts.
+The render-job control plane (contracts, in-memory and PostgreSQL-backed stores, a private HTTP API, and direct BFF wiring), a deterministic offline WAV renderer with reverb/master compression sharing canonical device/parameter semantics with the browser preview, and a worker loop tying leasing to rendering are all implemented and tested. MinIO artifact storage and bounded signed delivery are implemented behind environment configuration; production credential provisioning and deployment verification remain. A real project loader wired to the platform backend is still blocked on the service-to-service authentication decision. In parallel, Stage 13 has implemented adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes; publication is blocked until Stage 12 produces certified render artifacts.
 
 ## Documentation Ownership
 

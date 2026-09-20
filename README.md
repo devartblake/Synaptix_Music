@@ -119,7 +119,7 @@ Completed Stage 12 foundation work includes:
 - peak/RMS metering and clipping evidence;
 - versioned deterministic render manifests and result contracts.
 
-Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, and deterministic offline WAV rendering with reverb and master compression. Remaining work centers on the real platform `ProjectLoader`, object storage and signed delivery, stem/preview packaging, and lossy exports.
+Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, deterministic offline WAV rendering with reverb and master compression, and MinIO-backed artifact storage with signed delivery. Remaining work centers on the real platform `ProjectLoader`, production storage provisioning, stem/preview packaging, and lossy exports.
 
 ## Documentation
 

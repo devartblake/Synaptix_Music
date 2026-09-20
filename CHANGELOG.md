@@ -6,6 +6,14 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Stage 12 MinIO artifact storage and signed delivery
+
+- Added `MinioArtifactStore` as a durable `ArtifactSink` using deterministic `renders/{renderId}/{fileName}` object keys and checksum/artifact metadata.
+- Added bounded presigned GET delivery and a render-worker route that only signs artifacts recorded on a completed render job.
+- Added an authenticated Next.js BFF proxy route for artifact download grants.
+- Added opt-in environment configuration and automated coverage for upload naming, metadata, expiry limits, path traversal, and recorded-artifact authorization.
+- Production least-privilege MinIO credential provisioning and deployment verification remain operational work.
+
 #### Stage 12 deterministic offline reverb and master compression
 
 - Added deterministic Freeverb-style stereo reverb with canonical per-track `reverbSend` routing in the offline master renderer.
@@ -24,7 +32,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 - Added a minimal `main.ts` entry point that boots the HTTP API; does not auto-start the worker loop, since there is no real `ProjectLoader` to wire in yet.
 - Added 24 new tests (42 total in the package): full HTTP lifecycle tests against a real running server, 11 offline-renderer tests (determinism, silence gating, mute/solo, range filtering, stems, normalization, fail-closed error handling), 5 WAV-encoder tests, and 5 worker-loop tests including a heartbeat-during-slow-render race test — all verified against a real, disposable Postgres instance.
 - Fixed a test-isolation bug: Node's test runner executes test **files** concurrently by default, so two files sharing one database and each truncating its tables in `beforeEach` were racing each other. Added `--test-concurrency=1` to the package's test script.
-- **Remaining gaps:** a real `ProjectLoader` that fetches an exact project revision from the platform backend (blocked on an undecided service-to-service authentication strategy — background workers don't have an end user's session token) and real object-storage upload with signed delivery.
+- **Remaining gap:** a real `ProjectLoader` that fetches an exact project revision from the platform backend, blocked on the service-to-service authentication decision. Object-storage code is implemented; production credential provisioning remains operational work.
 
 #### Stage 12 render-job PostgreSQL persistence — commit c3b3d98
 
@@ -194,7 +202,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ## Active Work
 
-Stage 12 (Production Audio and Rendering): the render-job control plane, offline WAV renderer with reverb/master compression, and worker loop are all implemented and tested. What's left: decide a service-to-service authentication strategy so a real `ProjectLoader` can fetch project revisions from the platform backend, wire up real object-storage upload with signed delivery in place of `FilesystemArtifactSink`, then complete stem packaging and lossy exports. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
+Stage 12 (Production Audio and Rendering): the render-job control plane, offline WAV renderer with reverb/master compression, worker loop, MinIO artifact sink, and signed download delivery are implemented and tested. What's left: decide a service-to-service authentication strategy so a real `ProjectLoader` can fetch project revisions from the platform backend, provision production object-storage credentials, then complete stem packaging and lossy exports. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
 
 ## Release Policy
 

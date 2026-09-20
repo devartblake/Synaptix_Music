@@ -63,6 +63,8 @@ Additive and low-risk to existing routes (new path, new config key, existing JWT
 
 ## Gap 2 — Artifact storage and signed delivery
 
+**Implementation status:** the `MinioArtifactStore`, deterministic `renders/{renderId}/{fileName}` keys, bounded presigned GET delivery, render-worker download route, authenticated BFF proxy route, environment configuration, and automated coverage are implemented in the object-storage slice. Production least-privilege credential provisioning and deployment verification remain operational work.
+
 ### Problem
 
 `FilesystemArtifactSink` writes WAV bytes to local disk: not durable across worker restarts or redeploys, not reachable by the BFF for download, no signed delivery.
