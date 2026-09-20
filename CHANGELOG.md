@@ -6,6 +6,13 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Stage 12 platform project loader and production worker wiring
+
+- Added a fail-closed `HttpProjectLoader` that fetches an exact immutable project revision from the SynaptixPlay backend's internal music API, sends `X-Service-Token`, validates the response with `MusicProjectSchema`, and rejects identifier mismatches.
+- Wired the render polling loop into `main.ts` when both platform-loader and MinIO configuration are present, including stable worker IDs and graceful abort on shutdown.
+- Added focused coverage for successful loads, service-token forwarding, HTTP failures, schema drift, identifier mismatches, and environment configuration.
+- Added the matching fail-closed internal revision API in SynaptixPlay backend PR #525; staging still needs matching `RENDER_WORKER_SERVICE_TOKEN` / `ServiceTokens__RenderWorker` secret provisioning and end-to-end verification.
+
 #### Stage 12 MinIO artifact storage and signed delivery
 
 - Added `MinioArtifactStore` as a durable `ArtifactSink` using deterministic `renders/{renderId}/{fileName}` object keys and checksum/artifact metadata.
@@ -27,12 +34,12 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 - Added Next.js BFF routes at `/api/platform/render-jobs/*` proxying directly to the render-worker HTTP API via a new `RENDER_WORKER_API_URL` env var, requiring end-user authentication. This deliberately deviates from the generation-jobs/adaptive-packages convention of routing everything through `SYNAPTIX_PLATFORM_API_URL` (the .NET SynaptixPlay backend) — that backend is a separate, large, unfamiliar production solution (also hosting KMS, Wallet, and Compliance) that doesn't need to be extended for a resource that has no multi-tenant authorization requirement yet.
 - Added a deterministic, dependency-free offline WAV renderer (`offline-renderer.ts`): reuses `resolveEffectiveInstrumentSettings` from `@synaptix/daw-engine` (via a new Tone.js-free `./production-audio` subpath export) for canonical device/parameter semantics per ADR-0003, then does its own pure-JS oscillator/ADSR/one-pole-filter synthesis, mute/solo/pan/volume mixing, master-or-stems scope handling, tick-range restriction, peak normalization, and clipping detection. Deterministic reverb and master compression were added in the subsequent DSP slice above.
 - Added a RIFF/WAVE PCM `wav-encoder.ts` (16/24/32-bit) and SHA-256 artifact checksumming.
-- Added a worker loop (`worker.ts`): `processNextJob` leases one job, heartbeats for the duration of the render (so a slow render isn't reclaimed by another worker), executes the renderer, and reports the result through the control plane's existing retry/dead-letter rules; `runWorker` polls it continuously. Takes an injected `ProjectLoader` and `ArtifactSink` — no real implementations exist yet (see below).
+- Added a worker loop (`worker.ts`): `processNextJob` leases one job, heartbeats for the duration of the render (so a slow render isn't reclaimed by another worker), executes the renderer, and reports the result through the control plane's existing retry/dead-letter rules; `runWorker` polls it continuously. Production `ProjectLoader` and `ArtifactSink` implementations were added in subsequent slices above.
 - Added `FilesystemArtifactSink`, a local-disk placeholder for artifact storage pending real object-storage upload and signed delivery.
-- Added a minimal `main.ts` entry point that boots the HTTP API; does not auto-start the worker loop, since there is no real `ProjectLoader` to wire in yet.
+- Added a minimal `main.ts` entry point that boots the HTTP API; production worker-loop wiring was added in the platform project-loader slice above.
 - Added 24 new tests (42 total in the package): full HTTP lifecycle tests against a real running server, 11 offline-renderer tests (determinism, silence gating, mute/solo, range filtering, stems, normalization, fail-closed error handling), 5 WAV-encoder tests, and 5 worker-loop tests including a heartbeat-during-slow-render race test — all verified against a real, disposable Postgres instance.
 - Fixed a test-isolation bug: Node's test runner executes test **files** concurrently by default, so two files sharing one database and each truncating its tables in `beforeEach` were racing each other. Added `--test-concurrency=1` to the package's test script.
-- **Remaining gap:** a real `ProjectLoader` that fetches an exact project revision from the platform backend, blocked on the service-to-service authentication decision. Object-storage code is implemented; production credential provisioning remains operational work.
+- **Remaining operational gap:** merge and deploy the matching SynaptixPlay backend endpoint, provision matching service and object-storage credentials, and run an end-to-end staging render.
 
 #### Stage 12 render-job PostgreSQL persistence — commit c3b3d98
 

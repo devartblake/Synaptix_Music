@@ -36,7 +36,7 @@ This index records completed Synaptix Music implementation slices and the curren
 
 ### Stage 12 — Production Audio and Rendering
 
-Production-graph integration, command-backed device/effect controls, master-meter mounting, canonical device-parameter binding, the render-job control plane, the deterministic offline WAV renderer, the worker loop, and MinIO artifact storage/signed delivery are implemented and tested. The remaining code gap is a real `ProjectLoader`, blocked on a service-to-service authentication decision for the platform backend. Production object-storage credential provisioning remains operational work.
+Production-graph integration, command-backed device/effect controls, master-meter mounting, canonical device-parameter binding, the render-job control plane, deterministic offline WAV rendering, the worker loop, a fail-closed platform `ProjectLoader`, and MinIO artifact storage/signed delivery are implemented and tested. SynaptixPlay backend PR #525 supplies the matching internal revision endpoint. Production secret/storage provisioning and end-to-end certification remain operational work.
 
 ### Completed Stage 12 foundation
 
@@ -53,6 +53,7 @@ Production-graph integration, command-backed device/effect controls, master-mete
 - A concurrency-safe `PostgresRenderJobStore` (`@synaptix/render-worker`) sharing the same retry/dead-letter rules, verified with 14 integration tests against a real database and wired into CI via a Postgres service container
 - A private render-job HTTP API (submit/status/list/cancel/events) and Next.js BFF routes at `/api/platform/render-jobs/*` proxying it directly (not through the .NET backend — see the exit-criteria notes)
 - A deterministic offline WAV renderer (`renderProjectOffline`) sharing canonical device/parameter semantics with the browser preview, and a worker loop (`processNextJob`/`runWorker`) that leases, heartbeats, renders, and reports results
+- A fail-closed `HttpProjectLoader` for exact platform revisions, with service-token authentication, schema/identifier validation, production worker wiring, and focused tests
 
 ### Remaining Stage 12 sequence
 
@@ -61,7 +62,7 @@ Production-graph integration, command-backed device/effect controls, master-mete
 3. ~~Map canonical filter, envelope, and send parameters into runtime nodes.~~ Done. Oscillator waveform and bus/master trim are deferred as categorical/project-level controls, not per-device parameters.
 4. ~~Add canonical parameter identifiers for the existing command-backed device/effect controls.~~ Done via the shared device-parameter catalog.
 5. ~~Implement durable render-job persistence, an HTTP API, and worker wiring.~~ Done: contracts, the in-memory and PostgreSQL-backed stores, the HTTP API, and BFF wiring are all implemented and tested.
-6. ~~Implement deterministic offline WAV rendering, reverb/master compression, and checksum evidence.~~ Mostly done: the renderer, effects, encoder, and worker loop exist and are verified deterministic; still missing a real `ProjectLoader` (platform-backend fetch, blocked on an auth decision).
+6. ~~Implement deterministic offline WAV rendering, reverb/master compression, checksum evidence, and an exact-revision platform loader.~~ Done in code; backend PR #525 and staging configuration remain deployment gates.
 7. Add stem rendering and preview packages. Stems and MinIO-backed signed delivery are supported; naming/manifests, preview packaging, retention enforcement, and production credential provisioning remain.
 8. Add MP3/OGG conversion only after WAV certification.
 9. Profile DSP workloads before assigning any kernel to Rust/WASM.
@@ -87,7 +88,7 @@ Groundwork is implemented (#29–#31): adaptive package contracts and validation
 ## Completion Estimate
 
 - Stages 1–11: complete
-- Stage 12: approximately 90% complete; production-graph integration, device-parameter binding, the render-job control plane, offline WAV rendering with master effects, the worker loop, MinIO artifact storage, and signed delivery are implemented — a real project loader (auth decision pending), production storage provisioning, and stems/lossy export packaging remain
+- Stage 12: approximately 94% complete; production-graph integration, device-parameter binding, the render-job control plane, offline WAV rendering with master effects, the worker loop, the platform project loader, MinIO artifact storage, and signed delivery are implemented — backend deployment, production provisioning/certification, preview manifests, and lossy export packaging remain
 - Stage 13: early groundwork only (contracts, builder, transition planning, platform/BFF routes); blocked on Stage 12 certified artifacts before publication
 - Full planned DAW roadmap: approximately 48–52% complete
 

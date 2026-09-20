@@ -4,13 +4,15 @@
 
 Close the three gaps left open after the render-job control plane, offline WAV renderer, and worker loop landed (commits `c3b3d98`, `c3ffdc9`, `513b7b9`):
 
-1. A real `ProjectLoader` — the worker can't fetch an actual project revision yet.
+1. ~~A real `ProjectLoader` — the worker can't fetch an actual project revision yet.~~ Implemented in the music repository; matching backend endpoint proposed in SynaptixPlay PR #525.
 2. Real artifact storage with signed delivery — `FilesystemArtifactSink` is a local-disk placeholder.
 3. ~~Reverb and master compression in the offline renderer.~~ Completed with deterministic DSP and dry-stem isolation.
 
-Gaps 1 and 2 are architectural decisions as much as they are code; this plan grounds both in patterns that already exist in the SynaptixPlay backend (`TycoonTycoon_Backend`) rather than inventing new ones, found via a read-only research pass. Gap 3 is self-contained DSP work with no cross-repo dependency.
+Gaps 1–3 are implemented in code. Production secret provisioning, deployment, and end-to-end certification remain operational work.
 
 ## Gap 1 — Service-to-service authentication for the ProjectLoader
+
+**Implementation status:** completed in `synaptix-music`; matching backend work is in SynaptixPlay PR #525. The client fails closed on HTTP/schema/identifier errors, and the backend fails closed when its service token is absent or incorrect.
 
 ### Problem
 
@@ -42,7 +44,7 @@ Extend `Synaptix.Backend.Api` with the same `ServiceTokenFilter` pattern already
 
 ### Execution steps
 
-**In `TycoonTycoon_Backend`** (requires your explicit go-ahead before I touch this repo — see "Sign-off needed" below):
+**In `TycoonTycoon_Backend`:**
 
 1. Add `Synaptix.Backend.Api/Security/ServiceTokenFilter.cs`, ported directly from the KMS/Compliance implementation.
 2. Add a `ServiceTokens:RenderWorker` config key (appsettings + Docker env), a fresh high-entropy secret.
@@ -125,15 +127,13 @@ Tone.js's reverb is a synthesized-noise convolution reverb — matching it bit-f
 
 Lowest of the three — self-contained, no backend or infra dependency, purely additive to an already-tested module.
 
-## Suggested sequencing
+## Remaining closeout
 
-Gaps 2 and 3 have no backend dependency and can start immediately, in either order or in parallel. Gap 1 is the one that touches a separate, shared production system (`TycoonTycoon_Backend`, which also hosts KMS, Wallet, and Compliance) — **I'd sequence it last and want explicit sign-off before making any change there**, even though the plan above is now concrete and low-risk by construction (it copies an existing, twice-proven pattern rather than inventing one).
-
-## Sign-off needed before implementation
-
-- **Gap 1**: confirm you want me to add the `ServiceTokenFilter` + internal route to `Synaptix.Backend.Api`, following the plan above exactly. This is the only piece touching a repo outside `synaptix-music`.
-- **Gaps 2 and 3**: no cross-repo risk; I can start on either as soon as you say go, or both.
+1. Merge and deploy SynaptixPlay PR #525.
+2. Provision the same high-entropy value as `ServiceTokens__RenderWorker` in the backend and `RENDER_WORKER_SERVICE_TOKEN` in the worker.
+3. Provision least-privilege MinIO credentials for the worker.
+4. Submit a real revision in staging and retain the completed render, checksum, signed-download, and failure-path evidence.
 
 ## Revision Date
 
-2026-08-16
+2026-09-20
