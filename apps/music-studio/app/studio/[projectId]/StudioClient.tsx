@@ -410,7 +410,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <section className="sidebar-card" aria-label="Adaptive audio preview">
             <strong>Runtime preview</strong>
             <div className="adaptive-row"><span className="adaptive-orb" />Exploration · active</div>
-            <div className="intensity-track" aria-label="Intensity 64 percent"><span /></div>
+            <div className="intensity-track" role="progressbar" aria-label="Adaptive intensity" aria-valuemin={0} aria-valuemax={100} aria-valuenow={64}><span /></div>
             <p>Adaptive authoring becomes interactive in the Stage 13 workspace slice.</p>
           </section>
         </aside>
