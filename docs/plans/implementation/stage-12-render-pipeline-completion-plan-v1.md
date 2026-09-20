@@ -6,7 +6,7 @@ Close the three gaps left open after the render-job control plane, offline WAV r
 
 1. A real `ProjectLoader` — the worker can't fetch an actual project revision yet.
 2. Real artifact storage with signed delivery — `FilesystemArtifactSink` is a local-disk placeholder.
-3. Reverb and master compression in the offline renderer — currently dry-signal only.
+3. ~~Reverb and master compression in the offline renderer.~~ Completed with deterministic DSP and dry-stem isolation.
 
 Gaps 1 and 2 are architectural decisions as much as they are code; this plan grounds both in patterns that already exist in the SynaptixPlay backend (`TycoonTycoon_Backend`) rather than inventing new ones, found via a read-only research pass. Gap 3 is self-contained DSP work with no cross-repo dependency.
 
@@ -97,26 +97,26 @@ This is entirely implementable within `synaptix-music` — **no `TycoonTycoon_Ba
 
 Low. No backend changes, no shared-route surface, additive only. The main judgment call is the access-key provisioning step, which needs whoever administers that MinIO instance.
 
-## Gap 3 — Reverb and master compression in the offline renderer
+## Gap 3 — Reverb and master compression in the offline renderer — completed
 
-### Problem
+### Result
 
-`offline-renderer.ts` renders dry signal only. The browser preview graph (`browser-production-graph.ts`) routes every instrument through a shared `Tone.Reverb` return (per-instrument send amount, already resolved as `settings.reverbSend` but currently unused by the offline renderer) and a fixed master `Tone.Compressor` (`threshold: -10, ratio: 3, attack: 0.01, release: 0.15`).
+The offline master renderer now routes each track into a deterministic Freeverb-style stereo return using canonical `settings.reverbSend`, then applies a stereo-linked feed-forward compressor using the browser graph's fixed `threshold: -10`, `ratio: 3`, `attack: 0.01`, and `release: 0.15` settings. Stem renders remain dry by design.
 
 ### Approach
 
 Tone.js's reverb is a synthesized-noise convolution reverb — matching it bit-for-bit offline would need an FFT-based convolution engine, a new dependency, and real complexity for a "documented simplification" line. ADR-0003 requires the preview and worker to share **canonical device and routing semantics**, not identical DSP — and that's already the case everywhere else in this renderer (the oscillator/filter/envelope math isn't bit-identical to Tone.js's either). I'm proposing a **Freeverb-style algorithmic reverb** (parallel comb filters + series allpass filters — a well-documented, public-domain algorithm, no FFT, fully deterministic) and a standard **feed-forward envelope-follower compressor**, both pure-JS, both operating on the whole buffer at once to match the renderer's existing functional style.
 
-### Execution steps
+### Completed implementation
 
-1. `services/render-worker/src/reverb.ts` — `applyReverb(buffer, decaySeconds, sampleRate): StereoBuffer`: 8 parallel comb filters per channel (classic Freeverb tuning, scaled to sample rate) into 4 series allpass filters; feedback coefficient derived from `decaySeconds`.
-2. `services/render-worker/src/compressor.ts` — `applyCompressor(buffer, { thresholdDb, ratio, attackSeconds, releaseSeconds }, sampleRate): { buffer, warnings }`: peak-envelope follower with attack/release smoothing, static curve above threshold, unity gain below.
-3. Wire into `offline-renderer.ts`, **master scope only** (stems stay dry — the standard convention for remixable stems, and consistent with how `renderTrackBuffer` already treats stems as independent of the shared bus):
+1. Added `services/render-worker/src/reverb.ts`: 8 parallel comb filters per channel into 4 series allpass filters, with sample-rate-scaled tuning and decay-derived feedback.
+2. Added `services/render-worker/src/compressor.ts`: a stereo-linked peak-envelope follower with attack/release smoothing, unity gain below threshold, and ratio-based reduction above it.
+3. Wired both into `offline-renderer.ts`, **master scope only**:
    - Build a per-instrument wet-send buffer weighted by `settings.reverbSend` alongside the existing dry sum.
    - Run `applyReverb` on the wet buffer, mix it back into the master.
    - Run `applyCompressor` on the final master buffer, before normalization/clipping detection/WAV encoding.
    - Compressor parameters hardcoded to match the browser's current fixed defaults for now — there's no canonical "master bus parameter" concept yet (same limitation the browser already has); making it adjustable is new scope tied to the deferred bus/master controls from Stage 12 item 1, not this gap.
-4. Tests: impulse-response decay + determinism for the reverb; threshold/ratio gain reduction + unity-gain-below-threshold + determinism for the compressor; re-verify the existing silence/range tests in `offline-renderer.test.ts` still hold (they should — nothing to reverb when there's no signal).
+4. Added tests for impulse-response decay, reverb determinism, compressor ratio/unity/stereo-link behavior, master reverb-send binding, dry-stem isolation, and existing renderer regressions.
 5. No cross-repo work.
 
 ### Risk
