@@ -30,12 +30,16 @@ Professional editing density remains authoritative. Decorative gaming treatments
 
 Validation: the music-studio TypeScript check and optimized Next.js production build pass.
 
-### Next slice — UI.2 generation and status workflow
+### Slice UI.2 — generation and status workflow (implemented)
 
-- Connect the generation entry point to the existing platform generation-job API.
-- Add prompt/preset controls, idempotent submission, live status/reconnect feedback, generated variation preview, and explicit apply-to-project action.
-- Replace static navigation labels with routed or stateful workspaces while preserving editor state.
-- Add component and accessibility tests plus desktop/tablet visual-regression coverage.
+- Connected the generation entry point to the existing platform generation-job API.
+- Added a creative brief interpreter that tunes only supported structured generation controls, plus gameplay-oriented presets and direct mood/key/tempo/bars/energy/complexity/seed controls.
+- Added idempotent submission, durable polling, reload recovery of the latest project job, terminal/error presentation, and structural proposal preview.
+- Added explicit apply-to-project behavior as one reversible editor-history command. Application replaces the active arrangement, queues a normal persisted revision, and guards duplicate application in browser storage.
+- Activated the stateful Generate workspace while preserving the arrangement editor state.
+- Added unit coverage for presets/request construction, brief interpretation, proposal summaries, and reversible arrangement replacement.
+
+Remaining UI closure: authenticated SignalR should supplement polling where a public hub URL is configured; desktop/tablet visual regression and focused screen-reader validation remain.
 
 ## Workstream 1 — Design system foundation
 
