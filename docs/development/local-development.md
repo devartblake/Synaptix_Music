@@ -11,6 +11,7 @@ This guide describes how to run and validate the Synaptix Music monorepo on a de
 - Python 3.12.4
 - Rust 1.88.0
 - Docker with Docker Compose
+- FFmpeg 6+ with `libmp3lame` and `libvorbis` for MP3/OGG packaging
 
 The pinned version files are:
 
@@ -45,6 +46,8 @@ REDIS_URL=redis://localhost:6379/0
 ```
 
 `SYNAPTIX_PLATFORM_API_URL` is server-only. Do not expose platform credentials or privileged internal URLs through `NEXT_PUBLIC_*` variables.
+
+The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete `RENDER_WORKER_MINIO_*` configuration before its polling loop starts. Use `RENDER_WORKER_FFMPEG_PATH` only when FFmpeg is not on `PATH`.
 
 ## Install TypeScript Dependencies
 

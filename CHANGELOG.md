@@ -6,6 +6,16 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Added
 
+#### Stage 12 preview, artifact-manifest, and lossy export completion
+
+- Added deterministic FFmpeg-backed MP3 and OGG delivery packaging after the canonical WAV render, including canonical Ogg serials/page CRCs so retries remain byte-identical.
+- Added optional bounded MP3/OGG master previews and configurable lossy bitrates to the render manifest.
+- Added a strict artifact-manifest contract and emitted `artifact-manifest.json` linking every audio/preview artifact to its immutable project revision, checksum, engine, range, and scope evidence.
+- Added a Node 22 production render-worker image containing FFmpeg with MP3/Vorbis codecs.
+- Added a least-privilege MinIO policy restricted to `synaptix-assets/renders/*`.
+- Added `npm run certify:stage12` and an operations runbook to submit a real staging render, verify signed downloads/checksums/byte lengths, and retain certification evidence.
+- Added the ordered Stage 13 execution plan covering publication hardening, Flutter loader/cache, runtime scheduling, stem mixing, stingers/ducking, telemetry, and cross-device rollout.
+
 #### Stage 12 platform project loader and production worker wiring
 
 - Added a fail-closed `HttpProjectLoader` that fetches an exact immutable project revision from the SynaptixPlay backend's internal music API, sends `X-Service-Token`, validates the response with `MusicProjectSchema`, and rejects identifier mismatches.
@@ -209,7 +219,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ## Active Work
 
-Stage 12 (Production Audio and Rendering): the render-job control plane, offline WAV renderer with reverb/master compression, worker loop, MinIO artifact sink, and signed download delivery are implemented and tested. What's left: decide a service-to-service authentication strategy so a real `ProjectLoader` can fetch project revisions from the platform backend, provision production object-storage credentials, then complete stem packaging and lossy exports. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
+Stage 12 (Production Audio and Rendering) is implementation-complete: durable jobs, exact-revision loading, deterministic WAV rendering with master effects, stems, MP3/OGG derivatives, bounded previews, artifact manifests, MinIO signed delivery, production image/policy, and certification tooling are implemented and tested. Live secret provisioning and staging evidence remain before operational closure. Stage 13 execution is now ordered across publication hardening, Flutter loading/cache, playback scheduling, stem mixing, stingers/ducking, telemetry, and cross-device certification; publication remains gated on accepted Stage 12 evidence.
 
 ## Release Policy
 

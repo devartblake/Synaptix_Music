@@ -1,0 +1,10 @@
+.git
+.github
+**/.next
+**/.turbo
+**/node_modules
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+stage12-certification-report.json

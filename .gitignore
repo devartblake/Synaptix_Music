@@ -9,3 +9,5 @@ dist/
 __pycache__/
 target/
 .DS_Store
+*.tsbuildinfo
+stage12-certification-report.json

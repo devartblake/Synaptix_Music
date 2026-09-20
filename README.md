@@ -23,15 +23,15 @@ The repository currently provides:
 
 ## Architecture at a Glance
 
-| Layer | Primary technology | Responsibility |
-|---|---|---|
-| Studio application | Next.js, React, TypeScript | Arrangement, piano roll, step sequencer, mixer, project lifecycle, BFF routes |
-| Browser audio | Tone.js, Web Audio | Preview transport, scheduling, synthesis, buses, effects, audition, and metering |
-| DAW domain | Framework-neutral TypeScript packages | Canonical model, commands, revisions, storage, platform and render contracts |
-| Generation | Python, FastAPI | Deterministic procedural composition and future private model inference |
-| Platform integration | Next.js BFF and SynaptixPlay .NET API | Identity, authorization, durable jobs, project synchronization, audit, and concurrency |
-| DSP acceleration | Rust, WebAssembly | Profile-driven future DSP kernels where measured bottlenecks justify them |
-| Production rendering | Background workers and FFmpeg-compatible tooling | Deterministic WAV-first rendering, stems, previews, and adaptive exports |
+| Layer                | Primary technology                               | Responsibility                                                                         |
+| -------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Studio application   | Next.js, React, TypeScript                       | Arrangement, piano roll, step sequencer, mixer, project lifecycle, BFF routes          |
+| Browser audio        | Tone.js, Web Audio                               | Preview transport, scheduling, synthesis, buses, effects, audition, and metering       |
+| DAW domain           | Framework-neutral TypeScript packages            | Canonical model, commands, revisions, storage, platform and render contracts           |
+| Generation           | Python, FastAPI                                  | Deterministic procedural composition and future private model inference                |
+| Platform integration | Next.js BFF and SynaptixPlay .NET API            | Identity, authorization, durable jobs, project synchronization, audit, and concurrency |
+| DSP acceleration     | Rust, WebAssembly                                | Profile-driven future DSP kernels where measured bottlenecks justify them              |
+| Production rendering | Background workers and FFmpeg-compatible tooling | Deterministic WAV-first rendering, stems, previews, and adaptive exports               |
 
 ## Repository Layout
 
@@ -110,7 +110,7 @@ CI independently validates TypeScript, Python, Rust/WASM, and Docker Compose.
 
 ## Current Development Stage
 
-Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is active.
+Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is implementation-complete and awaiting live staging certification; Stage 13 execution planning is active.
 
 Completed Stage 12 foundation work includes:
 
@@ -119,7 +119,7 @@ Completed Stage 12 foundation work includes:
 - peak/RMS metering and clipping evidence;
 - versioned deterministic render manifests and result contracts.
 
-Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, deterministic offline WAV rendering with reverb and master compression, and MinIO-backed artifact storage with signed delivery. Remaining work centers on the real platform `ProjectLoader`, production storage provisioning, stem/preview packaging, and lossy exports.
+Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, exact-revision loading, deterministic offline WAV rendering with reverb and master compression, MP3/OGG derivatives, bounded previews, validated artifact manifests, and MinIO-backed signed delivery. The repository also contains a production image, least-privilege storage policy, and evidence-producing certification command. An authorized staging operator must still provision secrets and execute the certification runbook before Stage 12 is operationally closed.
 
 ## Documentation
 
@@ -128,6 +128,8 @@ Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted ma
 - [Current architecture](docs/architecture/system-architecture.md)
 - [Architecture decisions](docs/architecture/decisions/README.md)
 - [Implementation-stage index](docs/plans/implementation/README.md)
+- [Stage 12 deployment certification](docs/operations/stage-12-deployment-certification.md)
+- [Stage 13 execution plan](docs/plans/implementation/stage-13-execution-plan-v1.md)
 - [Alpha release notes](docs/releases/alpha-foundation.md)
 - [Project changelog](CHANGELOG.md)
 
