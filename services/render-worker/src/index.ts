@@ -1,6 +1,13 @@
 export { FilesystemArtifactSink } from "./filesystem-artifact-sink.ts";
 export { applyCompressor, type CompressorOptions, type CompressorOutcome } from "./compressor.ts";
 export { createRenderJobHttpServer } from "./http-server.ts";
+export { packageRenderArtifacts } from "./artifact-packager.ts";
+export {
+  FfmpegTranscoder,
+  type AudioTranscodeRequest,
+  type AudioTranscoder,
+  type LossyAudioFormat
+} from "./ffmpeg-transcoder.ts";
 export {
   HttpProjectLoader,
   httpProjectLoaderFromEnv,

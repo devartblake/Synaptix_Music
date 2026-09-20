@@ -1,18 +1,12 @@
 import type { MusicProject } from "@synaptix/project-model";
 import type { RenderJob } from "@synaptix/render-contracts";
 
+import { packageRenderArtifacts } from "./artifact-packager.ts";
+import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
 import { renderProjectOffline, type RenderedArtifact } from "./offline-renderer.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
-/**
- * Fetches the exact project revision a render manifest references. No
- * implementation is provided by this package: the real implementation calls
- * the SynaptixPlay platform backend and needs a service-to-service
- * authentication strategy that has not been decided yet (the existing BFF
- * routes only ever forward an end user's own session, which a background
- * worker does not have). Until that's designed, callers must supply their
- * own loader (e.g. a fixture-backed one for local/manual runs).
- */
+/** Fetches the exact immutable project revision a render manifest references. */
 export interface ProjectLoader {
   loadProject(projectId: string, revisionId: string): Promise<MusicProject>;
 }
@@ -24,6 +18,7 @@ export interface ArtifactSink {
 export interface WorkerDependencies {
   loader: ProjectLoader;
   sink: ArtifactSink;
+  transcoder?: AudioTranscoder;
 }
 
 export interface ProcessJobOptions {
@@ -48,8 +43,9 @@ export async function processNextJob(
   const job = await store.lease(workerId, options.leaseDurationMs);
   if (!job) return null;
 
-  const heartbeatIntervalMs = options.heartbeatIntervalMs
-    ?? Math.max(1000, Math.floor((options.leaseDurationMs ?? 60_000) / 3));
+  const heartbeatIntervalMs =
+    options.heartbeatIntervalMs ??
+    Math.max(1000, Math.floor((options.leaseDurationMs ?? 60_000) / 3));
   const heartbeat = setInterval(() => {
     void store.heartbeat(job.jobId, workerId, options.leaseDurationMs).catch(() => {
       // A failed heartbeat means the lease may already be gone (reclaimed by
@@ -59,8 +55,16 @@ export async function processNextJob(
   }, heartbeatIntervalMs);
 
   try {
-    const project = await dependencies.loader.loadProject(job.manifest.projectId, job.manifest.revisionId);
-    const outcome = renderProjectOffline(project, job.manifest);
+    const project = await dependencies.loader.loadProject(
+      job.manifest.projectId,
+      job.manifest.revisionId
+    );
+    const rendered = renderProjectOffline(project, job.manifest);
+    const outcome = await packageRenderArtifacts(
+      rendered,
+      job.manifest,
+      dependencies.transcoder ?? new FfmpegTranscoder()
+    );
     for (const artifact of outcome.artifacts) {
       await dependencies.sink.store(job.manifest.renderId, artifact);
     }
@@ -81,7 +85,14 @@ export interface RunWorkerOptions extends ProcessJobOptions {
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true }
+    );
   });
 }
 

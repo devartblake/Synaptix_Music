@@ -11,6 +11,8 @@ This directory contains the durable architecture, implementation, development, o
 - [Architecture decision records](architecture/decisions/README.md)
 - [Local development guide](development/local-development.md)
 - [Implementation-stage index](plans/implementation/README.md)
+- [Stage 12 deployment certification](operations/stage-12-deployment-certification.md)
+- [Stage 13 execution plan](plans/implementation/stage-13-execution-plan-v1.md)
 - [Alpha foundation release notes](releases/alpha-foundation.md)
 - [Project changelog](../CHANGELOG.md)
 
@@ -34,23 +36,23 @@ docs/
 
 ## Current Status
 
-Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is active, and Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — has started in parallel.
+Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is implementation-complete and awaiting live staging certification. Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — has an ordered execution plan and completed contract/package-planning groundwork.
 
 Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, deterministic render contracts, a production audio graph integrated into the live browser engine with reversible device/parameter commands, a mounted studio master meter, and canonical filter/envelope/reverb-send device-parameter binding.
 
-The render-job control plane (contracts, in-memory and PostgreSQL-backed stores, a private HTTP API, and direct BFF wiring), a deterministic offline WAV renderer with reverb/master compression sharing canonical device/parameter semantics with the browser preview, and a worker loop tying leasing to rendering are all implemented and tested. MinIO artifact storage and bounded signed delivery are implemented behind environment configuration; production credential provisioning and deployment verification remain. A real project loader wired to the platform backend is still blocked on the service-to-service authentication decision. In parallel, Stage 13 has implemented adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes; publication is blocked until Stage 12 produces certified render artifacts.
+The render pipeline now covers durable jobs, exact-revision loading, deterministic WAV masters/stems, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, a production image, least-privilege policy, and an evidence-producing certification command. Live credential provisioning and staging evidence remain operator work. Stage 13 has implemented adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes; publication remains gated on successful Stage 12 staging certification.
 
 ## Documentation Ownership
 
-| Document | Purpose |
-|---|---|
-| `README.md` | Repository entry point and local startup |
-| `docs/roadmap.md` | Current completion state and ordered remaining work |
-| `docs/architecture/system-architecture.md` | Accepted runtime and service boundaries |
-| `docs/architecture/decisions/` | Durable architecture decisions and rationale |
-| `docs/plans/implementation/README.md` | PR-to-stage implementation ledger |
-| `CHANGELOG.md` | User- and developer-visible change history |
-| `docs/releases/` | Milestone summaries and release readiness |
+| Document                                   | Purpose                                             |
+| ------------------------------------------ | --------------------------------------------------- |
+| `README.md`                                | Repository entry point and local startup            |
+| `docs/roadmap.md`                          | Current completion state and ordered remaining work |
+| `docs/architecture/system-architecture.md` | Accepted runtime and service boundaries             |
+| `docs/architecture/decisions/`             | Durable architecture decisions and rationale        |
+| `docs/plans/implementation/README.md`      | PR-to-stage implementation ledger                   |
+| `CHANGELOG.md`                             | User- and developer-visible change history          |
+| `docs/releases/`                           | Milestone summaries and release readiness           |
 
 ## Plan File Convention
 

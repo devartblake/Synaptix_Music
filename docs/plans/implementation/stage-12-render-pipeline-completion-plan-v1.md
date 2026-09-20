@@ -8,7 +8,7 @@ Close the three gaps left open after the render-job control plane, offline WAV r
 2. Real artifact storage with signed delivery — `FilesystemArtifactSink` is a local-disk placeholder.
 3. ~~Reverb and master compression in the offline renderer.~~ Completed with deterministic DSP and dry-stem isolation.
 
-Gaps 1–3 are implemented in code. Production secret provisioning, deployment, and end-to-end certification remain operational work.
+Gaps 1–3 plus preview/artifact-manifest and MP3/OGG packaging are implemented in code. Production secret provisioning, deployment, and end-to-end certification remain operational work governed by `docs/operations/stage-12-deployment-certification.md`.
 
 ## Gap 1 — Service-to-service authentication for the ProjectLoader
 
@@ -74,9 +74,11 @@ Additive and low-risk to existing routes (new path, new config key, existing JWT
 ### What already exists
 
 The backend already runs MinIO (`synaptix_minio`, S3-compatible) with an established .NET-side pattern in `Synaptix.Backend.Infrastructure/Storage/MinioObjectStorage.cs`, using the **official Minio .NET SDK** (not the AWS S3 SDK). One bucket (`synaptix-assets`, config key `MinIO:Bucket`) with prefix-based key namespacing. Uploads and downloads both go through presigned URLs (`GetPresignedPutUrlAsync` / `GetPresignedGetUrlAsync`), and the closest existing key-naming precedent is `MediaService.cs`:
+
 ```csharp
 var assetKey = $"uploads/{policy.Category}/{now:yyyyMMdd}/{Guid.NewGuid():N}_{Sanitize(req.FileName)}";
 ```
+
 Local dev connection: endpoint `minio:9000` (in-network) / `localhost:9000` (host), access key `synaptix_minio_user`, secret via `MINIO_ROOT_PASSWORD`, no SSL. The music revision endpoints don't touch object storage today — there's no existing "audio artifact in MinIO" example, so this establishes the first one.
 
 ### Recommendation
@@ -133,6 +135,8 @@ Lowest of the three — self-contained, no backend or infra dependency, purely a
 2. Provision the same high-entropy value as `ServiceTokens__RenderWorker` in the backend and `RENDER_WORKER_SERVICE_TOKEN` in the worker.
 3. Provision least-privilege MinIO credentials for the worker.
 4. Submit a real revision in staging and retain the completed render, checksum, signed-download, and failure-path evidence.
+
+Repository support for this closeout is complete: the worker image includes FFmpeg, the MinIO policy is scoped to `synaptix-assets/renders/*`, and `npm run certify:stage12` produces checksum-verified evidence. Secret creation and live staging execution require an authorized infrastructure operator.
 
 ## Revision Date
 
