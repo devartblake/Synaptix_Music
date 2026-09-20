@@ -110,6 +110,8 @@ jobs:
       - run: npm install --global npm@11.4.2
       - run: npm ci --no-audit --no-fund
       - run: npm run ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui --workspace @synaptix/music-studio
 
   python:
     name: Python

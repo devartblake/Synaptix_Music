@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { GenerationProposal } from "@synaptix/generator-contracts";
-import { TerminalGenerationJobStatuses, type GenerationJob } from "@synaptix/platform-contracts";
+import {
+  TerminalGenerationJobStatuses,
+  type GenerationJob,
+  type GenerationJobStatusEvent
+} from "@synaptix/platform-contracts";
 import type { MusicProject } from "@synaptix/project-model";
 
 import {
@@ -16,6 +20,10 @@ import {
   type GenerationPresetId
 } from "../../../lib/platform/generation-workspace-model";
 import { listGenerationJobs } from "../../../src/lib/generation-status-recovery";
+import {
+  subscribeToGenerationJobStatus,
+  type GenerationJobRealtimeSubscription
+} from "../../../src/lib/generation-job-realtime";
 import { pollGenerationJob, submitGenerationJob } from "../../../src/lib/platform-api";
 import { BrowserAppliedGenerationJobRegistry } from "../../../src/lib/apply-completed-generation-job";
 
@@ -40,8 +48,19 @@ export function GenerationWorkspace({ project, onApply, onClose }: GenerationWor
   const [submitting, setSubmitting] = useState(false);
   const [applying, setApplying] = useState(false);
   const [appliedJobId, setAppliedJobId] = useState<string | null>(null);
+  const [realtimeState, setRealtimeState] = useState<"polling" | "connecting" | "connected" | "reconnecting">("polling");
   const idempotencyKey = useRef(crypto.randomUUID());
   const appliedRegistry = useRef(new BrowserAppliedGenerationJobRegistry());
+  const realtimeHubUrl = process.env.NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL?.trim();
+
+  function receiveRealtimeStatus(event: GenerationJobStatusEvent): void {
+    setJob((current) => current?.jobId === event.jobId ? { ...current, ...event } : current);
+    setStatusMessage(
+      event.status === "completed"
+        ? "Variation ready for review."
+        : `Generation ${event.status}. Attempt ${event.attemptCount}.`
+    );
+  }
 
   async function followJob(initial: GenerationJob, signal?: AbortSignal): Promise<void> {
     setJob(initial);
@@ -71,6 +90,39 @@ export function GenerationWorkspace({ project, onApply, onClose }: GenerationWor
       });
     return () => controller.abort();
   }, [project.projectId]);
+
+  useEffect(() => {
+    if (!realtimeHubUrl || !job?.jobId || TerminalGenerationJobStatuses.has(job.status as never)) {
+      setRealtimeState("polling");
+      return;
+    }
+
+    let cancelled = false;
+    let subscription: GenerationJobRealtimeSubscription | null = null;
+    void subscribeToGenerationJobStatus({
+      hubUrl: realtimeHubUrl,
+      jobId: job.jobId,
+      onStatus: receiveRealtimeStatus,
+      onRecovered: (recovered) => {
+        setJob(recovered);
+        setStatusMessage(recovered.status === "completed" ? "Variation ready for review." : `Generation ${recovered.status}.`);
+      },
+      onConnectionState: (state) => {
+        if (cancelled) return;
+        setRealtimeState(state === "closed" ? "polling" : state);
+      }
+    }).then((activeSubscription) => {
+      if (cancelled) void activeSubscription.stop();
+      else subscription = activeSubscription;
+    }).catch(() => {
+      if (!cancelled) setRealtimeState("polling");
+    });
+
+    return () => {
+      cancelled = true;
+      if (subscription) void subscription.stop();
+    };
+  }, [job?.jobId, realtimeHubUrl]);
 
   function choosePreset(presetId: GenerationPresetId): void {
     setForm((current) => formForPreset(presetId, current.seed));
@@ -160,8 +212,8 @@ export function GenerationWorkspace({ project, onApply, onClose }: GenerationWor
         <button className="generation-submit" type="submit" disabled={submitting}>{submitting ? "Generating…" : "Generate variation"}</button>
       </form>
 
-      <section className="generation-preview" aria-live="polite">
-        <div className="job-status"><span className={`status-dot ${job?.status === "failed" || job?.status === "deadLetter" ? "danger" : ""}`} /><div><strong>{job ? job.status : "Not started"}</strong><p>{statusMessage}</p></div></div>
+      <section className="generation-preview" aria-label="Generated variation preview">
+        <div className="job-status" role="status" aria-live="polite" aria-atomic="true"><span aria-hidden="true" className={`status-dot ${job?.status === "failed" || job?.status === "deadLetter" ? "danger" : ""}`} /><div><strong>{job ? job.status : "Not started"}</strong><p>{statusMessage}</p><p className="realtime-status">Live updates: {realtimeState === "polling" ? "durable polling" : realtimeState}</p></div></div>
         {error && <p className="generation-error" role="alert">{error}</p>}
         {job?.result && summary ? <>
           <div className="preview-hero"><span>{job.result.mood}</span><strong>{job.result.key}</strong><small>{job.result.tempo} BPM · seed {job.result.provenance.seed}</small></div>

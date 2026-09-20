@@ -39,7 +39,15 @@ Validation: the music-studio TypeScript check and optimized Next.js production b
 - Activated the stateful Generate workspace while preserving the arrangement editor state.
 - Added unit coverage for presets/request construction, brief interpretation, proposal summaries, and reversible arrangement replacement.
 
-Remaining UI closure: authenticated SignalR should supplement polling where a public hub URL is configured; desktop/tablet visual regression and focused screen-reader validation remain.
+### Slice UI.3 — realtime and validation closure (implemented)
+
+- Connected the configured SynaptixPlay SignalR hub to the generation workspace as a credentialed low-latency supplement. Secure session cookies remain authoritative; no access token is exposed through public environment configuration.
+- Preserved durable polling as the source of truth and fallback when the hub is absent, unavailable, reconnecting, or closed. Every hub connection performs immediate and post-reconnect job reconciliation.
+- Added an honest live-update indicator and an atomic screen-reader status region without making decorative state indicators audible.
+- Added Playwright layout contracts for 1440px desktop and 1024px tablet viewports, horizontal-overflow checks, labeled-control/landmark assertions, and an axe WCAG 2/2.1 A/AA scan.
+- Wired the UI validation into pull-request CI with a pinned Chromium installation.
+
+Deployment requires `NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL` to contain only the public hub endpoint (normally `https://api.synaptixplay.com/ws/notify`). Authentication continues through the browser's secure platform session cookie.
 
 ## Workstream 1 — Design system foundation
 
@@ -91,7 +99,7 @@ Remaining UI closure: authenticated SignalR should supplement polling where a pu
 4. Piano roll and drum visual refresh
 5. Mixer and production-audio controls
 6. Adaptive package authoring workspace
-7. Accessibility, responsiveness, and visual-regression closure
+7. Accessibility, responsiveness, and visual-regression closure — **desktop/tablet generation-workspace gate implemented**
 
 ## Guardrails
 
