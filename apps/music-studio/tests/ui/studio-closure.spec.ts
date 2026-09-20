@@ -48,10 +48,11 @@ test("generation workspace exposes a screen-reader-safe status and labeled contr
   await prepareStudio(page);
   await page.getByRole("button", { name: /Generate/ }).click();
   await expect(page.getByRole("heading", { name: "Create a project variation" })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("durable polling");
+  const preview = page.getByRole("region", { name: "Generated variation preview" });
+  await expect(preview.getByRole("status")).toContainText("durable polling");
   await expect(page.getByLabel("Creative brief")).toBeVisible();
   await expect(page.getByLabel("Energy")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Generated variation preview" })).toBeVisible();
+  await expect(preview).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
