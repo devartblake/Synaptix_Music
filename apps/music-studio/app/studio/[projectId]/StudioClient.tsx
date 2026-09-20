@@ -26,6 +26,7 @@ import {
   resolveEffectiveInstrumentSettings,
   REVERB_SEND_PARAMETER
 } from "@synaptix/daw-engine";
+import type { GenerationProposal } from "@synaptix/generator-contracts";
 import { createEmptyProject, type Clip, type MusicProject, type Track } from "@synaptix/project-model";
 import { IndexedDbProjectStorage, LocalProjectRepository } from "@synaptix/project-storage";
 import {
@@ -35,8 +36,10 @@ import {
   type RevisionUploadResult
 } from "@synaptix/project-storage/platform-sync";
 
+import { ApplyGeneratedArrangementEditorCommand } from "../../../lib/editor/apply-generated-arrangement-command";
 import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-project-repository";
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
+import { GenerationWorkspace } from "./GenerationWorkspace";
 import { MasterMeter } from "./MasterMeter";
 import { PianoRoll } from "./PianoRoll";
 
@@ -122,6 +125,7 @@ const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, c
 type Gesture = { trackId: string; field: "volume" | "pan"; initial: number };
 type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
+type Workspace = "arrangement" | "generation";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState(() => createStarterProject(projectId));
@@ -131,6 +135,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [sync, setSync] = useState(INITIAL_SYNC);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace>("arrangement");
   const engine = useMemo(() => new BrowserAudioEngine(), []);
   const localRef = useRef<LocalProjectRepository | null>(null);
   const hybridRef = useRef<HybridProjectRepository | null>(null);
@@ -211,6 +216,11 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
     await queueRevision(result.project, result.revision, expected);
+  }
+
+  async function applyGeneratedVariation(proposal: GenerationProposal, jobId: string): Promise<void> {
+    await execute(new ApplyGeneratedArrangementEditorCommand(proposal, jobId));
+    setActiveClip(null);
   }
 
   async function undo(): Promise<void> {
@@ -386,14 +396,14 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         <aside className="studio-sidebar" aria-label="Studio navigation">
           <p className="panel-label">Workspace</p>
           <nav className="studio-nav">
-            <button aria-current="page"><span><span className="nav-glyph">A</span>Arrangement</span></button>
+            <button aria-current={workspace === "arrangement" ? "page" : undefined} onClick={() => setWorkspace("arrangement")}><span><span className="nav-glyph">A</span>Arrangement</span></button>
             <button disabled title="Open a MIDI clip from the arrangement"><span><span className="nav-glyph">P</span>Piano roll</span></button>
             <button disabled title="Open a drum clip from the arrangement"><span><span className="nav-glyph">D</span>Drum sequencer</span></button>
             <button disabled title="Dedicated mixer workspace is planned"><span><span className="nav-glyph">M</span>Mixer</span></button>
           </nav>
           <p className="panel-label" style={{ marginTop: 22 }}>SynaptixPlay</p>
           <nav className="studio-nav">
-            <button disabled title="Generation workspace is the next UI slice"><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></button>
+            <button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></button>
             <button disabled title="Adaptive authoring is scheduled for Stage 13"><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></button>
             <button disabled title="Publication remains gated by certification"><span><span className="nav-glyph">R</span>Render & publish</span></button>
           </nav>
@@ -406,13 +416,14 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </aside>
 
         <section className="studio-workspace" aria-label="Project workspace">
-          <nav className="workspace-tabs" aria-label="Editor views">
+          {workspace === "arrangement" && <nav className="workspace-tabs" aria-label="Editor views">
             <button aria-selected={!activeClip} onClick={() => setActiveClip(null)}>Arrangement</button>
             <button aria-selected={Boolean(activeClip)} disabled={!activeClip}>MIDI editor</button>
             <span className="workspace-spacer" />
             <span className="status-pill">Revision {project.revisionId.slice(0, 8)}</span>
-          </nav>
+          </nav>}
 
+      {workspace === "arrangement" && <>
       {sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
         <section key={conflict.currentRevisionId} className="conflict-banner">
           <strong>Cloud revision conflict</strong>
@@ -473,6 +484,13 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onExecute={execute}
         onClose={() => setActiveClip(null)}
       />}
+      </>}
+
+      {workspace === "generation" && <GenerationWorkspace
+        project={project}
+        onApply={applyGeneratedVariation}
+        onClose={() => setWorkspace("arrangement")}
+      />}
         </section>
 
         <aside className="studio-inspector" aria-label="Project inspector">
@@ -487,7 +505,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <section className="inspector-card">
             <strong>AI generation</strong>
             <p>Create a variation from the active project while preserving its canonical revision history.</p>
-            <button className="generation-cta" disabled title="Generation workspace is scheduled for the next UI slice">Open generator · next slice</button>
+            <button className="generation-cta" onClick={() => setWorkspace("generation")}>Open generator</button>
           </section>
           <section className="inspector-card">
             <strong>Publication readiness</strong>
