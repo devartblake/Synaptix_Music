@@ -6,6 +6,37 @@ Evolve the current functional editor into a coherent production-oriented DAW int
 
 The generated concept image is a visual target, not a claim about the current implementation. The redesign will be delivered incrementally behind stable component boundaries.
 
+## Selected visual references
+
+The implementation uses reference patterns rather than copying any one design:
+
+- **Audioscape** — structural baseline for the dense, timeline-first production workspace.
+- **Sonuum** — web collaboration, revision, persistence, and project-status presentation.
+- **SonicAI** — generation entry points and future job/variation workflow.
+- **SynaptixPlay game-audio references** — restrained cyan/violet accents, adaptive-state intensity, runtime preview, and publication readiness.
+
+Professional editing density remains authoritative. Decorative gaming treatments must not reduce timeline readability, accessible contrast, or control discoverability.
+
+## Implementation status
+
+### Slice UI.1 — foundation and studio shell (implemented)
+
+- Global semantic tokens for canvas, panels, text, borders, state colors, radius, focus, and elevation.
+- Responsive three-panel shell with workspace navigation, central editor, and project inspector.
+- Persistent transport with revision, local persistence, and synchronization status.
+- Existing arrangement, piano-roll, drum, command-history, persistence, and audio behavior retained inside the new shell.
+- SynaptixPlay runtime-preview and publication-readiness surfaces added as non-deceptive status previews.
+- AI generation is represented as an explicitly disabled next-slice entry point until the existing generation APIs are connected to a production form and job lifecycle.
+
+Validation: the music-studio TypeScript check and optimized Next.js production build pass.
+
+### Next slice — UI.2 generation and status workflow
+
+- Connect the generation entry point to the existing platform generation-job API.
+- Add prompt/preset controls, idempotent submission, live status/reconnect feedback, generated variation preview, and explicit apply-to-project action.
+- Replace static navigation labels with routed or stateful workspaces while preserving editor state.
+- Add component and accessibility tests plus desktop/tablet visual-regression coverage.
+
 ## Workstream 1 — Design system foundation
 
 - Dark application palette and semantic color tokens
@@ -50,8 +81,8 @@ The generated concept image is a visual target, not a claim about the current im
 
 ## Delivery order
 
-1. UI tokens and primitive components
-2. Studio shell and panel layout
+1. UI tokens and primitive components — **foundation implemented; extraction into reusable components remains**
+2. Studio shell and panel layout — **initial responsive shell implemented**
 3. Arrangement visual refresh
 4. Piano roll and drum visual refresh
 5. Mixer and production-audio controls
