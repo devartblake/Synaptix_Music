@@ -31,11 +31,16 @@ The browser should receive a public authenticated SignalR URL, normally:
 https://api.synaptixplay.com/ws/notify
 ```
 
-Cookie authentication or an access-token factory may be used depending on deployment topology.
+Set `NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL` to that public endpoint. The studio uses `withCredentials: true`, so the browser's secure SynaptixPlay session cookie authenticates the connection without publishing a token in the client bundle. The lower-level subscriber continues to accept an access-token factory for deployment topologies that require bearer authentication.
 
 ## Deferred
 
 - Server-side event sequence numbers and replay cursor.
 - Cross-device applied-job registry synchronization.
-- Applying generation results to non-empty projects.
 - Partial-track and section regeneration conflict resolution.
+
+## Studio integration update
+
+The UI.3 closure connects each non-terminal workspace job to the configured hub, reports connecting/connected/reconnecting state, applies validated matching events, and reconciles immediately on initial connection and reconnect. Connection failure or closure returns the indicator to durable polling; the polling loop remains active throughout and remains authoritative.
+
+The workspace also restores project jobs after reload, previews completed proposals, and applies a complete generated variation to non-empty projects through a reversible arrangement-replacement editor command. This is intentionally whole-arrangement replacement; partial regeneration remains deferred.

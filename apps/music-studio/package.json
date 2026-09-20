@@ -6,7 +6,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts"
+    "test": "node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.17",
@@ -17,15 +18,17 @@
     "@synaptix/project-model": "0.1.0",
     "@synaptix/project-storage": "0.1.0",
     "@synaptix/render-contracts": "0.1.0",
+    "@tanstack/react-query": "^5.0.0",
     "next": "^15.4.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tone": "^15.1.22",
     "zod": "^4.0.0",
-    "zustand": "^5.0.0",
-    "@tanstack/react-query": "^5.0.0"
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
