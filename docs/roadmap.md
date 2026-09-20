@@ -9,7 +9,7 @@ Synaptix Music has completed its foundational editor, project, synchronization, 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
-- Stage 12: 90% complete; production-graph integration, master-meter mounting, canonical device-parameter binding, durable render-job persistence, HTTP/BFF control planes, deterministic offline WAV rendering with reverb/master compression, the worker loop, MinIO artifact storage, and signed delivery are implemented. What remains: a real project loader wired to the platform backend (blocked on a service-to-service auth decision), production storage provisioning, and stems/lossy export packaging
+- Stage 12: 94% complete; production-graph integration, master-meter mounting, canonical device-parameter binding, durable render-job persistence, HTTP/BFF control planes, deterministic offline WAV rendering with reverb/master compression, the worker loop, the platform project loader, MinIO artifact storage, and signed delivery are implemented. What remains: merge/deploy the matching backend endpoint, production secret/storage provisioning and end-to-end certification, plus preview-manifest and lossy export packaging
 - Stage 13: early groundwork only (contracts, package builder, transition planning, and platform persistence/BFF routes); publication is blocked until Stage 12 produces certified render artifacts
 - Full planned DAW roadmap: 48–52% complete
 
@@ -91,7 +91,7 @@ The percentages represent planned functional scope. They do not represent produc
 
 ### Stage 12 — Production Audio and Rendering
 
-Current active slice: closing out the render pipeline. The control plane, deterministic offline WAV renderer with master effects, worker loop, MinIO artifact storage, and signed delivery are implemented and tested. The remaining code blocker for genuine end-to-end rendering is the missing real `ProjectLoader`: fetching an exact platform revision requires a service-to-service authentication decision because background workers do not have an end-user session. Production MinIO credential provisioning and deployment verification remain operational work.
+Current active slice: closing out the render pipeline. The control plane, deterministic offline WAV renderer with master effects, worker loop, fail-closed platform `ProjectLoader`, MinIO artifact storage, and signed delivery are implemented and tested. The matching internal backend endpoint is proposed in SynaptixPlay PR #525. Remaining work is deployment/certification, preview manifests, and lossy export packaging.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
 
@@ -127,7 +127,7 @@ Contract, package-builder, transition-planning, and platform/BFF work is impleme
 - ~~Record artifact checksum, byte length, sample rate, bit depth, and duration~~ Done.
 - ~~Add repeatability certification across identical manifests~~ Done — verified byte-identical output across repeated renders in tests.
 - ~~An actual render worker that executes rendering~~ Done: `processNextJob`/`runWorker` lease a job, heartbeat through the render, execute the renderer, and report the result through the control plane.
-- Load an exact project revision — **not done**. The worker takes an injected `ProjectLoader`; no implementation fetches a real revision from the platform backend yet (see the service-to-service auth gap above). Verified so far only via fixture-backed loaders in tests.
+- ~~Load an exact project revision~~ Done in code: `HttpProjectLoader` calls the fail-closed internal platform endpoint with `X-Service-Token`, validates the canonical schema and requested identifiers, and is wired into the production worker. Backend PR #525 and staging secret provisioning must land before end-to-end certification.
 - ~~Model reverb send and master compression~~ Done: deterministic Freeverb-style stereo processing and browser-aligned stereo-linked compression are applied to master renders. Stem renders intentionally remain dry.
 - MinIO-backed artifact storage and signed delivery are implemented behind environment configuration; production least-privilege credentials and end-to-end deployment verification remain.
 
