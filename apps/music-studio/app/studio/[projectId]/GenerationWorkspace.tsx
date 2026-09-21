@@ -31,6 +31,7 @@ import { BrowserAppliedGenerationJobRegistry } from "../../../src/lib/apply-comp
 interface GenerationWorkspaceProps {
   project: MusicProject;
   onApply(proposal: GenerationProposal, jobId: string): Promise<void>;
+  onAddDrone(frequencyHz: number): Promise<void>;
   onClose(): void;
 }
 
@@ -40,7 +41,7 @@ function newestProjectJob(jobs: GenerationJob[], projectId: string): GenerationJ
     .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
 }
 
-export function GenerationWorkspace({ project, onApply, onClose }: GenerationWorkspaceProps) {
+export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: GenerationWorkspaceProps) {
   const [form, setForm] = useState<GenerationForm>(() => formForPreset("bright-round", Math.floor(Math.random() * 100_000)));
   const [brief, setBrief] = useState("Upbeat trivia loop with a clear build and satisfying victory section");
   const [job, setJob] = useState<GenerationJob | null>(null);
@@ -191,7 +192,7 @@ export function GenerationWorkspace({ project, onApply, onClose }: GenerationWor
     </header>
 
     <div className="generation-grid">
-      <div><FrequencyDroneInstrument onUseForGeneration={(tone) => { setBrief(`Build a musical variation around a ${tone.frequencyHz} Hz ${tone.waveform} drone as a tonal texture. Preserve the frequency as an oscillator layer rather than a health or therapeutic claim.`); setStatusMessage(`${tone.frequencyHz} Hz selected as a procedural-generation seed.`); }} />
+      <div><FrequencyDroneInstrument onUseForGeneration={(tone) => { setBrief(`Build a musical variation around a ${tone.frequencyHz} Hz ${tone.waveform} drone as a tonal texture. Preserve the frequency as an oscillator layer rather than a health or therapeutic claim.`); setStatusMessage(`${tone.frequencyHz} Hz selected as a procedural-generation seed.`); }} onAddToProject={(tone) => void onAddDrone(tone.frequencyHz)} />
       <form className="generation-form" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <label>Creative brief
           <textarea value={brief} rows={3} onChange={(event) => setBrief(event.target.value)} />
