@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 
 import {
+  FREQUENCY_DRONE_DEVICE_TYPE,
+  buildFrequencyDroneRenderPlan,
+  renderFrequencyDroneMono,
+  resolveFrequencyDroneDevice,
   resolveEffectiveInstrumentSettings,
   type EffectiveInstrumentSettings
 } from "@synaptix/daw-engine/production-audio";
@@ -157,6 +161,24 @@ function renderTrackBuffer(
   return { left, right };
 }
 
+
+function renderFrequencyDroneTrackBuffer(
+  track: Track, tracks: readonly Track[], totalSamples: number, sampleRate: number,
+  durationSeconds: number, forceAudible: boolean
+): StereoBuffer | null {
+  const device = track.devices.find((candidate) => candidate.deviceType === FREQUENCY_DRONE_DEVICE_TYPE && candidate.enabled);
+  if (!device) return null;
+  const left = new Float64Array(totalSamples), right = new Float64Array(totalSamples);
+  if (!forceAudible && !trackAudible(track, tracks)) return { left, right };
+  const settings = resolveFrequencyDroneDevice(device);
+  const mono = renderFrequencyDroneMono(buildFrequencyDroneRenderPlan(settings, durationSeconds, sampleRate));
+  const gainLinear = 10 ** (track.volumeDb / 20);
+  const panAngle = ((track.pan + 1) * Math.PI) / 4;
+  const leftGain = gainLinear * Math.cos(panAngle), rightGain = gainLinear * Math.sin(panAngle);
+  for (let i=0;i<totalSamples;i++){const sample=mono[i] ?? 0; left[i]=sample*leftGain; right[i]=sample*rightGain;}
+  return { left, right };
+}
+
 function mixInto(target: StereoBuffer, source: StereoBuffer): void {
   for (let i = 0; i < target.left.length; i++) {
     target.left[i] = (target.left[i] ?? 0) + (source.left[i] ?? 0);
@@ -282,7 +304,7 @@ export function renderProjectOffline(
       const track = instrumentTracks.find((candidate) => candidate.id === trackId);
       if (!track)
         throw new Error(`Track '${trackId}' was not found or is not an instrument track.`);
-      const buffer = renderTrackBuffer(
+      const buffer = renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, true) ?? renderTrackBuffer(
         track,
         project.tracks,
         range,
@@ -307,7 +329,7 @@ export function renderProjectOffline(
       right: new Float64Array(totalSamples)
     };
     for (const track of instrumentTracks) {
-      const trackBuffer = renderTrackBuffer(
+      const trackBuffer = renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, false) ?? renderTrackBuffer(
         track,
         project.tracks,
         range,
@@ -319,7 +341,8 @@ export function renderProjectOffline(
         false
       );
       mixInto(master, trackBuffer);
-      mixIntoScaled(reverbSend, trackBuffer, resolveEffectiveInstrumentSettings(track).reverbSend);
+      if (!track.devices.some((device) => device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE))
+        mixIntoScaled(reverbSend, trackBuffer, resolveEffectiveInstrumentSettings(track).reverbSend);
     }
     mixInto(master, applyReverb(reverbSend, MASTER_REVERB_DECAY_SECONDS, sampleRate));
     const compressed = applyCompressor(master, MASTER_COMPRESSOR, sampleRate);
