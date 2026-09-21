@@ -7,12 +7,22 @@ import {
   SILENT_METER,
   type MasterMeterSnapshot
 } from "./production-audio.ts";
+import { FREQUENCY_DRONE_DEVICE_TYPE, resolveFrequencyDroneDevice } from "./frequency-drone.ts";
 
 export interface ProductionInstrumentRuntime {
   synth: Tone.PolySynth;
   filter: Tone.Filter;
   channel: Tone.Channel;
   reverbSend: Tone.Gain;
+  dispose(): void;
+}
+
+export interface FrequencyDroneRuntime {
+  oscillators: Tone.Oscillator[];
+  filter: Tone.Filter;
+  gain: Tone.Gain;
+  channel: Tone.Channel;
+  lfo: Tone.LFO | null;
   dispose(): void;
 }
 
@@ -26,6 +36,7 @@ export class BrowserProductionAudioGraph {
   private readonly peakMeter = new Tone.Meter({ smoothing: 0.05, normalRange: false });
   private readonly rmsMeter = new Tone.Meter({ smoothing: 0.85, normalRange: false });
   private readonly runtimes = new Set<ProductionInstrumentRuntime>();
+  private readonly droneRuntimes = new Set<FrequencyDroneRuntime>();
   private readonly meterTimers = new Set<ReturnType<typeof setInterval>>();
 
   constructor() {
@@ -35,6 +46,47 @@ export class BrowserProductionAudioGraph {
     this.compressor.connect(this.peakMeter);
     this.peakMeter.connect(this.rmsMeter);
     this.rmsMeter.toDestination();
+  }
+
+
+  createFrequencyDrone(track: Track): FrequencyDroneRuntime | null {
+    const device = track.devices.find((candidate) => candidate.deviceType === FREQUENCY_DRONE_DEVICE_TYPE && candidate.enabled);
+    if (!device) return null;
+    const settings = resolveFrequencyDroneDevice(device);
+    const channel = new Tone.Channel({ volume: track.volumeDb, pan: track.pan, mute: track.muted });
+    const filter = new Tone.Filter(settings.filterHz, "lowpass");
+    const gain = new Tone.Gain(settings.gain);
+    const oscillators: Tone.Oscillator[] = [];
+    const count = Math.max(1, Math.min(8, settings.harmonics));
+    for (let harmonic = 1; harmonic <= count; harmonic += 1) {
+      const oscillator = new Tone.Oscillator({
+        frequency: settings.frequencyHz * harmonic,
+        type: "sine",
+        volume: -12 * Math.log2(harmonic)
+      });
+      oscillator.connect(gain);
+      oscillator.start();
+      oscillators.push(oscillator);
+    }
+    let lfo: Tone.LFO | null = null;
+    if (settings.modulationDepth > 0 && settings.modulationRateHz > 0) {
+      const base = settings.gain;
+      lfo = new Tone.LFO(settings.modulationRateHz, base * (1 - settings.modulationDepth), base).start();
+      lfo.connect(gain.gain);
+    }
+    gain.connect(filter);
+    filter.connect(channel);
+    channel.connect(this.musicBus);
+    const runtime: FrequencyDroneRuntime = {
+      oscillators, filter, gain, channel, lfo,
+      dispose: () => {
+        this.droneRuntimes.delete(runtime);
+        for (const oscillator of oscillators) oscillator.dispose();
+        lfo?.dispose(); filter.dispose(); gain.dispose(); channel.dispose();
+      }
+    };
+    this.droneRuntimes.add(runtime);
+    return runtime;
   }
 
   createInstrument(track: Track): ProductionInstrumentRuntime {
@@ -76,7 +128,7 @@ export class BrowserProductionAudioGraph {
   }
 
   meter(): MasterMeterSnapshot {
-    if (this.runtimes.size === 0) return SILENT_METER;
+    if (this.runtimes.size === 0 && this.droneRuntimes.size === 0) return SILENT_METER;
     return meterSnapshot(this.peakMeter.getValue(), this.rmsMeter.getValue());
   }
 
@@ -95,6 +147,7 @@ export class BrowserProductionAudioGraph {
     for (const timer of this.meterTimers) clearInterval(timer);
     this.meterTimers.clear();
     for (const runtime of [...this.runtimes]) runtime.dispose();
+    for (const runtime of [...this.droneRuntimes]) runtime.dispose();
     this.reverb.dispose();
     this.compressor.dispose();
     this.peakMeter.dispose();
