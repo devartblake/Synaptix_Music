@@ -1,3 +1,4 @@
+export { AdaptiveDeviceParameterMappingSchema, interpolateAdaptiveParameter, type AdaptiveDeviceParameterMapping } from "./adaptive-device-mapping.ts";
 export {
   RENDER_ARTIFACT_MANIFEST_VERSION,
   RenderArtifactManifestSchema,

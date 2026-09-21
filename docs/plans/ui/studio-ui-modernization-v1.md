@@ -91,6 +91,8 @@ Deployment requires `NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL` to contain only the p
 - Package preview controls and runtime-event simulator
 - SynaptixPlay publication and version history
 
+Initial authoring slice implemented: the Adaptive States workspace now discovers completed master renders for the active project, assembles named/intensity-tagged states into a validated runtime manifest, previews deterministic next-bar transitions, and exposes the Stage 12 certification gate. Publication is intentionally disabled until a passing staging certification report and matching artifact-manifest checksum can be supplied to the hardened backend publication transition.
+
 ## Delivery order
 
 1. UI tokens and primitive components — **foundation implemented; extraction into reusable components remains**

@@ -1,0 +1,3 @@
+import assert from "node:assert/strict"; import test from "node:test"; import { AdaptiveDeviceParameterMappingSchema, interpolateAdaptiveParameter } from "./index.ts";
+test("adaptive device mappings validate persisted targets",()=>{assert.doesNotThrow(()=>AdaptiveDeviceParameterMappingSchema.parse({mappingId:"m",stateId:"explore",trackId:"t",deviceId:"d",parameterId:"droneGain",value:0.2}));});
+test("adaptive interpolation clamps intensity",()=>{assert.equal(interpolateAdaptiveParameter(100,200,.5),150);assert.equal(interpolateAdaptiveParameter(100,200,2),200);assert.equal(interpolateAdaptiveParameter(100,200,-1),100);});

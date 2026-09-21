@@ -1,3 +1,12 @@
+export { buildFrequencyDroneRenderPlan, renderFrequencyDroneMono, type FrequencyDroneRenderPlan } from "./frequency-drone-render.ts";
+export {
+  FREQUENCY_DRONE_DEVICE_TYPE, DRONE_FREQUENCY_PARAMETER, DRONE_GAIN_PARAMETER,
+  DRONE_HARMONICS_PARAMETER, DRONE_MOD_RATE_PARAMETER, DRONE_MOD_DEPTH_PARAMETER,
+  DRONE_FILTER_PARAMETER, DRONE_STEREO_OFFSET_PARAMETER,
+  DEFAULT_FREQUENCY_DRONE_DEVICE_SETTINGS, createFrequencyDroneTrack,
+  frequencyDroneDevices, resolveFrequencyDroneDevice,
+  type FrequencyDroneDeviceSettings
+} from "./frequency-drone.ts";
 export { BrowserProductionAudioGraph } from "./browser-production-graph.ts";
 export {
   meterSnapshot,
@@ -31,7 +40,8 @@ import * as Tone from "tone";
 
 import {
   BrowserProductionAudioGraph,
-  type ProductionInstrumentRuntime
+  type ProductionInstrumentRuntime,
+  type FrequencyDroneRuntime
 } from "./browser-production-graph.ts";
 import { SILENT_METER, type MasterMeterSnapshot } from "./production-audio.ts";
 
@@ -144,6 +154,11 @@ export class BrowserAudioEngine implements AudioTransport {
 
     for (const track of project.tracks) {
       if (track.kind !== "instrument") continue;
+      const drone = graph.createFrequencyDrone(track);
+      if (drone) {
+        drone.channel.mute = !trackAudible(track, project.tracks);
+        continue;
+      }
       const runtime = graph.createInstrument(track);
       runtime.channel.mute = !trackAudible(track, project.tracks);
       this.runtimes.set(track.id, runtime);

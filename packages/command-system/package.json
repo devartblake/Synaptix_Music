@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./editor": "./src/editor.ts",
     "./midi": "./src/midi.ts",
-    "./device": "./src/device.ts"
+    "./device": "./src/device.ts",
+    "./track": "./src/track.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
