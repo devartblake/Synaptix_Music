@@ -1,4 +1,9 @@
 export {
+  RENDER_ARTIFACT_MANIFEST_VERSION,
+  RenderArtifactManifestSchema,
+  type RenderArtifactManifest
+} from "./artifact-manifest.ts";
+export {
   ADAPTIVE_GAME_AUDIO_CONTRACT_VERSION,
   AdaptiveCuePointSchema,
   AdaptiveGameAudioManifestSchema,
@@ -26,12 +31,14 @@ export {
   RenderFormatSchema,
   RenderManifestSchema,
   RenderOutputSchema,
+  PreviewOutputSchema,
   RenderRangeSchema,
   RenderResultSchema,
   RenderScopeSchema,
   type RenderArtifact,
   type RenderManifest,
   type RenderOutput,
+  type PreviewOutput,
   type RenderResult,
   type RenderScope
 } from "./render-manifest.ts";

@@ -39,7 +39,8 @@ Python Generation    Render Workers
 ├── deterministic    ├── exact manifest/revision
 │   composition      ├── verified assets
 └── future private   ├── deterministic WAV
-    model inference  └── stems and exports
+    model inference  ├── WAV certification
+                     └── previews/lossy exports
 ```
 
 ## Canonical Project Boundary
@@ -98,7 +99,7 @@ Instrument
 → browser destination
 ```
 
-The engine supports scheduling, audition, panic, transport snapshots, and meter subscriptions. Canonical device parameters are being mapped into runtime nodes during Stage 12.
+The engine supports scheduling, audition, panic, transport snapshots, meter subscriptions, and canonical device parameters mapped into runtime nodes.
 
 ## Generation Architecture
 
@@ -127,25 +128,26 @@ Render manifest
 → leased worker
 → exact project/assets verification
 → offline graph reconstruction
-→ WAV artifact
-→ checksum and render evidence
-→ optional stems/lossy/adaptive packages
+→ deterministic WAV intermediate
+→ master/stems and MP3/OGG packaging
+→ preview and artifact manifest
+→ MinIO object storage and signed delivery
 ```
 
-WAV is the certification format. MP3 and OGG are derivative outputs after deterministic PCM output is validated.
+WAV is the certification format. MP3 and OGG are FFmpeg derivatives produced only after deterministic PCM output is validated. Ogg stream serials and page CRCs are canonicalized so identical inputs remain byte-identical. Every completed worker job also emits a validated JSON artifact manifest linking project/revision/checksum evidence to delivery artifacts and an optional bounded preview.
 
 ## Data Ownership
 
-| Data | Owner |
-|---|---|
-| Local editor project/revisions | Browser IndexedDB |
-| Durable project metadata/revisions | SynaptixPlay PostgreSQL |
-| Durable generation/render jobs | SynaptixPlay PostgreSQL |
+| Data                                      | Owner                                                            |
+| ----------------------------------------- | ---------------------------------------------------------------- |
+| Local editor project/revisions            | Browser IndexedDB                                                |
+| Durable project metadata/revisions        | SynaptixPlay PostgreSQL                                          |
+| Durable generation/render jobs            | SynaptixPlay PostgreSQL                                          |
 | Queue coordination and short-lived leases | Redis or database lease tables, depending on final worker design |
-| Large audio artifacts | Object storage |
-| Procedural generation execution | Private Python service |
-| Browser preview audio | Tone.js/Web Audio |
-| Production rendering | Dedicated render worker |
+| Large audio artifacts                     | Object storage                                                   |
+| Procedural generation execution           | Private Python service                                           |
+| Browser preview audio                     | Tone.js/Web Audio                                                |
+| Production rendering                      | Dedicated render worker                                          |
 
 ## Security and Reliability Rules
 
@@ -159,9 +161,7 @@ WAV is the certification format. MP3 and OGG are derivative outputs after determ
 
 ## Current Gaps
 
-- Runtime mapping for all device/effect parameters
-- Durable render-job state machine and worker leases
-- Deterministic offline WAV implementation
+- Live Stage 12 secret provisioning and staging certification evidence
 - Asset ingestion and licensing workflow
-- Stem and adaptive export packages
-- Production observability and recovery runbooks
+- Stage 13 client loader, cache, scheduler, stem mixer, stingers, and telemetry
+- Production observability, capacity, and recovery certification

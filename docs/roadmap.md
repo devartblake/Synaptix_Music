@@ -1,6 +1,6 @@
 # Synaptix Music Roadmap and Current Status
 
-**Revision date:** 2026-08-15
+**Revision date:** 2026-09-20
 
 ## Executive Summary
 
@@ -9,8 +9,8 @@ Synaptix Music has completed its foundational editor, project, synchronization, 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
-- Stage 12: 85% complete; production-graph integration, master-meter mounting, canonical device-parameter binding, durable render-job persistence, an HTTP submission/status API, BFF wiring, a deterministic offline WAV renderer, and a worker loop tying leasing to rendering are all done and tested. What remains: a real project loader wired to the platform backend (blocked on a service-to-service auth decision), real artifact storage/signed delivery (currently a local-filesystem placeholder), reverb/compression modeling in the offline renderer (currently dry-signal only), and stems/lossy exports
-- Stage 13: early groundwork only (contracts, package builder, transition planning, and platform persistence/BFF routes); publication is blocked until Stage 12 produces certified render artifacts
+- Stage 12: 100% implementation-complete; preview/artifact manifests, deterministic MP3/OGG packaging, the production worker image, least-privilege MinIO policy, and certification harness now join the existing render stack. Operational closure remains pending live secret provisioning and staging certification evidence.
+- Stage 13: approximately 25% complete (contracts, package builder, transition planning, and platform persistence/BFF routes); the ordered execution plan is now publication hardening, Flutter loader/cache, runtime scheduler, stem mixer, stingers/ducking, telemetry, and cross-device rollout certification
 - Full planned DAW roadmap: 48–52% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
@@ -77,8 +77,10 @@ The percentages represent planned functional scope. They do not represent produc
 - A tested, in-memory render-job control-plane state machine: idempotent submission, FIFO leasing, heartbeat-extendable worker leases, exponential-backoff retry, dead-lettering, expired-lease reclamation, and a structured event log
 - A durable, concurrency-safe PostgreSQL-backed counterpart (`@synaptix/render-worker`) implementing the same control-plane rules with `SELECT ... FOR UPDATE SKIP LOCKED` leasing, verified against a real database including under concurrent access
 - A private, server-to-server HTTP API over the render-job store (submit/status/list/cancel/events), and Next.js BFF routes proxying it with end-user authentication
-- A deterministic, pure-JS offline WAV renderer sharing canonical device/parameter semantics with the browser preview (per ADR-0003) via `resolveEffectiveInstrumentSettings`: oscillator/ADSR synthesis, a one-pole filter, mute/solo/pan/volume mixing, master or per-track stem scope, tick-range restriction, peak normalization, clipping detection, and SHA-256-checksummed PCM WAV output — verified byte-identical across repeated renders of the same manifest
+- A deterministic, pure-JS offline WAV renderer sharing canonical device/parameter semantics with the browser preview (per ADR-0003) via `resolveEffectiveInstrumentSettings`: oscillator/ADSR synthesis, a one-pole filter, mute/solo/pan/volume mixing, per-track reverb sends, Freeverb-style stereo processing, master compression, master or dry per-track stem scope, tick-range restriction, peak normalization, clipping detection, and SHA-256-checksummed PCM WAV output — verified byte-identical across repeated renders of the same manifest
 - A worker loop (`processNextJob`/`runWorker`) that leases a job, heartbeats through a slow render, executes the offline renderer, and reports the result back through the control plane's retry/dead-letter rules
+- Deterministic FFmpeg MP3/OGG derivatives, bounded master previews, and a validated `artifact-manifest.json` binding every delivery object to immutable render evidence
+- A production render-worker image with FFmpeg codecs, least-privilege MinIO policy, and a staging certification command that verifies signed delivery, checksums, byte lengths, preview presence, and artifact-manifest evidence
 
 ### Adaptive game-audio contracts (Stage 13 groundwork)
 
@@ -91,11 +93,11 @@ The percentages represent planned functional scope. They do not represent produc
 
 ### Stage 12 — Production Audio and Rendering
 
-Current active slice: closing out the render pipeline. The render-job control plane (contracts, in-memory and PostgreSQL-backed stores, HTTP API, BFF wiring), the deterministic offline WAV renderer, and the worker loop are all implemented and tested. Two gaps block genuine end-to-end use from the browser: (1) the worker has no real `ProjectLoader` — fetching an exact project revision from the platform backend needs a service-to-service authentication strategy that hasn't been decided (background workers don't have an end user's session), and (2) rendered artifacts are written to local disk as a placeholder rather than uploaded to real object storage with signed delivery.
+Implementation is complete. The control plane, deterministic renderer/master effects, worker loop, fail-closed platform loader, master/stem WAV output, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, production image, storage policy, and certification harness are implemented and tested. Stage 12 closes operationally only after backend PR #525 is deployed, secrets are provisioned by an authorized operator, and the staging certification runbook passes.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
 
-Contract, package-builder, transition-planning, and platform/BFF work is implemented. This slice does not yet decode or play audio, and packages cannot be published until Stage 12 produces certified render artifacts. Remaining work: package authorization/versioning/retention/signed delivery, the Flutter runtime loader and cache, beat/bar/phrase playback scheduling, layered stem mixing, stingers/ducking, telemetry, and cross-device certification.
+Contract, package-builder, transition-planning, and platform/BFF work is implemented. The ordered plan is documented in `stage-13-execution-plan-v1.md`. Package publication remains disabled until Stage 12 staging evidence is accepted.
 
 ## Remaining Ordered Work
 
@@ -119,7 +121,7 @@ Contract, package-builder, transition-planning, and platform/BFF work is impleme
 - ~~HTTP submission/status API~~ Done: a private, server-to-server HTTP API (submit/status/list/cancel/events) over the store, deliberately not internet-facing (matching the Python generation-api's "private server-to-server dependency" posture).
 - ~~BFF wiring~~ Done: Next.js routes at `/api/platform/render-jobs/*` proxy directly to the render-worker HTTP API, requiring end-user authentication. This is a deliberate deviation from the generation-jobs/adaptive-packages convention of routing everything through the .NET SynaptixPlay backend — implementing that convention here would mean extending a separate, large, unfamiliar production backend (which also hosts KMS, Wallet, and Compliance) for a resource that doesn't yet need its multi-tenant authorization model.
 
-### 3. Deterministic offline WAV rendering — mostly done
+### 3. Deterministic offline rendering — done in code
 
 - ~~Reconstruct device and bus topology~~ Done via `resolveEffectiveInstrumentSettings`, the same canonical parameter resolution the browser preview uses (ADR-0003).
 - ~~Render an exact tick range plus effect tail~~ Done (`RenderRangeSchema` + `includeTailSeconds`).
@@ -127,27 +129,27 @@ Contract, package-builder, transition-planning, and platform/BFF work is impleme
 - ~~Record artifact checksum, byte length, sample rate, bit depth, and duration~~ Done.
 - ~~Add repeatability certification across identical manifests~~ Done — verified byte-identical output across repeated renders in tests.
 - ~~An actual render worker that executes rendering~~ Done: `processNextJob`/`runWorker` lease a job, heartbeat through the render, execute the renderer, and report the result through the control plane.
-- Load an exact project revision — **not done**. The worker takes an injected `ProjectLoader`; no implementation fetches a real revision from the platform backend yet (see the service-to-service auth gap above). Verified so far only via fixture-backed loaders in tests.
-- Reverb send and master compression are not modeled — the renderer produces the dry signal only. Documented simplification, not an oversight; ADR-0003 only requires the *preview and worker to share device/routing semantics*, not identical DSP implementations.
-- Artifact storage is a local-filesystem placeholder (`FilesystemArtifactSink`), not real object storage with signed delivery — that's item 4 below.
+- ~~Load an exact project revision~~ Done in code: `HttpProjectLoader` calls the fail-closed internal platform endpoint with `X-Service-Token`, validates the canonical schema and requested identifiers, and is wired into the production worker. Backend PR #525 and staging secret provisioning must land before end-to-end certification.
+- ~~Model reverb send and master compression~~ Done: deterministic Freeverb-style stereo processing and browser-aligned stereo-linked compression are applied to master renders. Stem renders intentionally remain dry.
+- ~~MinIO-backed artifact storage and signed delivery~~ Done behind fail-closed environment configuration.
 
-### 4. Stems and previews
+### 4. Stems and previews — done for Stage 12 scope
 
-- Track and bus stems
-- Master preview files
-- Naming and artifact manifests
-- Export authorization and retention
-- Download and signed-delivery boundaries
+- ~~Track stems~~ Done; dry per-track stems are supported. Dedicated bus stems remain a later routing enhancement.
+- ~~Master preview files~~ Done; bounded MP3/OGG previews are requestable through the render manifest.
+- ~~Naming and artifact manifests~~ Done; every packaged result emits validated `artifact-manifest.json` evidence.
+- ~~Download and signed-delivery boundaries~~ Done through recorded-artifact authorization and bounded MinIO grants.
+- Export authorization and retention policy continue in Stage 13 package publication hardening.
 
 ### 5. Lossy and adaptive exports
 
-- MP3 and OGG conversion after WAV certification
+- ~~MP3 and OGG conversion after WAV certification~~ Done with FFmpeg; MP3 metadata and Ogg stream identity are canonicalized for repeatable bytes.
 - Loop metadata and cue points
 - Adaptive state packages
 - Flutter/SynaptixPlay consumption contracts
 - Game-runtime transition and intensity metadata
 
-Adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes are already implemented as Stage 13 groundwork; publication is blocked on certified Stage 12 render artifacts (items 2–3 above). Remaining Stage 13 scope: authorization/versioning/retention/signed delivery, the Flutter runtime loader, playback scheduling, stem mixing, stingers, and telemetry.
+Adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes are implemented as Stage 13 groundwork. Publication is blocked on accepted Stage 12 staging evidence. The remaining sequence is defined in the Stage 13 execution plan.
 
 ### 6. Asset and licensing system
 

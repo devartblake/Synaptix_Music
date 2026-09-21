@@ -1,23 +1,64 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added the first studio UI modernization slice: a responsive, timeline-first three-panel shell, semantic dark-theme tokens, project synchronization and revision status, and restrained SynaptixPlay adaptive-audio accents.
+- Added visible, explicitly gated entry points for generation, adaptive-state authoring, and publication workflows without presenting unfinished actions as functional.
+- Added a production-connected generation workspace with creative-brief interpretation, presets, structured controls, idempotent generation-job submission, durable polling/reload recovery, proposal preview, duplicate-application protection, and reversible apply-to-project behavior.
+- Added credentialed SignalR generation updates with immediate/reconnect reconciliation and polling fallback, plus desktop/tablet layout contracts and axe-powered WCAG screen-reader validation in CI.
+
 All notable Synaptix Music changes are documented here. The project is pre-release, so entries are grouped under `Unreleased` and reference the pull request or milestone that introduced each completed slice.
 
 ## [Unreleased]
 
 ### Added
 
+#### Stage 12 preview, artifact-manifest, and lossy export completion
+
+- Added deterministic FFmpeg-backed MP3 and OGG delivery packaging after the canonical WAV render, including canonical Ogg serials/page CRCs so retries remain byte-identical.
+- Added optional bounded MP3/OGG master previews and configurable lossy bitrates to the render manifest.
+- Added a strict artifact-manifest contract and emitted `artifact-manifest.json` linking every audio/preview artifact to its immutable project revision, checksum, engine, range, and scope evidence.
+- Added a Node 22 production render-worker image containing FFmpeg with MP3/Vorbis codecs.
+- Added a least-privilege MinIO policy restricted to `synaptix-assets/renders/*`.
+- Added `npm run certify:stage12` and an operations runbook to submit a real staging render, verify signed downloads/checksums/byte lengths, and retain certification evidence.
+- Added the ordered Stage 13 execution plan covering publication hardening, Flutter loader/cache, runtime scheduling, stem mixing, stingers/ducking, telemetry, and cross-device rollout.
+
+#### Stage 12 platform project loader and production worker wiring
+
+- Added a fail-closed `HttpProjectLoader` that fetches an exact immutable project revision from the SynaptixPlay backend's internal music API, sends `X-Service-Token`, validates the response with `MusicProjectSchema`, and rejects identifier mismatches.
+- Wired the render polling loop into `main.ts` when both platform-loader and MinIO configuration are present, including stable worker IDs and graceful abort on shutdown.
+- Added focused coverage for successful loads, service-token forwarding, HTTP failures, schema drift, identifier mismatches, and environment configuration.
+- Added the matching fail-closed internal revision API in SynaptixPlay backend PR #525; staging still needs matching `RENDER_WORKER_SERVICE_TOKEN` / `ServiceTokens__RenderWorker` secret provisioning and end-to-end verification.
+
+#### Stage 12 MinIO artifact storage and signed delivery
+
+- Added `MinioArtifactStore` as a durable `ArtifactSink` using deterministic `renders/{renderId}/{fileName}` object keys and checksum/artifact metadata.
+- Added bounded presigned GET delivery and a render-worker route that only signs artifacts recorded on a completed render job.
+- Added an authenticated Next.js BFF proxy route for artifact download grants.
+- Added opt-in environment configuration and automated coverage for upload naming, metadata, expiry limits, path traversal, and recorded-artifact authorization.
+- Production least-privilege MinIO credential provisioning and deployment verification remain operational work.
+
+#### Stage 12 deterministic offline reverb and master compression
+
+- Added deterministic Freeverb-style stereo reverb with canonical per-track `reverbSend` routing in the offline master renderer.
+- Added a stereo-linked feed-forward master compressor aligned with the browser graph's fixed threshold, ratio, attack, and release settings.
+- Preserved dry stem exports for remixing and adaptive layer assembly.
+- Added DSP and renderer regression coverage for repeatability, decay, gain reduction, stereo linking, reverb-send binding, and dry-stem isolation.
+
 #### Stage 12 render-job HTTP API, BFF wiring, and offline WAV rendering — commits c3ffdc9, 513b7b9
 
 - Added a private, server-to-server render-job HTTP API (`services/render-worker/src/http-server.ts`): `POST /render-jobs` (idempotent submission), `GET /render-jobs`/`GET /render-jobs/:id` (list/status), `POST /render-jobs/:id/cancel`, `GET /render-jobs/:id/events`. Not internet-facing, matching the Python generation-api's private-dependency posture.
 - Added Next.js BFF routes at `/api/platform/render-jobs/*` proxying directly to the render-worker HTTP API via a new `RENDER_WORKER_API_URL` env var, requiring end-user authentication. This deliberately deviates from the generation-jobs/adaptive-packages convention of routing everything through `SYNAPTIX_PLATFORM_API_URL` (the .NET SynaptixPlay backend) — that backend is a separate, large, unfamiliar production solution (also hosting KMS, Wallet, and Compliance) that doesn't need to be extended for a resource that has no multi-tenant authorization requirement yet.
-- Added a deterministic, dependency-free offline WAV renderer (`offline-renderer.ts`): reuses `resolveEffectiveInstrumentSettings` from `@synaptix/daw-engine` (via a new Tone.js-free `./production-audio` subpath export) for canonical device/parameter semantics per ADR-0003, then does its own pure-JS oscillator/ADSR/one-pole-filter synthesis, mute/solo/pan/volume mixing, master-or-stems scope handling, tick-range restriction, peak normalization, and clipping detection. Does not model reverb or master compression — documented as a dry-signal-only simplification, not an oversight.
+- Added a deterministic, dependency-free offline WAV renderer (`offline-renderer.ts`): reuses `resolveEffectiveInstrumentSettings` from `@synaptix/daw-engine` (via a new Tone.js-free `./production-audio` subpath export) for canonical device/parameter semantics per ADR-0003, then does its own pure-JS oscillator/ADSR/one-pole-filter synthesis, mute/solo/pan/volume mixing, master-or-stems scope handling, tick-range restriction, peak normalization, and clipping detection. Deterministic reverb and master compression were added in the subsequent DSP slice above.
 - Added a RIFF/WAVE PCM `wav-encoder.ts` (16/24/32-bit) and SHA-256 artifact checksumming.
-- Added a worker loop (`worker.ts`): `processNextJob` leases one job, heartbeats for the duration of the render (so a slow render isn't reclaimed by another worker), executes the renderer, and reports the result through the control plane's existing retry/dead-letter rules; `runWorker` polls it continuously. Takes an injected `ProjectLoader` and `ArtifactSink` — no real implementations exist yet (see below).
+- Added a worker loop (`worker.ts`): `processNextJob` leases one job, heartbeats for the duration of the render (so a slow render isn't reclaimed by another worker), executes the renderer, and reports the result through the control plane's existing retry/dead-letter rules; `runWorker` polls it continuously. Production `ProjectLoader` and `ArtifactSink` implementations were added in subsequent slices above.
 - Added `FilesystemArtifactSink`, a local-disk placeholder for artifact storage pending real object-storage upload and signed delivery.
-- Added a minimal `main.ts` entry point that boots the HTTP API; does not auto-start the worker loop, since there is no real `ProjectLoader` to wire in yet.
+- Added a minimal `main.ts` entry point that boots the HTTP API; production worker-loop wiring was added in the platform project-loader slice above.
 - Added 24 new tests (42 total in the package): full HTTP lifecycle tests against a real running server, 11 offline-renderer tests (determinism, silence gating, mute/solo, range filtering, stems, normalization, fail-closed error handling), 5 WAV-encoder tests, and 5 worker-loop tests including a heartbeat-during-slow-render race test — all verified against a real, disposable Postgres instance.
 - Fixed a test-isolation bug: Node's test runner executes test **files** concurrently by default, so two files sharing one database and each truncating its tables in `beforeEach` were racing each other. Added `--test-concurrency=1` to the package's test script.
-- **Known gaps, not implemented in this slice:** a real `ProjectLoader` that fetches an exact project revision from the platform backend (blocked on an undecided service-to-service authentication strategy — background workers don't have an end user's session token); real object-storage upload with signed delivery; reverb/master-compression modeling in the renderer.
+- **Remaining operational gap:** merge and deploy the matching SynaptixPlay backend endpoint, provision matching service and object-storage credentials, and run an end-to-end staging render.
 
 #### Stage 12 render-job PostgreSQL persistence — commit c3b3d98
 
@@ -187,7 +228,7 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ## Active Work
 
-Stage 12 (Production Audio and Rendering): the render-job control plane, offline WAV renderer, and worker loop are all implemented and tested. What's left: decide a service-to-service authentication strategy so a real `ProjectLoader` can fetch project revisions from the platform backend, wire up real object-storage upload with signed delivery in place of `FilesystemArtifactSink`, model reverb/master compression in the offline renderer, then stems and lossy exports. Stage 13 (Adaptive Game Audio): backend authorization/versioning/retention/signed delivery, the Flutter runtime package loader, and beat/bar/phrase playback scheduling remain, blocked on Stage 12 certified render artifacts for publication.
+Stage 12 (Production Audio and Rendering) is implementation-complete: durable jobs, exact-revision loading, deterministic WAV rendering with master effects, stems, MP3/OGG derivatives, bounded previews, artifact manifests, MinIO signed delivery, production image/policy, and certification tooling are implemented and tested. Live secret provisioning and staging evidence remain before operational closure. Stage 13 execution is now ordered across publication hardening, Flutter loading/cache, playback scheduling, stem mixing, stingers/ducking, telemetry, and cross-device certification; publication remains gated on accepted Stage 12 evidence.
 
 ## Release Policy
 

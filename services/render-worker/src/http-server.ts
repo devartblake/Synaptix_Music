@@ -3,6 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { RenderManifestSchema, type RenderJobStatus } from "@synaptix/render-contracts";
 import { ZodError } from "zod";
 
+import type { ArtifactDelivery } from "./minio-artifact-store.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
 interface ErrorEnvelope {
@@ -14,11 +15,21 @@ interface ErrorEnvelope {
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
-  res.writeHead(status, { "content-type": "application/json", "content-length": Buffer.byteLength(payload) });
+  res.writeHead(status, {
+    "content-type": "application/json",
+    "content-length": Buffer.byteLength(payload)
+  });
   res.end(payload);
 }
 
-function sendError(res: ServerResponse, status: number, code: string, message: string, correlationId: string, retryable = false): void {
+function sendError(
+  res: ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+  correlationId: string,
+  retryable = false
+): void {
   sendJson(res, status, { code, message, correlationId, retryable } satisfies ErrorEnvelope);
 }
 
@@ -30,7 +41,10 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 function isRenderJobStatus(value: string | null): value is RenderJobStatus {
-  return value !== null && ["queued", "running", "completed", "failed", "cancelled", "dead_letter"].includes(value);
+  return (
+    value !== null &&
+    ["queued", "running", "completed", "failed", "cancelled", "dead_letter"].includes(value)
+  );
 }
 
 /** Anything that can mint a time-limited download URL for a stored artifact. */
@@ -76,21 +90,88 @@ async function handleRequest(
     if (req.method === "GET" && segments.length === 1 && segments[0] === "render-jobs") {
       const statusParam = url.searchParams.get("status");
       if (statusParam !== null && !isRenderJobStatus(statusParam)) {
-        return sendError(res, 400, "invalid_status_filter", `Unknown status '${statusParam}'.`, correlationId);
+        return sendError(
+          res,
+          400,
+          "invalid_status_filter",
+          `Unknown status '${statusParam}'.`,
+          correlationId
+        );
       }
       const jobs = await store.list(statusParam ?? undefined);
       return sendJson(res, 200, { jobs });
     }
     if (req.method === "GET" && segments.length === 2 && segments[0] === "render-jobs") {
       const job = await store.get(segments[1]!);
-      if (!job) return sendError(res, 404, "render_job_not_found", `Render job '${segments[1]}' was not found.`, correlationId);
+      if (!job)
+        return sendError(
+          res,
+          404,
+          "render_job_not_found",
+          `Render job '${segments[1]}' was not found.`,
+          correlationId
+        );
       return sendJson(res, 200, job);
     }
-    if (req.method === "GET" && segments.length === 3 && segments[0] === "render-jobs" && segments[2] === "events") {
+    if (
+      req.method === "GET" &&
+      segments.length === 3 &&
+      segments[0] === "render-jobs" &&
+      segments[2] === "events"
+    ) {
       const events = await store.events(segments[1]!);
       return sendJson(res, 200, { events });
     }
-    if (req.method === "POST" && segments.length === 3 && segments[0] === "render-jobs" && segments[2] === "cancel") {
+    if (
+      req.method === "GET" &&
+      segments.length === 5 &&
+      segments[0] === "render-jobs" &&
+      segments[2] === "artifacts" &&
+      segments[4] === "download-url"
+    ) {
+      if (!artifactDelivery) {
+        return sendError(
+          res,
+          503,
+          "artifact_delivery_unavailable",
+          "Artifact delivery is not configured.",
+          correlationId,
+          true
+        );
+      }
+      const job = await store.get(segments[1]!);
+      if (!job)
+        return sendError(
+          res,
+          404,
+          "render_job_not_found",
+          `Render job '${segments[1]}' was not found.`,
+          correlationId
+        );
+      const artifact = job.result?.artifacts.find(
+        (candidate) => candidate.artifactId === segments[3]
+      );
+      if (!artifact) {
+        return sendError(
+          res,
+          404,
+          "render_artifact_not_found",
+          `Artifact '${segments[3]}' was not found.`,
+          correlationId
+        );
+      }
+      const downloadUrl = await artifactDelivery.createDownloadUrl(
+        artifact.renderId,
+        artifact.fileName
+      );
+      return sendJson(res, 200, { artifactId: artifact.artifactId, downloadUrl });
+    }
+    if (
+      req.method === "POST" &&
+      segments.length === 3 &&
+      segments[0] === "render-jobs" &&
+      segments[2] === "cancel"
+    ) {
       const job = await store.cancel(segments[1]!);
       return sendJson(res, 200, job);
     }
@@ -141,15 +222,32 @@ async function handleDownloadUrl(
   });
 }
 
-async function handleSubmit(store: PostgresRenderJobStore, req: IncomingMessage, res: ServerResponse, correlationId: string): Promise<void> {
+async function handleSubmit(
+  store: PostgresRenderJobStore,
+  req: IncomingMessage,
+  res: ServerResponse,
+  correlationId: string
+): Promise<void> {
   const idempotencyKey = req.headers["idempotency-key"]?.toString();
   if (!idempotencyKey) {
-    return sendError(res, 400, "idempotency_key_required", "Idempotency-Key header is required.", correlationId);
+    return sendError(
+      res,
+      400,
+      "idempotency_key_required",
+      "Idempotency-Key header is required.",
+      correlationId
+    );
   }
 
   const body = (await readJsonBody(req)) as { manifest?: unknown; maxAttempts?: number } | null;
   if (!body?.manifest) {
-    return sendError(res, 400, "invalid_render_job_request", "A render manifest is required.", correlationId);
+    return sendError(
+      res,
+      400,
+      "invalid_render_job_request",
+      "A render manifest is required.",
+      correlationId
+    );
   }
 
   const manifest = RenderManifestSchema.parse(body.manifest);
@@ -162,15 +260,31 @@ async function handleSubmit(store: PostgresRenderJobStore, req: IncomingMessage,
 // parse failures and JSON syntax errors are client input errors (400).
 function handleError(res: ServerResponse, error: unknown, correlationId: string): void {
   if (error instanceof ZodError) {
-    return sendError(res, 400, "invalid_render_job_request", error.issues.map((issue) => issue.message).join("; "), correlationId);
+    return sendError(
+      res,
+      400,
+      "invalid_render_job_request",
+      error.issues.map((issue) => issue.message).join("; "),
+      correlationId
+    );
   }
   if (error instanceof SyntaxError) {
-    return sendError(res, 400, "invalid_json_body", "The request body is not valid JSON.", correlationId);
+    return sendError(
+      res,
+      400,
+      "invalid_json_body",
+      "The request body is not valid JSON.",
+      correlationId
+    );
   }
 
   const message = error instanceof Error ? error.message : "Unexpected error.";
-  if (message.includes("was not found")) return sendError(res, 404, "render_job_not_found", message, correlationId);
-  if (message.includes("already terminal") || message.includes("already used for a different render")) {
+  if (message.includes("was not found"))
+    return sendError(res, 404, "render_job_not_found", message, correlationId);
+  if (
+    message.includes("already terminal") ||
+    message.includes("already used for a different render")
+  ) {
     return sendError(res, 409, "render_job_conflict", message, correlationId);
   }
   sendError(res, 400, "invalid_render_job_request", message, correlationId);

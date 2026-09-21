@@ -26,6 +26,7 @@ import {
   resolveEffectiveInstrumentSettings,
   REVERB_SEND_PARAMETER
 } from "@synaptix/daw-engine";
+import type { GenerationProposal } from "@synaptix/generator-contracts";
 import { createEmptyProject, type Clip, type MusicProject, type Track } from "@synaptix/project-model";
 import { IndexedDbProjectStorage, LocalProjectRepository } from "@synaptix/project-storage";
 import {
@@ -35,8 +36,10 @@ import {
   type RevisionUploadResult
 } from "@synaptix/project-storage/platform-sync";
 
+import { ApplyGeneratedArrangementEditorCommand } from "../../../lib/editor/apply-generated-arrangement-command";
 import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-project-repository";
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
+import { GenerationWorkspace } from "./GenerationWorkspace";
 import { MasterMeter } from "./MasterMeter";
 import { PianoRoll } from "./PianoRoll";
 
@@ -99,9 +102,9 @@ function clipStyle(clip: Clip, project: MusicProject): React.CSSProperties {
     width: `${Math.min(100, (bars / TOTAL_BARS) * 100)}%`,
     top: 10,
     bottom: 10,
-    border: "1px solid #6d7cff",
+    border: "1px solid var(--sx-primary)",
     borderRadius: 6,
-    background: "linear-gradient(135deg, #303a78, #242b55)",
+    background: "linear-gradient(135deg, rgb(109 124 255 / 48%), rgb(155 92 255 / 30%))",
     padding: "8px 10px",
     overflow: "hidden"
   };
@@ -122,6 +125,7 @@ const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, c
 type Gesture = { trackId: string; field: "volume" | "pan"; initial: number };
 type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
+type Workspace = "arrangement" | "generation";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState(() => createStarterProject(projectId));
@@ -131,6 +135,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [sync, setSync] = useState(INITIAL_SYNC);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace>("arrangement");
   const engine = useMemo(() => new BrowserAudioEngine(), []);
   const localRef = useRef<LocalProjectRepository | null>(null);
   const hybridRef = useRef<HybridProjectRepository | null>(null);
@@ -211,6 +216,11 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
     await queueRevision(result.project, result.revision, expected);
+  }
+
+  async function applyGeneratedVariation(proposal: GenerationProposal, jobId: string): Promise<void> {
+    await execute(new ApplyGeneratedArrangementEditorCommand(proposal, jobId));
+    setActiveClip(null);
   }
 
   async function undo(): Promise<void> {
@@ -346,15 +356,20 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   void historyVersion;
   void hydrated;
 
+  const syncTone = sync.state === "conflict" || sync.error ? "danger" : sync.state === "offline" ? "warning" : "";
+
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui", background: "#111318", color: "#f4f5f7", minHeight: "100vh" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20 }}>
-        <div>
-          <h1 style={{ margin: 0 }}>{project.metadata.name}</h1>
-          <small>Project {project.projectId} · {project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus} · {syncLabel}</small>
+    <main className="studio-shell">
+      <header className="studio-topbar">
+        <div className="studio-brand">
+          <div className="studio-mark" aria-hidden="true">S</div>
+          <div className="studio-title">
+            <h1>{project.metadata.name}</h1>
+            <small>{project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus}</small>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</button>
+        <div className="transport" aria-label="Transport controls">
+          <button className="transport-primary" onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</button>
           <button onClick={stop}>Stop</button>
           <button disabled={!history.canUndo} onClick={() => void undo()}>Undo</button>
           <button disabled={!history.canRedo} onClick={() => void redo()}>Redo</button>
@@ -371,11 +386,46 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             }} style={{ width: 64 }} /></label>
           <button onClick={() => void coordinatorRef.current?.drain()}>Sync now</button>
         </div>
-        <MasterMeter engine={engine} />
+        <div className="studio-status">
+          <span className="status-pill"><span className={`status-dot ${syncTone}`} />{syncLabel}</span>
+          <MasterMeter engine={engine} />
+        </div>
       </header>
 
+      <div className="studio-grid">
+        <aside className="studio-sidebar" aria-label="Studio navigation">
+          <p className="panel-label">Workspace</p>
+          <nav className="studio-nav">
+            <button aria-current={workspace === "arrangement" ? "page" : undefined} onClick={() => setWorkspace("arrangement")}><span><span className="nav-glyph">A</span>Arrangement</span></button>
+            <button disabled title="Open a MIDI clip from the arrangement"><span><span className="nav-glyph">P</span>Piano roll</span></button>
+            <button disabled title="Open a drum clip from the arrangement"><span><span className="nav-glyph">D</span>Drum sequencer</span></button>
+            <button disabled title="Dedicated mixer workspace is planned"><span><span className="nav-glyph">M</span>Mixer</span></button>
+          </nav>
+          <p className="panel-label" style={{ marginTop: 22 }}>SynaptixPlay</p>
+          <nav className="studio-nav">
+            <button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></button>
+            <button disabled title="Adaptive authoring is scheduled for Stage 13"><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></button>
+            <button disabled title="Publication remains gated by certification"><span><span className="nav-glyph">R</span>Render & publish</span></button>
+          </nav>
+          <section className="sidebar-card" aria-label="Adaptive audio preview">
+            <strong>Runtime preview</strong>
+            <div className="adaptive-row"><span className="adaptive-orb" />Exploration · active</div>
+            <div className="intensity-track" role="progressbar" aria-label="Adaptive intensity" aria-valuemin={0} aria-valuemax={100} aria-valuenow={64}><span /></div>
+            <p>Adaptive authoring becomes interactive in the Stage 13 workspace slice.</p>
+          </section>
+        </aside>
+
+        <section className="studio-workspace" aria-label="Project workspace">
+          {workspace === "arrangement" && <nav className="workspace-tabs" aria-label="Editor views">
+            <button aria-selected={!activeClip} onClick={() => setActiveClip(null)}>Arrangement</button>
+            <button aria-selected={Boolean(activeClip)} disabled={!activeClip}>MIDI editor</button>
+            <span className="workspace-spacer" />
+            <span className="status-pill">Revision {project.revisionId.slice(0, 8)}</span>
+          </nav>}
+
+      {workspace === "arrangement" && <>
       {sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
-        <section key={conflict.currentRevisionId} style={{ padding: 12, marginBottom: 16, border: "1px solid #b7791f", borderRadius: 8 }}>
+        <section key={conflict.currentRevisionId} className="conflict-banner">
           <strong>Cloud revision conflict</strong>
           <p style={{ margin: "6px 0" }}>Remote head: {conflict.currentRevisionId}. Choose which version should remain active.</p>
           <button onClick={() => void useCloud(conflict)}>Use cloud</button>{" "}
@@ -383,16 +433,16 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </section>
       ))}
 
-      {!activeClip && <section aria-label="Arrangement timeline" style={{ border: "1px solid #343943", borderRadius: 8, overflow: "auto" }}>
+      {!activeClip && <section aria-label="Arrangement timeline" className="canvas-panel">
         <div style={{ minWidth: 1120 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "260px repeat(16, minmax(48px, 1fr))", background: "#1a1e26", borderBottom: "1px solid #343943" }}>
+          <div className="timeline-ruler" style={{ display: "grid", gridTemplateColumns: "260px repeat(16, minmax(48px, 1fr))", borderBottom: "1px solid #343943" }}>
             <div style={{ padding: 10 }}>Tracks and mixer</div>
             {Array.from({ length: TOTAL_BARS }, (_, index) => <div key={index} style={{ padding: 10, borderLeft: "1px solid #2a2f38", textAlign: "center" }}>{index + 1}</div>)}
           </div>
           {project.tracks.map((value) => (
             <div key={value.id} style={{ display: "grid", gridTemplateColumns: "260px 1fr", minHeight: 96, borderBottom: "1px solid #2a2f38" }}>
-              <div style={{ padding: 12, background: "#1a1e26", display: "grid", gap: 8 }}>
-                <strong>{value.name}</strong>
+              <div className="track-header" style={{ padding: 12, display: "grid", gap: 8 }}>
+                <strong><span className="track-index">{project.tracks.indexOf(value) + 1}</span>{value.name}</strong>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => void execute(new SetTrackMutedEditorCommand(value.id, value.muted, !value.muted))}>M {value.muted ? "On" : "Off"}</button>
                   <button onClick={() => void execute(new SetTrackSoloEditorCommand(value.id, value.solo, !value.solo))}>S {value.solo ? "On" : "Off"}</button>
@@ -415,7 +465,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                 </label>
                 {renderDeviceControls(value)}
               </div>
-              <div style={{ position: "relative", minHeight: 96, backgroundImage: "repeating-linear-gradient(to right, transparent 0, transparent calc(6.25% - 1px), #252a33 calc(6.25% - 1px), #252a33 6.25%)" }}>
+              <div className="track-lane" style={{ position: "relative", minHeight: 96, backgroundImage: "repeating-linear-gradient(to right, transparent 0, transparent calc(6.25% - 1px), #252a33 calc(6.25% - 1px), #252a33 6.25%)" }}>
                 {value.clips.map((clip) => <div key={clip.id} style={clipStyle(clip, project)} onDoubleClick={() => clip.kind === "midi" && setActiveClip({ trackId: value.id, clipId: clip.id })}>
                   <strong>{clip.name}</strong>
                   <div style={{ fontSize: 12, opacity: 0.8 }}>{clip.kind === "midi" ? `${clip.notes.length} MIDI notes` : "Audio clip"}</div>
@@ -434,6 +484,36 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onExecute={execute}
         onClose={() => setActiveClip(null)}
       />}
+      </>}
+
+      {workspace === "generation" && <GenerationWorkspace
+        project={project}
+        onApply={applyGeneratedVariation}
+        onClose={() => setWorkspace("arrangement")}
+      />}
+        </section>
+
+        <aside className="studio-inspector" aria-label="Project inspector">
+          <div className="inspector-heading"><h2>Project inspector</h2><span className="inspector-chip">Live</span></div>
+          <dl className="property-list">
+            <div className="property-row"><dt>Project</dt><dd>{project.projectId}</dd></div>
+            <div className="property-row"><dt>Tracks</dt><dd>{project.tracks.length}</dd></div>
+            <div className="property-row"><dt>Length</dt><dd>{TOTAL_BARS} bars</dd></div>
+            <div className="property-row"><dt>Tempo</dt><dd>{project.tempoMap[0]?.bpm ?? 120} BPM</dd></div>
+            <div className="property-row"><dt>Sync</dt><dd>{syncLabel}</dd></div>
+          </dl>
+          <section className="inspector-card">
+            <strong>AI generation</strong>
+            <p>Create a variation from the active project while preserving its canonical revision history.</p>
+            <button className="generation-cta" onClick={() => setWorkspace("generation")}>Open generator</button>
+          </section>
+          <section className="inspector-card">
+            <strong>Publication readiness</strong>
+            <div className="adaptive-row"><span className="adaptive-orb" />Stage 12 artifacts supported</div>
+            <p>Certification evidence and immutable adaptive-package publication remain visible gates.</p>
+          </section>
+        </aside>
+      </div>
     </main>
   );
 }
