@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts",
+    "test": "node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts lib/audio/*.test.ts",
     "test:ui": "playwright test"
   },
   "dependencies": {
