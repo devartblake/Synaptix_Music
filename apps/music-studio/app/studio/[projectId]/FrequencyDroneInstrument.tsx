@@ -11,9 +11,10 @@ import {
 
 interface FrequencyDroneInstrumentProps {
   onUseForGeneration?(settings: FrequencyDroneSettings): void;
+  onAddToProject?(settings: FrequencyDroneSettings): void;
 }
 
-export function FrequencyDroneInstrument({ onUseForGeneration }: FrequencyDroneInstrumentProps) {
+export function FrequencyDroneInstrument({ onUseForGeneration, onAddToProject }: FrequencyDroneInstrumentProps) {
   const [settings, setSettings] = useState(DEFAULT_FREQUENCY_DRONE_SETTINGS);
   const [playing, setPlaying] = useState(false);
   const contextRef = useRef<AudioContext | null>(null);
@@ -109,6 +110,7 @@ export function FrequencyDroneInstrument({ onUseForGeneration }: FrequencyDroneI
     <div className="frequency-drone-actions">
       <button type="button" onClick={() => playing ? stop() : void play()}>{playing ? "Stop tone" : "Preview tone"}</button>
       {onUseForGeneration && <button type="button" onClick={() => onUseForGeneration(settings)}>Use as generation seed</button>}
+      {onAddToProject && <button type="button" onClick={() => onAddToProject(settings)}>Add as DAW device</button>}
     </div>
     <p className="apply-note">Presets are creative frequency references, not therapeutic claims. Keep monitoring levels comfortable, especially with headphones.</p>
   </section>;
