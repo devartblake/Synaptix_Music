@@ -1,3 +1,4 @@
+export { buildFrequencyDroneRenderPlan, renderFrequencyDroneMono, type FrequencyDroneRenderPlan } from "./frequency-drone-render.ts";
 export {
   FREQUENCY_DRONE_DEVICE_TYPE, DRONE_FREQUENCY_PARAMETER, DRONE_GAIN_PARAMETER,
   DRONE_HARMONICS_PARAMETER, DRONE_MOD_RATE_PARAMETER, DRONE_MOD_DEPTH_PARAMETER,
