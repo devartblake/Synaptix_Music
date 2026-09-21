@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectRevision } from "@synaptix/command-system";
 import { SetDeviceEnabledEditorCommand, SetDeviceParameterEditorCommand } from "@synaptix/command-system/device";
 import { AddTrackEditorCommand } from "@synaptix/command-system/track";
+import { AddTrackEditorCommand } from "@synaptix/command-system/track";
 import {
   EditorCommandHistory,
   SetLoopEnabledEditorCommand,
@@ -17,6 +18,7 @@ import {
 } from "@synaptix/command-system/editor";
 import {
   BrowserAudioEngine,
+  createFrequencyDroneTrack,
   createFrequencyDroneTrack,
   DEVICE_PARAMETER_DEFINITIONS,
   ENVELOPE_ATTACK_PARAMETER,
@@ -219,6 +221,11 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
     await queueRevision(result.project, result.revision, expected);
+  }
+
+  async function addFrequencyDrone(frequencyHz: number): Promise<void> {
+    await execute(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));
+    setWorkspace("arrangement");
   }
 
   async function addFrequencyDrone(frequencyHz: number): Promise<void> {
