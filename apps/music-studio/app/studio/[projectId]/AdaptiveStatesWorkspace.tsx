@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { RenderJobSchema, type RenderJob } from "@synaptix/render-contracts";
+import { RenderJobSchema, type AdaptiveDeviceParameterMapping, type RenderJob } from "@synaptix/render-contracts";
+import { FREQUENCY_DRONE_DEVICE_TYPE, DEVICE_PARAMETER_DEFINITIONS } from "@synaptix/daw-engine";
 import type { MusicProject } from "@synaptix/project-model";
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ const RenderJobListSchema = z.object({ jobs: z.array(RenderJobSchema) });
 export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicProject; onClose(): void }) {
   const [jobs, setJobs] = useState<RenderJob[]>([]);
   const [states, setStates] = useState<AdaptiveStateDraft[]>([]);
+  const [deviceMappings, setDeviceMappings] = useState<AdaptiveDeviceParameterMapping[]>([]);
   const [packageId] = useState(() => crypto.randomUUID());
   const [message, setMessage] = useState("Loading completed renders…");
 
@@ -54,6 +56,12 @@ export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicPr
     }]);
   }
 
+  const droneDevices = useMemo(() => project.tracks.flatMap((track) => track.devices.filter((device) => device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE).map((device) => ({ track, device }))), [project]);
+
+  function addDeviceMapping(stateId: string, trackId: string, deviceId: string, parameterId: string, value: number): void {
+    setDeviceMappings((current) => [...current, { mappingId: crypto.randomUUID(), stateId, trackId, deviceId, parameterId, value }]);
+  }
+
   function updateState(index: number, patch: Partial<AdaptiveStateDraft>): void {
     setStates((current) => current.map((state, candidate) => candidate === index ? { ...state, ...patch } : state));
   }
@@ -80,6 +88,22 @@ export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicPr
           <label>Intensity <output>{Math.round(state.intensity * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={state.intensity} onChange={(event) => updateState(index, { intensity: Number(event.target.value) })} /></label>
           <button onClick={() => setStates((current) => current.filter((_, candidate) => candidate !== index))}>Remove state</button>
         </fieldset>)}
+        {droneDevices.length > 0 && <section aria-labelledby="adaptive-device-mappings"><h3 id="adaptive-device-mappings">Adaptive device mappings</h3>
+          <p>Map a persisted drone parameter to a target value when an adaptive state becomes active.</p>
+          {states.map((state) => droneDevices.map(({track,device}) => <div key={state.stateId+device.id} className="adaptive-state-card">
+            <strong>{state.displayName} · {track.name}</strong>
+            <select aria-label="Drone parameter" defaultValue="droneGain" id={`parameter-${state.stateId}-${device.id}`}>
+              {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => definition.id.startsWith("drone")).map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}
+            </select>
+            <input aria-label="Target value" type="number" defaultValue={0.12} step={0.01} id={`value-${state.stateId}-${device.id}`} />
+            <button onClick={() => {
+              const parameter = (document.getElementById(`parameter-${state.stateId}-${device.id}`) as HTMLSelectElement).value;
+              const value = Number((document.getElementById(`value-${state.stateId}-${device.id}`) as HTMLInputElement).value);
+              addDeviceMapping(state.stateId, track.id, device.id, parameter, value);
+            }}>Add mapping</button>
+          </div>))}
+          {deviceMappings.length > 0 && <details><summary>{deviceMappings.length} device mappings</summary><pre>{JSON.stringify(deviceMappings, null, 2)}</pre></details>}
+        </section>}
         {manifest && <details className="adaptive-manifest"><summary>Preview validated package manifest</summary><pre>{JSON.stringify(manifest, null, 2)}</pre></details>}
       </section>
       <aside className="certification-gate" aria-label="Publication certification gate">
