@@ -25,6 +25,7 @@ import {
   type GenerationJobRealtimeSubscription
 } from "../../../src/lib/generation-job-realtime";
 import { pollGenerationJob, submitGenerationJob } from "../../../src/lib/platform-api";
+import { FrequencyDroneInstrument } from "./FrequencyDroneInstrument";
 import { BrowserAppliedGenerationJobRegistry } from "../../../src/lib/apply-completed-generation-job";
 
 interface GenerationWorkspaceProps {
@@ -190,6 +191,7 @@ export function GenerationWorkspace({ project, onApply, onClose }: GenerationWor
     </header>
 
     <div className="generation-grid">
+      <div><FrequencyDroneInstrument onUseForGeneration={(tone) => { setBrief(`Build a musical variation around a ${tone.frequencyHz} Hz ${tone.waveform} drone as a tonal texture. Preserve the frequency as an oscillator layer rather than a health or therapeutic claim.`); setStatusMessage(`${tone.frequencyHz} Hz selected as a procedural-generation seed.`); }} />
       <form className="generation-form" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <label>Creative brief
           <textarea value={brief} rows={3} onChange={(event) => setBrief(event.target.value)} />
@@ -210,7 +212,7 @@ export function GenerationWorkspace({ project, onApply, onClose }: GenerationWor
         <label>Complexity <output>{Math.round(form.complexity * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={form.complexity} onChange={(event) => updateForm("complexity", Number(event.target.value))} /></label>
         <label>Seed<input type="number" min="0" max="2147483647" value={form.seed} onChange={(event) => updateForm("seed", event.target.valueAsNumber)} /></label>
         <button className="generation-submit" type="submit" disabled={submitting}>{submitting ? "Generating…" : "Generate variation"}</button>
-      </form>
+      </form></div>
 
       <section className="generation-preview" aria-label="Generated variation preview">
         <div className="job-status" role="status" aria-live="polite" aria-atomic="true"><span aria-hidden="true" className={`status-dot ${job?.status === "failed" || job?.status === "deadLetter" ? "danger" : ""}`} /><div><strong>{job ? job.status : "Not started"}</strong><p>{statusMessage}</p><p className="realtime-status">Live updates: {realtimeState === "polling" ? "durable polling" : realtimeState}</p></div></div>
