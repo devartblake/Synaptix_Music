@@ -298,3 +298,29 @@ test("normalization scales the output to the requested peak level", () => {
     `peak ${peak} should be close to ${expectedPeak}`
   );
 });
+
+test("frequency drone devices render signal in master and stems", () => {
+  const drone = noteTrack("drone-1", "Frequency Drone", "synaptix-frequency-drone", { clips: [] });
+  drone.devices[0]!.parameters = [
+    { id: "droneFrequencyHz", value: 528 }, { id: "droneGain", value: 0.12 },
+    { id: "droneHarmonics", value: 3 }, { id: "droneModulationRateHz", value: 0.2 },
+    { id: "droneModulationDepth", value: 0.1 }, { id: "droneFilterHz", value: 12000 },
+    { id: "droneStereoOffsetHz", value: 0 }
+  ];
+  const master = renderProjectOffline(project([drone]), manifest());
+  const stem = renderProjectOffline(project([drone]), manifest({ scope: { kind: "stems", trackIds: ["drone-1"] } }));
+  const hasSignal = (bytes: Buffer) => Array.from({length:(bytes.length-44)/4},(_,frame)=>readLeftSample(bytes,frame)).some(value=>value!==0);
+  assert.ok(hasSignal(master.artifacts[0]!.bytes));
+  assert.ok(hasSignal(stem.artifacts[0]!.bytes));
+  assert.equal(stem.artifacts[0]?.metadata.trackId, "drone-1");
+});
+
+test("muted frequency drone is silent in master but explicit stem remains audible", () => {
+  const drone = noteTrack("drone-1", "Frequency Drone", "synaptix-frequency-drone", { clips: [], muted: true });
+  drone.devices[0]!.parameters = [{ id: "droneFrequencyHz", value: 396 }, { id: "droneGain", value: 0.1 }];
+  const master = renderProjectOffline(project([drone]), manifest());
+  const stem = renderProjectOffline(project([drone]), manifest({ scope: { kind: "stems", trackIds: ["drone-1"] } }));
+  const masterSignal = Array.from({length:(master.artifacts[0]!.bytes.length-44)/4},(_,frame)=>readLeftSample(master.artifacts[0]!.bytes,frame)).some(value=>value!==0);
+  const stemSignal = Array.from({length:(stem.artifacts[0]!.bytes.length-44)/4},(_,frame)=>readLeftSample(stem.artifacts[0]!.bytes,frame)).some(value=>value!==0);
+  assert.equal(masterSignal,false); assert.equal(stemSignal,true);
+});
