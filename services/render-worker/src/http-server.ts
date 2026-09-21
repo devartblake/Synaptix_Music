@@ -33,19 +33,37 @@ function isRenderJobStatus(value: string | null): value is RenderJobStatus {
   return value !== null && ["queued", "running", "completed", "failed", "cancelled", "dead_letter"].includes(value);
 }
 
+/** Anything that can mint a time-limited download URL for a stored artifact. */
+export interface ArtifactUrlResolver {
+  presignedDownloadUrl(renderId: string, fileName: string): Promise<string>;
+}
+
+export interface RenderJobHttpServerOptions {
+  /** Omitted when artifacts are stored locally, which has no download URL. */
+  artifactUrls?: ArtifactUrlResolver;
+}
+
 /**
  * Private, server-to-server HTTP API for the render-job control plane.
  * Not internet-facing: reached only by the Next.js BFF, which owns end-user
  * authentication (matching how the Python generation-api service is a
  * private dependency, not directly exposed to the browser).
  */
-export function createRenderJobHttpServer(store: PostgresRenderJobStore): Server {
+export function createRenderJobHttpServer(
+  store: PostgresRenderJobStore,
+  options: RenderJobHttpServerOptions = {}
+): Server {
   return createServer((req, res) => {
-    void handleRequest(store, req, res);
+    void handleRequest(store, options, req, res);
   });
 }
 
-async function handleRequest(store: PostgresRenderJobStore, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleRequest(
+  store: PostgresRenderJobStore,
+  options: RenderJobHttpServerOptions,
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const correlationId = req.headers["x-correlation-id"]?.toString() ?? crypto.randomUUID();
   const url = new URL(req.url ?? "/", "http://localhost");
   const segments = url.pathname.split("/").filter(Boolean);
@@ -76,11 +94,51 @@ async function handleRequest(store: PostgresRenderJobStore, req: IncomingMessage
       const job = await store.cancel(segments[1]!);
       return sendJson(res, 200, job);
     }
+    if (
+      req.method === "GET" && segments.length === 5 && segments[0] === "render-jobs"
+      && segments[2] === "artifacts" && segments[4] === "download-url"
+    ) {
+      await handleDownloadUrl(store, options, res, segments[1]!, segments[3]!, correlationId);
+      return;
+    }
 
     sendError(res, 404, "not_found", "Route not found.", correlationId);
   } catch (error) {
     handleError(res, error, correlationId);
   }
+}
+
+async function handleDownloadUrl(
+  store: PostgresRenderJobStore,
+  options: RenderJobHttpServerOptions,
+  res: ServerResponse,
+  jobId: string,
+  artifactId: string,
+  correlationId: string
+): Promise<void> {
+  const job = await store.get(jobId);
+  if (!job) return sendError(res, 404, "render_job_not_found", `Render job '${jobId}' was not found.`, correlationId);
+
+  const artifact = job.result?.artifacts.find((candidate) => candidate.artifactId === artifactId);
+  if (!artifact) {
+    return sendError(res, 404, "render_artifact_not_found", `Artifact '${artifactId}' was not found on job '${jobId}'.`, correlationId);
+  }
+  if (!options.artifactUrls) {
+    return sendError(
+      res, 501, "artifact_storage_not_configured",
+      "Object storage is not configured; artifacts have no download URL.", correlationId
+    );
+  }
+
+  const url = await options.artifactUrls.presignedDownloadUrl(artifact.renderId, artifact.fileName);
+  sendJson(res, 200, {
+    artifactId: artifact.artifactId,
+    fileName: artifact.fileName,
+    mediaType: artifact.mediaType,
+    checksumSha256: artifact.checksumSha256,
+    byteLength: artifact.byteLength,
+    url
+  });
 }
 
 async function handleSubmit(store: PostgresRenderJobStore, req: IncomingMessage, res: ServerResponse, correlationId: string): Promise<void> {
