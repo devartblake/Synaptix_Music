@@ -1,3 +1,11 @@
+export {
+  FREQUENCY_DRONE_DEVICE_TYPE, DRONE_FREQUENCY_PARAMETER, DRONE_GAIN_PARAMETER,
+  DRONE_HARMONICS_PARAMETER, DRONE_MOD_RATE_PARAMETER, DRONE_MOD_DEPTH_PARAMETER,
+  DRONE_FILTER_PARAMETER, DRONE_STEREO_OFFSET_PARAMETER,
+  DEFAULT_FREQUENCY_DRONE_DEVICE_SETTINGS, createFrequencyDroneTrack,
+  frequencyDroneDevices, resolveFrequencyDroneDevice,
+  type FrequencyDroneDeviceSettings
+} from "./frequency-drone.ts";
 export { BrowserProductionAudioGraph } from "./browser-production-graph.ts";
 export {
   meterSnapshot,
