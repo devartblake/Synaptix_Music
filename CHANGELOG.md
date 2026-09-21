@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added the first Stage 13 Adaptive States authoring workspace with completed-render discovery, state/intensity controls, validated manifest preview, and an explicit fail-closed Stage 12 publication gate.
 - Added the first studio UI modernization slice: a responsive, timeline-first three-panel shell, semantic dark-theme tokens, project synchronization and revision status, and restrained SynaptixPlay adaptive-audio accents.
 - Added visible, explicitly gated entry points for generation, adaptive-state authoring, and publication workflows without presenting unfinished actions as functional.
 - Added a production-connected generation workspace with creative-brief interpretation, presets, structured controls, idempotent generation-job submission, durable polling/reload recovery, proposal preview, duplicate-application protection, and reversible apply-to-project behavior.
