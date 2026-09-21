@@ -19,6 +19,8 @@ import {
   BrowserAudioEngine,
   createFrequencyDroneTrack,
   DEVICE_PARAMETER_DEFINITIONS,
+  FREQUENCY_DRONE_DEVICE_TYPE,
+  resolveFrequencyDroneDevice,
   ENVELOPE_ATTACK_PARAMETER,
   ENVELOPE_DECAY_PARAMETER,
   ENVELOPE_RELEASE_PARAMETER,
@@ -315,7 +317,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     await execute(new SetDeviceParameterEditorCommand(trackId, deviceId, parameterId, gesture.initial, next));
   }
 
-  function formatParameterValue(unit: "hz" | "seconds" | "ratio", value: number): string {
+  function formatParameterValue(unit: "hz" | "seconds" | "ratio" | "count", value: number): string {
+    if (unit === "count") return String(Math.round(value));
     if (unit === "hz") return `${Math.round(value)} Hz`;
     if (unit === "seconds") return `${value.toFixed(3)} s`;
     return value.toFixed(2);
@@ -324,16 +327,18 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   function renderDeviceControls(track: Track): React.ReactNode {
     const device = primaryDevice(track);
     if (!device) return null;
-    const settings = resolveEffectiveInstrumentSettings(track);
+    const isDrone = device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE;
+    const settings = isDrone ? resolveFrequencyDroneDevice(device) : resolveEffectiveInstrumentSettings(track);
 
     return (
       <div style={{ display: "grid", gap: 6, borderTop: "1px solid #2a2f38", paddingTop: 8, marginTop: 4 }}>
         <button onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
           Device {device.enabled ? "On" : "Off"}
         </button>
-        {DEVICE_PARAMETER_DEFINITIONS.map((definition) => {
-          const value = settings[PARAMETER_SETTINGS_KEY[definition.id]];
-          const step = definition.unit === "hz" ? 10 : definition.unit === "ratio" ? 0.01 : 0.001;
+        {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone")).map((definition) => {
+          const droneKeys: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
+          const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
+          const step = definition.unit === "count" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : 10) : definition.unit === "ratio" ? 0.01 : 0.001;
           return (
             <label key={definition.id} style={{ display: "grid", gridTemplateColumns: "80px 1fr 60px", gap: 6, fontSize: 12 }}>
               {definition.label}
