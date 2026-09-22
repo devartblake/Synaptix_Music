@@ -5,6 +5,7 @@ from pydantic import Field
 from app.models.project import (
     AssetReference,
     Clip,
+    DeviceParameter,
     GenerationMetadata,
     Marker,
     MusicProject,
@@ -12,7 +13,6 @@ from app.models.project import (
     StrictModel,
     TempoEvent,
     TimeSignatureEvent,
-    Track,
     TransportSettings,
 )
 
@@ -37,7 +37,7 @@ class DeviceV2(StrictModel):
     deviceType: str = Field(min_length=1)
     deviceVersion: str = Field(min_length=1)
     enabled: bool
-    parameters: list
+    parameters: list[DeviceParameter]
     plugin: PluginReference
     pluginState: PluginStateEnvelope | None
 
