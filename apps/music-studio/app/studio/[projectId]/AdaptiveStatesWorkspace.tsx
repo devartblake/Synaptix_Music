@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "../../../components/ui/StudioControls";
+
 import { useEffect, useMemo, useState } from "react";
 
 import { RenderJobSchema, type AdaptiveDeviceParameterMapping, type RenderJob } from "@synaptix/render-contracts";
@@ -69,14 +71,14 @@ export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicPr
   return <section className="adaptive-workspace" aria-label="Adaptive States authoring workspace">
     <header className="generation-header">
       <div><span className="eyebrow">SynaptixPlay adaptive audio</span><h2>Author adaptive states</h2><p>Compose runtime states from immutable completed render candidates.</p></div>
-      <button onClick={onClose}>Back to arrangement</button>
+      <Button onClick={onClose}>Back to arrangement</Button>
     </header>
     <div className="adaptive-authoring-grid">
       <section className="adaptive-candidates" aria-labelledby="render-candidates-title">
         <h3 id="render-candidates-title">Render candidates</h3><p>{message}</p>
         {eligible.length === 0 ? <div className="preview-empty"><strong>No eligible master renders</strong><p>Complete a master render for this project before authoring a state.</p></div> : eligible.map((job) => <article className="adaptive-render-card" key={job.jobId}>
           <div><strong>{job.manifest.revisionId}</strong><small>{job.result?.artifacts.length} artifacts · {job.manifest.output.format.toUpperCase()}</small></div>
-          <button onClick={() => addState(job)} disabled={states.some((state) => state.jobId === job.jobId)}>Add state</button>
+          <Button onClick={() => addState(job)} disabled={states.some((state) => state.jobId === job.jobId)}>Add state</Button>
         </article>)}
       </section>
       <section className="adaptive-state-editor" aria-labelledby="adaptive-states-title">
@@ -86,7 +88,7 @@ export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicPr
           <label>Name<input value={state.displayName} onChange={(event) => updateState(index, { displayName: event.target.value })} /></label>
           <label>State ID<input value={state.stateId} onChange={(event) => updateState(index, { stateId: event.target.value })} /></label>
           <label>Intensity <output>{Math.round(state.intensity * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={state.intensity} onChange={(event) => updateState(index, { intensity: Number(event.target.value) })} /></label>
-          <button onClick={() => setStates((current) => current.filter((_, candidate) => candidate !== index))}>Remove state</button>
+          <Button onClick={() => setStates((current) => current.filter((_, candidate) => candidate !== index))}>Remove state</Button>
         </fieldset>)}
         {droneDevices.length > 0 && <section aria-labelledby="adaptive-device-mappings"><h3 id="adaptive-device-mappings">Adaptive device mappings</h3>
           <p>Map a persisted drone parameter to a target value when an adaptive state becomes active.</p>
@@ -96,11 +98,11 @@ export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicPr
               {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => definition.id.startsWith("drone")).map((definition) => <option key={definition.id} value={definition.id}>{definition.label}</option>)}
             </select>
             <input aria-label="Target value" type="number" defaultValue={0.12} step={0.01} id={`value-${state.stateId}-${device.id}`} />
-            <button onClick={() => {
+            <Button onClick={() => {
               const parameter = (document.getElementById(`parameter-${state.stateId}-${device.id}`) as HTMLSelectElement).value;
               const value = Number((document.getElementById(`value-${state.stateId}-${device.id}`) as HTMLInputElement).value);
               addDeviceMapping(state.stateId, track.id, device.id, parameter, value);
-            }}>Add mapping</button>
+            }}>Add mapping</Button>
           </div>))}
           {deviceMappings.length > 0 && <details><summary>{deviceMappings.length} device mappings</summary><pre>{JSON.stringify(deviceMappings, null, 2)}</pre></details>}
         </section>}
@@ -111,7 +113,7 @@ export function AdaptiveStatesWorkspace({ project, onClose }: { project: MusicPr
         <h3>Stage 12 evidence required</h3>
         <p>This workspace can author and validate a draft. Publishing remains disabled until a passing staging certification report and matching artifact-manifest checksum are available.</p>
         <dl><div><dt>Draft manifest</dt><dd>{manifest ? "Valid" : "Incomplete"}</dd></div><div><dt>Certification report</dt><dd>Missing</dd></div><div><dt>Artifact manifest</dt><dd>Not verified</dd></div></dl>
-        <button disabled>Publish immutable version</button>
+        <Button disabled>Publish immutable version</Button>
       </aside>
     </div>
   </section>;

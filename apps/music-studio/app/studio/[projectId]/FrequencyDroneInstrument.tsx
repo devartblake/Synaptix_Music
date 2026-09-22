@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "../../../components/ui/StudioControls";
+
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_FREQUENCY_DRONE_SETTINGS,
@@ -108,9 +110,9 @@ export function FrequencyDroneInstrument({ onUseForGeneration, onAddToProject }:
     <label>Output <output>{Math.round(settings.gain * 100)}%</output><input type="range" min="0" max="0.35" step="0.01" value={settings.gain} onChange={(event) => patch({ gain: Number(event.target.value) })} /></label>
     <label>Stereo / binaural offset <output>{settings.stereoDetuneHz.toFixed(1)} Hz</output><input type="range" min="0" max="40" step="0.5" value={settings.stereoDetuneHz} onChange={(event) => patch({ stereoDetuneHz: Number(event.target.value) })} /></label>
     <div className="frequency-drone-actions">
-      <button type="button" onClick={() => playing ? stop() : void play()}>{playing ? "Stop tone" : "Preview tone"}</button>
-      {onUseForGeneration && <button type="button" onClick={() => onUseForGeneration(settings)}>Use as generation seed</button>}
-      {onAddToProject && <button type="button" onClick={() => onAddToProject(settings)}>Add as DAW device</button>}
+      <Button type="button" onClick={() => playing ? stop() : void play()}>{playing ? "Stop tone" : "Preview tone"}</Button>
+      {onUseForGeneration && <Button type="button" onClick={() => onUseForGeneration(settings)}>Use as generation seed</Button>}
+      {onAddToProject && <Button type="button" onClick={() => onAddToProject(settings)}>Add as DAW device</Button>}
     </div>
     <p className="apply-note">Presets are creative frequency references, not therapeutic claims. Keep monitoring levels comfortable, especially with headphones.</p>
   </section>;

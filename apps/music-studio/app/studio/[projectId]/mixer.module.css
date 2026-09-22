@@ -1,0 +1,120 @@
+.drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding-top: 8px;
+  overflow: auto;
+  background: var(--sx-surface);
+  border-top: 1px solid var(--sx-primary);
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 35%);
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--sx-line);
+}
+.header h2 {
+  font-size: 15px;
+  margin: 0;
+}
+.header h2:focus-visible,
+.channels:focus-visible {
+  outline: 2px solid var(--sx-primary-strong);
+  outline-offset: -2px;
+}
+.header p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: var(--sx-text-muted);
+}
+.header .saveStatus {
+  margin-left: auto;
+}
+.channels {
+  display: flex;
+  gap: 1px;
+  padding: 12px;
+  overflow-x: auto;
+}
+.channel {
+  flex: 0 0 184px;
+  min-width: 0;
+  padding: 12px;
+  border-right: 1px solid var(--sx-line);
+}
+.channel h3 {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.channel h3 > span {
+  color: var(--sx-primary-strong);
+  font-size: 10px;
+}
+.switches {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.switches button {
+  flex: 1;
+  font-size: 11px;
+}
+.switches button[aria-pressed="true"] {
+  background: rgb(109 124 255 / 25%);
+  border-color: var(--sx-primary-strong);
+  color: #c8ceff;
+}
+.master {
+  flex: 1 0 220px;
+  max-width: 330px;
+  padding: 12px 20px;
+}
+.master > p {
+  font-size: 10px;
+  color: var(--sx-text-muted);
+}
+.master dl {
+  margin: 20px 0 0;
+  font-size: 11px;
+}
+.master dl > div {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.master dt {
+  color: var(--sx-text-muted);
+}
+.master dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.error {
+  margin: 12px 20px;
+  color: #ff9daa;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 14px;
+  }
+  .header > button {
+    margin-left: auto;
+  }
+  .header .saveStatus {
+    order: 3;
+    width: 100%;
+    margin: 0;
+  }
+}

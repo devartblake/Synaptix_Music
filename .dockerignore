@@ -8,3 +8,10 @@
 .env.*
 !.env.example
 stage12-certification-report.json
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+target
+**/test-results
+**/playwright-report

@@ -201,6 +201,33 @@ if (!connectionString) {
     assert.equal((await secondCancel.json()).code, "render_job_conflict");
   });
 
+  test("artifact delivery returns 404 for an unknown job", async () => {
+    const response = await fetch(
+      `${baseUrl}/render-jobs/00000000-0000-4000-8000-000000000000/artifacts/00000000-0000-4000-8000-000000000000/download-url`
+    );
+    assert.equal(response.status, 404);
+    assert.equal((await response.json()).code, "render_job_not_found");
+  });
+
+  test("artifact delivery returns a retryable 503 when storage is not configured", async () => {
+    const serverWithoutStorage = createRenderJobHttpServer(store);
+    await new Promise<void>((resolve) => serverWithoutStorage.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = serverWithoutStorage.address() as AddressInfo;
+      const response = await fetch(
+        `http://127.0.0.1:${address.port}/render-jobs/00000000-0000-4000-8000-000000000000/artifacts/00000000-0000-4000-8000-000000000000/download-url`
+      );
+      assert.equal(response.status, 503);
+      const body = await response.json();
+      assert.equal(body.code, "artifact_delivery_unavailable");
+      assert.equal(body.retryable, true);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        serverWithoutStorage.close((error) => error ? reject(error) : resolve())
+      );
+    }
+  });
+
   test("unknown routes return a 404 envelope", async () => {
     const response = await fetch(`${baseUrl}/nonexistent`);
     assert.equal(response.status, 404);

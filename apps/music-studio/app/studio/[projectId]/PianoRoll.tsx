@@ -1,5 +1,7 @@
 "use client";
 
+import { Button, Panel, Toolbar } from "../../../components/ui/StudioControls";
+
 import { useMemo, useRef, useState } from "react";
 
 import type { EditorCommand } from "@synaptix/command-system/editor";
@@ -170,20 +172,20 @@ function PianoRollEditor({ trackId, clip, onExecute, onClose }: {
 
   const marqueeRect: Rectangle | null = marquee ? rectangleFromPoints(marquee.start, marquee.current) : null;
 
-  return <section aria-label="Piano roll editor" style={{ marginTop: 18, border: "1px solid #343943", borderRadius: 8, background: "#14171d" }}>
-    <header style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: 12, borderBottom: "1px solid #343943" }}>
-      <strong>{clip.name}</strong><button onClick={onClose}>Arrangement</button>
+  return <Panel aria-label="Piano roll editor" style={{ marginTop: 18 }}>
+    <Toolbar>
+      <strong>{clip.name}</strong><Button onClick={onClose}>Arrangement</Button>
       <label>Grid <select value={gridTicks} onChange={(event) => setGridTicks(Number(event.target.value))}>{PIANO_ROLL_GRIDS.map((grid) => <option key={grid.label} value={grid.ticks}>{grid.label}</option>)}</select></label>
       <label><input type="checkbox" checked={snapEnabled} onChange={(event) => setSnapEnabled(event.target.checked)} /> Snap</label>
-      <button disabled={!selectedIds.length} onClick={() => void onExecute(new QuantizeMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))}>Quantize</button>
-      <button disabled={!selectedIds.length} onClick={() => void onExecute(new DuplicateMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))}>Duplicate</button>
-      <button disabled={!selectedIds.length} onClick={() => void onExecute(new TransposeMidiNotesCommand(trackId, clip.id, selectedIds, -1))}>−1</button>
-      <button disabled={!selectedIds.length} onClick={() => void onExecute(new TransposeMidiNotesCommand(trackId, clip.id, selectedIds, 1))}>+1</button>
-      <button disabled={!selectedIds.length} onClick={() => void removeSelected()}>Delete</button>
+      <Button disabled={!selectedIds.length} onClick={() => void onExecute(new QuantizeMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))}>Quantize</Button>
+      <Button disabled={!selectedIds.length} onClick={() => void onExecute(new DuplicateMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))}>Duplicate</Button>
+      <Button disabled={!selectedIds.length} onClick={() => void onExecute(new TransposeMidiNotesCommand(trackId, clip.id, selectedIds, -1))}>−1</Button>
+      <Button disabled={!selectedIds.length} onClick={() => void onExecute(new TransposeMidiNotesCommand(trackId, clip.id, selectedIds, 1))}>+1</Button>
+      <Button disabled={!selectedIds.length} onClick={() => void removeSelected()}>Delete</Button>
       <label>H zoom <input type="range" min={0.5} max={4} step={0.25} value={horizontalZoom} onChange={(event) => setHorizontalZoom(clampZoom(Number(event.target.value)))} /></label>
       <label>V zoom <input type="range" min={0.5} max={3} step={0.25} value={verticalZoom} onChange={(event) => setVerticalZoom(clampZoom(Number(event.target.value), 0.5, 3))} /></label>
       <small>{selectedIds.length} selected</small>
-    </header>
+    </Toolbar>
     <div style={{ overflow: "auto", maxHeight: 620 }}><div style={{ display: "grid", gridTemplateColumns: `72px ${editorWidth}px`, width: 72 + editorWidth }}>
       <div aria-hidden="true">{Array.from({ length: rows }, (_, index) => { const pitch = HIGHEST_PITCH - index; const black = [1, 3, 6, 8, 10].includes(pitch % 12); return <div key={pitch} style={{ height: rowHeight, paddingRight: 6, textAlign: "right", fontSize: 11, background: black ? "#20242c" : "#e7e9ee", color: black ? "#fff" : "#111", borderBottom: "1px solid #333", boxSizing: "border-box" }}>{noteName(pitch)}</div>; })}</div>
       <div onDoubleClick={(event) => void addNote(event)} onPointerDown={beginMarquee} onPointerMove={moveMarquee} onPointerUp={endMarquee} style={{ position: "relative", width: editorWidth, height: editorHeight, backgroundColor: "#171a20", backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${rowHeight - 1}px, #292e37 ${rowHeight - 1}px, #292e37 ${rowHeight}px), repeating-linear-gradient(to right, transparent 0, transparent calc(${(gridTicks / clip.range.durationTicks) * 100}% - 1px), #2d3340 calc(${(gridTicks / clip.range.durationTicks) * 100}% - 1px), #2d3340 ${(gridTicks / clip.range.durationTicks) * 100}%)` }}>
@@ -192,5 +194,5 @@ function PianoRollEditor({ trackId, clip, onExecute, onClose }: {
       </div>
     </div></div>
     <footer style={{ padding: 12, borderTop: "1px solid #343943" }}><label>Velocity lane <input type="range" min={1} max={127} value={velocity} onChange={(event) => setVelocity(Number(event.target.value))} onPointerUp={() => selectedIds.length > 0 && void onExecute(new SetMidiVelocityCommand(trackId, clip.id, selectedIds, velocity))} style={{ width: "100%" }} /></label></footer>
-  </section>;
+  </Panel>;
 }

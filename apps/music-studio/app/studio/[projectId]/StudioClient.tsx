@@ -1,5 +1,9 @@
 "use client";
 
+import { Badge, Button, DisclosureMenu, ViewTabs } from "../../../components/ui/StudioControls";
+import { ResizeHandle } from "../../../components/ui/ResizeHandle";
+import { useStudioLayout } from "../../../lib/editor/use-studio-layout";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectRevision } from "@synaptix/command-system";
@@ -31,7 +35,13 @@ import {
   REVERB_SEND_PARAMETER
 } from "@synaptix/daw-engine";
 import type { GenerationProposal } from "@synaptix/generator-contracts";
-import { createEmptyProject, type Clip, type MusicProject, type Track } from "@synaptix/project-model";
+import {
+  createEmptyProject,
+  type Clip,
+  type CreateEmptyProjectOptions,
+  type MusicProject,
+  type Track
+} from "@synaptix/project-model";
 import { IndexedDbProjectStorage, LocalProjectRepository } from "@synaptix/project-storage";
 import {
   HybridProjectRepository,
@@ -46,6 +56,7 @@ import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/p
 import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
 import { MasterMeter } from "./MasterMeter";
+import { MixerDrawer } from "./MixerDrawer";
 import { PianoRoll } from "./PianoRoll";
 
 const TRACK_NAMES = ["Drums", "Bass", "Harmony", "Lead Melody"] as const;
@@ -72,8 +83,17 @@ function midiClip(id: string, name: string, pitches: readonly number[]): Clip {
   };
 }
 
-function createStarterProject(projectId: string): MusicProject {
-  const project = createEmptyProject(projectId, { name: "Synaptix Generated Arrangement" });
+// The starter project renders during SSR, so the first one has to be byte-identical on the
+// server and the client; the mount effect replaces it with a freshly stamped project when
+// storage has nothing for this id.
+const SEED_TIMESTAMP = "2026-01-01T00:00:00.000Z";
+
+function seedOptions(projectId: string): CreateEmptyProjectOptions {
+  return { revisionId: `${projectId}-seed-revision`, now: SEED_TIMESTAMP };
+}
+
+function createStarterProject(projectId: string, options: CreateEmptyProjectOptions = {}): MusicProject {
+  const project = createEmptyProject(projectId, { name: "Synaptix Generated Arrangement", ...options });
   const patterns = [[36, 46, 38, 42], [45, 45, 48, 50], [57, 60, 64, 67], [72, 76, 79, 77]] as const;
   project.transport.loopRange = { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: TOTAL_BARS * TICKS_PER_BAR };
   project.tracks = TRACK_NAMES.map<Track>((name, index) => ({
@@ -133,7 +153,7 @@ type ActiveClip = { trackId: string; clipId: string };
 type Workspace = "arrangement" | "generation" | "adaptive";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
-  const [project, setProject] = useState(() => createStarterProject(projectId));
+  const [project, setProject] = useState(() => createStarterProject(projectId, seedOptions(projectId)));
   const [playing, setPlaying] = useState(false);
   const [storageStatus, setStorageStatus] = useState("Loading project…");
   const [hydrated, setHydrated] = useState(false);
@@ -141,6 +161,21 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [historyVersion, setHistoryVersion] = useState(0);
   const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
   const [workspace, setWorkspace] = useState<Workspace>("arrangement");
+  const [mixerOpen, setMixerOpen] = useState(false);
+  const mixerToggleRef = useRef<HTMLButtonElement>(null);
+  const panelLayout = useStudioLayout();
+
+  useEffect(() => {
+    try { setMixerOpen(localStorage.getItem("synaptix-music:mixer-open:v1") === "true"); }
+    catch { /* Layout preferences are optional when browser storage is unavailable. */ }
+  }, []);
+
+  function changeMixerOpen(open: boolean) {
+    setMixerOpen(open);
+    try { localStorage.setItem("synaptix-music:mixer-open:v1", String(open)); }
+    catch { /* The mixer remains usable without persisted preferences. */ }
+    if (!open) mixerToggleRef.current?.focus();
+  }
   const engine = useMemo(() => new BrowserAudioEngine(), []);
   const localRef = useRef<LocalProjectRepository | null>(null);
   const hybridRef = useRef<HybridProjectRepository | null>(null);
@@ -165,6 +200,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         setProject(stored);
         setStorageStatus("Loaded local/cloud project");
       } else {
+        setProject(createStarterProject(projectId));
         setStorageStatus("New local project");
       }
       historyRef.current.clear();
@@ -223,7 +259,10 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     await queueRevision(result.project, result.revision, expected);
   }
 
-  async function addFrequencyDrone(frequencyHz: number): Promise<void> {\n    await execute(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));\n    setWorkspace("arrangement");\n  }
+  async function addFrequencyDrone(frequencyHz: number): Promise<void> {
+    await execute(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));
+    setWorkspace("arrangement");
+  }
 
   async function applyGeneratedVariation(proposal: GenerationProposal, jobId: string): Promise<void> {
     await execute(new ApplyGeneratedArrangementEditorCommand(proposal, jobId));
@@ -332,9 +371,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
 
     return (
       <div style={{ display: "grid", gap: 6, borderTop: "1px solid #2a2f38", paddingTop: 8, marginTop: 4 }}>
-        <button onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
+        <Button onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
           Device {device.enabled ? "On" : "Off"}
-        </button>
+        </Button>
         {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone")).map((definition) => {
           const droneKeys: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
           const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
@@ -369,23 +408,24 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const syncTone = sync.state === "conflict" || sync.error ? "danger" : sync.state === "offline" ? "warning" : "";
 
   return (
-    <main className="studio-shell">
+    <main className={`studio-shell${mixerOpen ? " studio-shell-mixer-open" : ""}`}
+      style={{ "--studio-mixer-height": `${panelLayout.mixerHeight}px` } as React.CSSProperties}>
       <header className="studio-topbar">
         <div className="studio-brand">
-          <div className="studio-mark" aria-hidden="true">S</div>
+          <a className="studio-home" href="/" aria-label="Back to projects"><span className="studio-mark" aria-hidden="true">S</span><span>Projects</span></a>
           <div className="studio-title">
             <h1>{project.metadata.name}</h1>
             <small>{project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus}</small>
           </div>
         </div>
         <div className="transport" aria-label="Transport controls">
-          <button className="transport-primary" onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</button>
-          <button onClick={stop}>Stop</button>
-          <button disabled={!history.canUndo} onClick={() => void undo()}>Undo</button>
-          <button disabled={!history.canRedo} onClick={() => void redo()}>Redo</button>
-          <button onClick={() => void execute(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}>
+          <Button className="transport-primary" onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</Button>
+          <Button onClick={stop}>Stop</Button>
+          <Button disabled={!history.canUndo} onClick={() => void undo()}>Undo</Button>
+          <Button disabled={!history.canRedo} onClick={() => void redo()}>Redo</Button>
+          <Button onClick={() => void execute(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}>
             Loop: {project.transport.loopEnabled ? "On" : "Off"}
-          </button>
+          </Button>
           <label>Tempo <input type="number" min={20} max={300} value={project.tempoMap[0]?.bpm ?? 120}
             onChange={(event) => {
               const raw = event.currentTarget.value;
@@ -394,7 +434,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               if (raw === "" || !Number.isFinite(next) || next < 20 || next > 300 || next === current) return;
               void execute(new SetTempoEditorCommand(current, next));
             }} style={{ width: 64 }} /></label>
-          <button onClick={() => void coordinatorRef.current?.drain()}>Sync now</button>
+          <Button onClick={() => void coordinatorRef.current?.drain()}>Sync now</Button>
         </div>
         <div className="studio-status">
           <span className="status-pill"><span className={`status-dot ${syncTone}`} />{syncLabel}</span>
@@ -402,20 +442,46 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      <div className="studio-grid">
-        <aside className="studio-sidebar" aria-label="Studio navigation">
+      <div className="studio-viewbar" aria-label="Workspace and panels">
+        <label>Workspace <select value={workspace} onChange={(event) => setWorkspace(event.target.value as Workspace)}>
+          <option value="arrangement">Arrangement</option>
+          <option value="generation">Generate</option>
+          <option value="adaptive">Adaptive states</option>
+        </select></label>
+        <div className="studio-view-actions">
+        <DisclosureMenu label="Layout">
+          <Button aria-pressed={panelLayout.navigationVisible} disabled={panelLayout.mobile}
+            onClick={() => panelLayout.update({ navigationOpen: !panelLayout.layout.navigationOpen })}>Navigation panel</Button>
+          <Button aria-pressed={panelLayout.inspectorVisible} disabled={panelLayout.narrow}
+            onClick={() => panelLayout.update({ inspectorOpen: !panelLayout.layout.inspectorOpen })}>Inspector panel</Button>
+          {panelLayout.narrow && <p>Side panels hide on smaller screens to keep the editor usable. Your desktop layout is remembered.</p>}
+          <Button onClick={() => { panelLayout.reset(); changeMixerOpen(false); }}>Reset layout</Button>
+          <p>Drag a panel edge to resize, or focus it and use the arrow keys.</p>
+        </DisclosureMenu>
+        <Button ref={mixerToggleRef} aria-expanded={mixerOpen} aria-controls="studio-mixer"
+          onClick={() => changeMixerOpen(!mixerOpen)}>Mixer</Button>
+        </div>
+      </div>
+
+      <div className="studio-grid" style={{
+        "--studio-nav-width": panelLayout.navigationVisible ? `${panelLayout.navigationWidth}px` : "0px",
+        "--studio-inspector-width": panelLayout.inspectorVisible ? `${panelLayout.layout.inspectorWidth}px` : "0px"
+      } as React.CSSProperties}>
+        <aside id="studio-navigation" className="studio-sidebar" aria-label="Studio navigation" hidden={!panelLayout.navigationVisible}>
+          <ResizeHandle label="Navigation panel size" controls="studio-navigation" orientation="vertical"
+            value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />
           <p className="panel-label">Workspace</p>
           <nav className="studio-nav">
-            <button aria-current={workspace === "arrangement" ? "page" : undefined} onClick={() => setWorkspace("arrangement")}><span><span className="nav-glyph">A</span>Arrangement</span></button>
-            <button disabled title="Open a MIDI clip from the arrangement"><span><span className="nav-glyph">P</span>Piano roll</span></button>
-            <button disabled title="Open a drum clip from the arrangement"><span><span className="nav-glyph">D</span>Drum sequencer</span></button>
-            <button disabled title="Dedicated mixer workspace is planned"><span><span className="nav-glyph">M</span>Mixer</span></button>
+            <Button aria-current={workspace === "arrangement" ? "page" : undefined} onClick={() => setWorkspace("arrangement")}><span><span className="nav-glyph">A</span>Arrangement</span></Button>
+            <Button disabled title="Open a MIDI clip from the arrangement"><span><span className="nav-glyph">P</span>Piano roll</span></Button>
+            <Button disabled title="Open a drum clip from the arrangement"><span><span className="nav-glyph">D</span>Drum sequencer</span></Button>
+            <Button aria-expanded={mixerOpen} aria-controls="studio-mixer" onClick={() => changeMixerOpen(!mixerOpen)}><span><span className="nav-glyph">M</span>Mixer</span></Button>
           </nav>
           <p className="panel-label" style={{ marginTop: 22 }}>SynaptixPlay</p>
           <nav className="studio-nav">
-            <button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></button>
-            <button aria-current={workspace === "adaptive" ? "page" : undefined} onClick={() => setWorkspace("adaptive")}><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></button>
-            <button disabled title="Publication remains gated by certification"><span><span className="nav-glyph">R</span>Render & publish</span></button>
+            <Button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></Button>
+            <Button aria-current={workspace === "adaptive" ? "page" : undefined} onClick={() => setWorkspace("adaptive")}><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></Button>
+            <Button disabled title="Publication remains gated by certification"><span><span className="nav-glyph">R</span>Render & publish</span></Button>
           </nav>
           <section className="sidebar-card" aria-label="Adaptive audio preview">
             <strong>Runtime preview</strong>
@@ -426,24 +492,27 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </aside>
 
         <section className="studio-workspace" aria-label="Project workspace">
-          {workspace === "arrangement" && <nav className="workspace-tabs" aria-label="Editor views">
-            <button aria-selected={!activeClip} onClick={() => setActiveClip(null)}>Arrangement</button>
-            <button aria-selected={Boolean(activeClip)} disabled={!activeClip}>MIDI editor</button>
+          {workspace === "arrangement" && <div className="workspace-tabs">
+            <ViewTabs label="Editor views" value={activeClip ? "midi" : "arrangement"}
+              onChange={(view) => { if (view === "arrangement") setActiveClip(null); }}
+              tabs={[{ value: "arrangement", label: "Arrangement", panelId: "arrangement-view" },
+                { value: "midi", label: "MIDI editor", panelId: "midi-view", disabled: !activeClip }]} />
             <span className="workspace-spacer" />
-            <span className="status-pill">Revision {project.revisionId.slice(0, 8)}</span>
-          </nav>}
+            <Badge>Revision {project.revisionId.slice(0, 8)}</Badge>
+          </div>}
 
       {workspace === "arrangement" && <>
       {sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
         <section key={conflict.currentRevisionId} className="conflict-banner">
           <strong>Cloud revision conflict</strong>
           <p style={{ margin: "6px 0" }}>Remote head: {conflict.currentRevisionId}. Choose which version should remain active.</p>
-          <button onClick={() => void useCloud(conflict)}>Use cloud</button>{" "}
-          <button onClick={() => void keepMine(conflict)}>Keep mine</button>
+          <Button onClick={() => void useCloud(conflict)}>Use cloud</Button>{" "}
+          <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
         </section>
       ))}
 
-      {!activeClip && <section aria-label="Arrangement timeline" className="canvas-panel">
+      <div id="arrangement-view" role="tabpanel" aria-labelledby="arrangement-view-tab" hidden={Boolean(activeClip)}>
+      <section aria-label="Arrangement timeline" className="canvas-panel">
         <div style={{ minWidth: 1120 }}>
           <div className="timeline-ruler" style={{ display: "grid", gridTemplateColumns: "260px repeat(16, minmax(48px, 1fr))", borderBottom: "1px solid #343943" }}>
             <div style={{ padding: 10 }}>Tracks and mixer</div>
@@ -454,8 +523,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               <div className="track-header" style={{ padding: 12, display: "grid", gap: 8 }}>
                 <strong><span className="track-index">{project.tracks.indexOf(value) + 1}</span>{value.name}</strong>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => void execute(new SetTrackMutedEditorCommand(value.id, value.muted, !value.muted))}>M {value.muted ? "On" : "Off"}</button>
-                  <button onClick={() => void execute(new SetTrackSoloEditorCommand(value.id, value.solo, !value.solo))}>S {value.solo ? "On" : "Off"}</button>
+                  <Button onClick={() => void execute(new SetTrackMutedEditorCommand(value.id, value.muted, !value.muted))}>M {value.muted ? "On" : "Off"}</Button>
+                  <Button onClick={() => void execute(new SetTrackSoloEditorCommand(value.id, value.solo, !value.solo))}>S {value.solo ? "On" : "Off"}</Button>
                 </div>
                 <label style={{ display: "grid", gridTemplateColumns: "54px 1fr 42px", gap: 6, fontSize: 12 }}>
                   Volume
@@ -479,14 +548,16 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                 {value.clips.map((clip) => <div key={clip.id} style={clipStyle(clip, project)} onDoubleClick={() => clip.kind === "midi" && setActiveClip({ trackId: value.id, clipId: clip.id })}>
                   <strong>{clip.name}</strong>
                   <div style={{ fontSize: 12, opacity: 0.8 }}>{clip.kind === "midi" ? `${clip.notes.length} MIDI notes` : "Audio clip"}</div>
-                  {clip.kind === "midi" && <button style={{ marginTop: 6 }} onClick={(event) => { event.stopPropagation(); setActiveClip({ trackId: value.id, clipId: clip.id }); }}>Edit</button>}
+                  {clip.kind === "midi" && <Button style={{ marginTop: 6 }} onClick={(event) => { event.stopPropagation(); setActiveClip({ trackId: value.id, clipId: clip.id }); }}>Edit</Button>}
                 </div>)}
               </div>
             </div>
           ))}
         </div>
-      </section>}
+      </section>
+      </div>
 
+      <div id="midi-view" role="tabpanel" aria-labelledby="midi-view-tab" hidden={!activeClip}>
       {activeClip && <PianoRoll
         project={project}
         trackId={activeClip.trackId}
@@ -494,6 +565,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onExecute={execute}
         onClose={() => setActiveClip(null)}
       />}
+      </div>
       </>}
 
       {workspace === "generation" && <GenerationWorkspace
@@ -505,7 +577,10 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       {workspace === "adaptive" && <AdaptiveStatesWorkspace project={project} onClose={() => setWorkspace("arrangement")} />}
         </section>
 
-        <aside className="studio-inspector" aria-label="Project inspector">
+        <aside id="studio-inspector" className="studio-inspector" aria-label="Project inspector" hidden={!panelLayout.inspectorVisible}>
+          <div className="inspector-resize-edge"><ResizeHandle label="Inspector panel size" controls="studio-inspector" orientation="vertical"
+            value={panelLayout.layout.inspectorWidth} min={220} max={400} direction={-1}
+            onChange={(inspectorWidth) => panelLayout.update({ inspectorWidth })} /></div>
           <div className="inspector-heading"><h2>Project inspector</h2><span className="inspector-chip">Live</span></div>
           <dl className="property-list">
             <div className="property-row"><dt>Project</dt><dd>{project.projectId}</dd></div>
@@ -517,7 +592,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <section className="inspector-card">
             <strong>AI generation</strong>
             <p>Create a variation from the active project while preserving its canonical revision history.</p>
-            <button className="generation-cta" onClick={() => setWorkspace("generation")}>Open generator</button>
+            <Button className="generation-cta" onClick={() => setWorkspace("generation")}>Open generator</Button>
           </section>
           <section className="inspector-card">
             <strong>Publication readiness</strong>
@@ -526,6 +601,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </section>
         </aside>
       </div>
+      {mixerOpen && <MixerDrawer project={project} engine={engine} storageStatus={storageStatus}
+        height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
+        syncLabel={syncLabel} onExecute={execute} onClose={() => changeMixerOpen(false)} />}
     </main>
   );
 }

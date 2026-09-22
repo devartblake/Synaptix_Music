@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "check:boundaries": "node scripts/check-package-boundaries.mjs",
-    "check:docker": "docker compose -f infrastructure/docker/docker-compose.yml config --quiet",
+    "check:docker": "docker compose -f infrastructure/docker/docker-compose.yml -f infrastructure/docker/docker-compose.local.yml config --quiet",
     "certify:stage12": "node scripts/certify-stage12-render-pipeline.mjs",
     "ci": "npm run check:boundaries && npm run typecheck && npm run build && npm run test"
   },

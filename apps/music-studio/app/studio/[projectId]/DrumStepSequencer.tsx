@@ -1,5 +1,7 @@
 "use client";
 
+import { Button, Panel, Toolbar } from "../../../components/ui/StudioControls";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { EditorCommand } from "@synaptix/command-system/editor";
@@ -96,10 +98,10 @@ export function DrumStepSequencer({
   }
 
   return (
-    <section aria-label="Drum step sequencer" style={{ marginTop: 18, border: "1px solid #343943", borderRadius: 8, background: "#14171d" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: 12, borderBottom: "1px solid #343943" }}>
+    <Panel aria-label="Drum step sequencer" style={{ marginTop: 18 }}>
+      <Toolbar>
         <strong>{clip.name} · Step Sequencer</strong>
-        <button onClick={onClose}>Arrangement</button>
+        <Button onClick={onClose}>Arrangement</Button>
         <label>Pattern <select value={patternBars} onChange={(event) => setPatternBars(Number(event.target.value))}>
           <option value={1}>1 bar</option>
           <option value={2}>2 bars</option>
@@ -107,13 +109,13 @@ export function DrumStepSequencer({
         </select></label>
         <label>New-step velocity <input type="range" min={1} max={127} value={defaultVelocity}
           onChange={(event) => setDefaultVelocity(Number(event.target.value))} /> {defaultVelocity}</label>
-        <button onClick={() => { setPreviewing((value) => !value); setCurrentStep(0); }}>
+        <Button onClick={() => { setPreviewing((value) => !value); setCurrentStep(0); }}>
           {previewing ? "Stop cursor" : "Preview cursor"}
-        </button>
-        <button disabled={patternBars < 2} onClick={() => void duplicateBar(patternBars - 2)}>Duplicate previous bar</button>
-        <button onClick={() => void clearPattern()}>Clear pattern</button>
+        </Button>
+        <Button disabled={patternBars < 2} onClick={() => void duplicateBar(patternBars - 2)}>Duplicate previous bar</Button>
+        <Button onClick={() => void clearPattern()}>Clear pattern</Button>
         <small>Click toggles · right-click cycles soft/normal/accent velocity</small>
-      </header>
+      </Toolbar>
 
       <div style={{ overflow: "auto", padding: 12 }}>
         <div style={{ minWidth: Math.max(900, totalSteps * 38 + 160) }}>
@@ -138,7 +140,7 @@ export function DrumStepSequencer({
                 const accent = (note?.velocity ?? 0) >= 115;
                 const soft = active && (note?.velocity ?? 0) < 80;
                 const cursor = previewing && currentStep === step;
-                return <button
+                return <Button
                   key={step}
                   aria-label={`${lane.label} step ${step + 1}${active ? " active" : ""}`}
                   title={active ? `Velocity ${note?.velocity}` : "Empty step"}
@@ -153,12 +155,12 @@ export function DrumStepSequencer({
                     color: accent ? "#111" : "#fff",
                     fontWeight: 700
                   }}
-                >{accent ? "A" : active ? "●" : ""}</button>;
+                >{accent ? "A" : active ? "●" : ""}</Button>;
               })}
             </div>
           ))}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

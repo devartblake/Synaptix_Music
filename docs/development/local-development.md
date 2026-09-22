@@ -21,7 +21,80 @@ The pinned version files are:
 rust-toolchain.toml
 ```
 
-## Clone and Configure
+## Run the Local Stack on Docker Desktop
+
+Start Docker Desktop with Linux containers enabled. On Windows, open Git Bash
+in the repository, or use WSL with Docker Desktop integration enabled. From
+PowerShell, you can invoke Git Bash explicitly:
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" ./run-local.sh
+```
+
+On Git Bash, WSL, macOS, or Linux:
+
+```sh
+sh run-local.sh
+sh run-local.sh status
+sh run-local.sh logs music-studio
+sh run-local.sh down
+```
+
+The first run downloads images, installs dependencies inside containers, and
+waits for service health checks. It copies `infrastructure/docker/local.env.example`
+to the ignored `.env.docker` file without overwriting existing settings. This
+Docker setup deliberately uses its own settings; host `.env.local` files are
+excluded from images. Re-run `sh run-local.sh` after editing code or settings.
+The studio uses Next.js development mode; source files are copied into the image,
+so host edits require rebuilding rather than updating a live bind mount.
+
+| Service | Default address |
+| --- | --- |
+| Project home / studio launcher | http://localhost:3000 |
+| Generation API docs | http://localhost:8100/docs |
+| Render jobs API | http://localhost:8200/render-jobs |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
+| MinIO S3 API | http://localhost:9000 |
+| MinIO console | http://localhost:9001 |
+
+Ports and MinIO login credentials are configurable in `.env.docker`. The default
+console login is `synaptix_local` / `synaptix_local_password`. Published ports
+bind to loopback for local development. PostgreSQL, Redis, and MinIO use named
+volumes retained by `down`; studio projects also persist in your browser's
+IndexedDB. `sh run-local.sh down --volumes` explicitly deletes the Docker data.
+Rust crates are libraries, not standalone services, and need no running container.
+The worker uses the network alias `minio.localhost` for object storage so signed
+URLs also resolve to loopback in the browser. If your host resolver does not
+resolve this name, add `127.0.0.1 minio.localhost` to your hosts file.
+
+**Platform integration:** the SynaptixPlay .NET backend is not included in this
+repository. Local editing, playback, persistence, and the direct Python API work
+without it. Login, cloud synchronization, integrated generation, and fetching
+project revisions for render execution require that separate backend. The render
+API starts and applies its database migrations; polling remains disabled until
+you configure a platform URL and service token.
+
+To connect a platform running on your computer, set these in `.env.docker` and
+run the launcher again:
+
+```env
+SYNAPTIX_PLATFORM_API_URL=http://host.docker.internal:5080
+RENDER_WORKER_SERVICE_TOKEN=your-platform-service-token
+NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL=http://localhost:5080/ws/notify
+```
+
+The platform must accept connections from Docker Desktop and use the corresponding
+service token. If the platform is containerized on the same network, it can reach
+the generator at `http://generation-api:8100` and worker at `http://render-worker:8200`;
+a platform running on the host uses the published localhost ports.
+
+If a port is occupied, change its setting in `.env.docker`. For startup failures,
+the launcher prints recent logs; use `sh run-local.sh logs SERVICE` for more detail.
+`sh run-local.sh config` validates Compose without requiring a running engine.
+The original infrastructure-only command below still starts just PostgreSQL and Redis.
+
+## Configure Host Development
 
 ```bash
 git clone https://github.com/devartblake/Synaptix_Music.git

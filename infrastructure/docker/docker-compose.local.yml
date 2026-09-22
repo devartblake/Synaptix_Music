@@ -1,0 +1,125 @@
+# Use together with docker-compose.yml; run-local.sh supplies both files.
+services:
+  music-studio:
+    build:
+      context: ../..
+      dockerfile: apps/music-studio/Dockerfile
+    init: true
+    environment:
+      SYNAPTIX_PLATFORM_API_URL: ${SYNAPTIX_PLATFORM_API_URL:-}
+      NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL: ${NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL:-}
+      RENDER_WORKER_API_URL: http://render-worker:8200
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${STUDIO_PORT:-3000}:3000"
+    depends_on:
+      generation-api:
+        condition: service_healthy
+      render-worker:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/studio/local-demo').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 30s
+      start_period: 60s
+      retries: 5
+
+  generation-api:
+    build:
+      context: ../..
+      dockerfile: services/generation-api/Dockerfile
+    init: true
+    ports:
+      - "127.0.0.1:${GENERATION_PORT:-8100}:8100"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/readyz', timeout=3)"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  render-worker:
+    build:
+      context: ../..
+      dockerfile: services/render-worker/Dockerfile
+    init: true
+    environment:
+      DATABASE_URL: postgresql://synaptix:synaptix@postgres:5432/synaptix_music
+      SYNAPTIX_PLATFORM_API_URL: ${SYNAPTIX_PLATFORM_API_URL:-}
+      RENDER_WORKER_SERVICE_TOKEN: ${RENDER_WORKER_SERVICE_TOKEN:-}
+      RENDER_WORKER_MINIO_ENDPOINT: minio.localhost
+      RENDER_WORKER_MINIO_PORT: ${MINIO_PORT:-9000}
+      RENDER_WORKER_MINIO_USE_SSL: "false"
+      RENDER_WORKER_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-synaptix_local}
+      RENDER_WORKER_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-synaptix_local_password}
+      RENDER_WORKER_MINIO_BUCKET: synaptix-assets
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${RENDER_PORT:-8200}:8200"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8200/render-jobs').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--address", ":${MINIO_PORT:-9000}", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-synaptix_local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-synaptix_local_password}
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:${MINIO_PORT:-9000}"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      default:
+        aliases:
+          - minio.localhost
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:${MINIO_PORT:-9000}/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-synaptix_local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-synaptix_local_password}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set local http://minio:${MINIO_PORT:-9000} "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing local/synaptix-assets
+
+volumes:
+  minio-data:

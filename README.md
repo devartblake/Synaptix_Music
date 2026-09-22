@@ -66,6 +66,22 @@ Synaptix_Music/
 
 ## Run Locally
 
+To run the repository's services on Docker Desktop, start Docker Desktop in Linux
+container mode, then run this from Git Bash, WSL, macOS, or Linux:
+
+```sh
+sh run-local.sh
+```
+
+Open <http://localhost:3000> to launch the demo studio or resume a local project. The script builds and starts the
+studio, generation API, render worker, PostgreSQL, Redis, and MinIO. It creates
+`.env.docker` for local settings; no host Node.js or Python installation is needed.
+Use `sh run-local.sh logs` to follow logs and `sh run-local.sh down` to stop
+containers while preserving data. See [Docker Desktop setup](docs/development/local-development.md#run-the-local-stack-on-docker-desktop)
+for configuration and the separate SynaptixPlay platform requirements.
+
+Alternatively, run the studio directly on your host:
+
 ```bash
 git clone https://github.com/devartblake/Synaptix_Music.git
 cd Synaptix_Music

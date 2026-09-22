@@ -1,5 +1,9 @@
 import type { Device, Track } from "@synaptix/project-model";
 
+// Keep the server-side renderer's entry point independent of browser audio.
+export { FREQUENCY_DRONE_DEVICE_TYPE, resolveFrequencyDroneDevice } from "./frequency-drone.ts";
+export { buildFrequencyDroneRenderPlan, renderFrequencyDroneMono } from "./frequency-drone-render.ts";
+
 import {
   ENVELOPE_ATTACK_PARAMETER,
   ENVELOPE_DECAY_PARAMETER,

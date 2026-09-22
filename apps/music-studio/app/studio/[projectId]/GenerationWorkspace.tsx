@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "../../../components/ui/StudioControls";
+
 import { useEffect, useRef, useState } from "react";
 
 import type { GenerationProposal } from "@synaptix/generator-contracts";
@@ -188,7 +190,7 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
   return <section className="generation-workspace" aria-label="AI generation workspace">
     <header className="generation-header">
       <div><span className="eyebrow">Synaptix generator</span><h2>Create a project variation</h2><p>Structured procedural generation with durable status and an explicit apply step.</p></div>
-      <button onClick={onClose}>Back to arrangement</button>
+      <Button onClick={onClose}>Back to arrangement</Button>
     </header>
 
     <div className="generation-grid">
@@ -197,7 +199,7 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
         <label>Creative brief
           <textarea value={brief} rows={3} onChange={(event) => setBrief(event.target.value)} />
         </label>
-        <button type="button" onClick={() => setForm((current) => interpretCreativeBrief(current, brief))}>Interpret brief</button>
+        <Button type="button" onClick={() => setForm((current) => interpretCreativeBrief(current, brief))}>Interpret brief</Button>
         <label>Preset
           <select value={form.presetId} onChange={(event) => choosePreset(event.target.value as GenerationPresetId)}>
             {GENERATION_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.name} — {preset.description}</option>)}
@@ -212,7 +214,7 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
         <label>Energy <output>{Math.round(form.energy * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={form.energy} onChange={(event) => updateForm("energy", Number(event.target.value))} /></label>
         <label>Complexity <output>{Math.round(form.complexity * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={form.complexity} onChange={(event) => updateForm("complexity", Number(event.target.value))} /></label>
         <label>Seed<input type="number" min="0" max="2147483647" value={form.seed} onChange={(event) => updateForm("seed", event.target.valueAsNumber)} /></label>
-        <button className="generation-submit" type="submit" disabled={submitting}>{submitting ? "Generating…" : "Generate variation"}</button>
+        <Button className="generation-submit" type="submit" disabled={submitting}>{submitting ? "Generating…" : "Generate variation"}</Button>
       </form></div>
 
       <section className="generation-preview" aria-label="Generated variation preview">
@@ -223,7 +225,7 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
           <div className="preview-stats"><div><strong>{summary.trackCount}</strong><span>Tracks</span></div><div><strong>{summary.sectionCount}</strong><span>Sections</span></div><div><strong>{summary.noteCount}</strong><span>Notes</span></div><div><strong>{summary.durationBars}</strong><span>Bars</span></div></div>
           <div className="section-map">{job.result.sections.map((section) => <div key={section.id} style={{ flex: section.bars }}><span>{section.name}</span><small>{section.bars} bars</small></div>)}</div>
           {job.result.warnings.length > 0 && <ul className="generation-warnings">{job.result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
-          <button className="generation-apply" disabled={applying || appliedJobId === job.jobId} onClick={() => void apply()}>{appliedJobId === job.jobId ? "Applied to project" : applying ? "Applying…" : "Apply variation to project"}</button>
+          <Button className="generation-apply" disabled={applying || appliedJobId === job.jobId} onClick={() => void apply()}>{appliedJobId === job.jobId ? "Applied to project" : applying ? "Applying…" : "Apply variation to project"}</Button>
           <p className="apply-note">Applying replaces the current arrangement, creates a persisted revision, and can be undone.</p>
         </> : <div className="preview-empty"><strong>No variation preview yet</strong><p>Submit a job or recover an existing one to inspect its musical structure before applying it.</p></div>}
       </section>

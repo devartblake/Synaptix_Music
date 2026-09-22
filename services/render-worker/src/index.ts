@@ -1,10 +1,6 @@
 export { FilesystemArtifactSink } from "./filesystem-artifact-sink.ts";
 export { applyCompressor, type CompressorOptions, type CompressorOutcome } from "./compressor.ts";
-export {
-  createRenderJobHttpServer,
-  type ArtifactUrlResolver,
-  type RenderJobHttpServerOptions
-} from "./http-server.ts";
+export { createRenderJobHttpServer } from "./http-server.ts";
 export { packageRenderArtifacts } from "./artifact-packager.ts";
 export {
   FfmpegTranscoder,
