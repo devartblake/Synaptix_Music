@@ -1,15 +1,6 @@
 import { z } from "zod";
 
-import {
-  AssetReferenceSchema,
-  ClipSchema,
-  GenerationMetadataSchema,
-  MarkerSchema,
-  MusicProjectSchema,
-  TimeSignatureEventSchema,
-  TempoEventSchema,
-  type MusicProject
-} from "./index.ts";
+import { ClipSchema, MusicProjectSchema, type MusicProject } from "./index.ts";
 
 export const PROJECT_SCHEMA_VERSION_V2 = 2 as const;
 
