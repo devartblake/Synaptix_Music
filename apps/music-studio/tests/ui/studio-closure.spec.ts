@@ -46,7 +46,7 @@ test("studio shell preserves its desktop and tablet layout contract", async ({ p
 
 test("generation workspace exposes a screen-reader-safe status and labeled controls", async ({ page }) => {
   await prepareStudio(page);
-  await page.getByRole("button", { name: /Generate/ }).click();
+  await page.locator(".studio-nav").getByRole("button", { name: /Generate/ }).click();
   await expect(page.getByRole("heading", { name: "Create a project variation" })).toBeVisible();
   const preview = page.getByRole("region", { name: "Generated variation preview" });
   await expect(preview.getByRole("status")).toContainText("durable polling");
