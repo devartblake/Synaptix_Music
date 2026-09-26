@@ -1,5 +1,7 @@
-import type { ProjectRevision } from "@synaptix/command-system";
-import type { MusicProject } from "@synaptix/project-model";
+import { computeProjectChecksum, type ProjectRevision } from "@synaptix/command-system";
+import { downgradeProjectV2ToV1 } from "@synaptix/project-model/v2";
+
+import type { StoredMusicProject } from "./index.ts";
 
 export interface PlatformProjectSummary {
   projectId: string;
@@ -12,7 +14,7 @@ export interface PlatformProjectSummary {
 export interface PlatformRevisionEnvelope {
   projectId: string;
   revision: ProjectRevision;
-  project: MusicProject;
+  project: StoredMusicProject;
 }
 
 export type RevisionUploadResult =
@@ -150,17 +152,55 @@ export class IndexedDbProjectSyncQueue implements ProjectSyncQueue {
   }
 }
 
+/** Project schema versions the platform API accepts for revision uploads. */
+export type PlatformProjectSchemaVersion = 1 | 2;
+
+/**
+ * Converts a locally committed revision into what the platform accepts. Returns null when the
+ * revision cannot be represented (a plug-in project while the platform only accepts v1); the
+ * revision then stays local-only instead of being uploaded in a lossy form.
+ */
+export type PlatformEnvelopeConverter = (
+  envelope: PlatformRevisionEnvelope
+) => Promise<PlatformRevisionEnvelope | null>;
+
+export function platformEnvelopeConverter(accepts: PlatformProjectSchemaVersion): PlatformEnvelopeConverter {
+  return async (envelope) => {
+    if (envelope.project.schemaVersion === 1 || accepts === 2) return structuredClone(envelope);
+    const project = downgradeProjectV2ToV1(envelope.project);
+    if (!project) return null;
+    // The revision checksum must describe the snapshot that is actually uploaded.
+    const checksumSha256 = await computeProjectChecksum(project);
+    return { projectId: envelope.projectId, project, revision: { ...structuredClone(envelope.revision), checksumSha256 } };
+  };
+}
+
+export interface HybridProjectRepositoryOptions {
+  /** Defaults to uploading revisions unchanged. */
+  toPlatformEnvelope?: PlatformEnvelopeConverter;
+}
+
+export interface SaveAndQueueResult {
+  /** False when the revision was saved locally but cannot be uploaded to this platform. */
+  queued: boolean;
+}
+
 export class HybridProjectRepository {
+  private readonly toPlatformEnvelope: PlatformEnvelopeConverter;
+
   constructor(
     private readonly local: {
-      save(project: MusicProject, revision?: ProjectRevision): Promise<unknown>;
-      load(projectId: string): Promise<MusicProject | null>;
+      save(project: StoredMusicProject, revision?: ProjectRevision): Promise<unknown>;
+      load(projectId: string): Promise<StoredMusicProject | null>;
     },
     private readonly platform: PlatformProjectRepository,
-    private readonly queue: ProjectSyncQueue
-  ) {}
+    private readonly queue: ProjectSyncQueue,
+    options: HybridProjectRepositoryOptions = {}
+  ) {
+    this.toPlatformEnvelope = options.toPlatformEnvelope ?? (async (envelope) => structuredClone(envelope));
+  }
 
-  async load(projectId: string): Promise<MusicProject | null> {
+  async load(projectId: string): Promise<StoredMusicProject | null> {
     const localProject = await this.local.load(projectId);
     if (localProject) return localProject;
 
@@ -175,17 +215,20 @@ export class HybridProjectRepository {
     expectedRevisionId: string | null,
     idempotencyKey: string,
     operationId = crypto.randomUUID()
-  ): Promise<void> {
+  ): Promise<SaveAndQueueResult> {
     await this.local.save(envelope.project, envelope.revision);
+    const platformEnvelope = await this.toPlatformEnvelope(envelope);
+    if (!platformEnvelope) return { queued: false };
     await this.queue.enqueue({
       operationId,
       projectId: envelope.projectId,
       expectedRevisionId,
       idempotencyKey,
-      envelope: structuredClone(envelope),
+      envelope: platformEnvelope,
       queuedAt: new Date().toISOString(),
       attemptCount: 0
     });
+    return { queued: true };
   }
 
   async drain(): Promise<RevisionUploadResult[]> {

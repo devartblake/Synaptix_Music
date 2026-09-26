@@ -1,14 +1,17 @@
 import { verifyPluginStateEnvelope } from "@synaptix/project-model/plugin";
-import type {
-  AutomationLane,
-  AutomationPoint,
-  DeviceV2,
-  FrozenPluginArtifactReference,
-  MusicProjectV2,
-  PluginStateEnvelope
+import {
+  migrateProjectV1ToV2,
+  MusicProjectV2Schema,
+  projectV2EditingView,
+  type AutomationLane,
+  type AutomationPoint,
+  type DeviceV2,
+  type FrozenPluginArtifactReference,
+  type MusicProjectV2,
+  type PluginStateEnvelope
 } from "@synaptix/project-model/v2";
 
-import type { ProjectEditorCommand } from "./editor.ts";
+import type { EditorCommand, ProjectEditorCommand } from "./editor.ts";
 
 /*
  * Plug-in editor commands (Plugin Runtime Foundation v1, R5).
@@ -239,4 +242,45 @@ export class SetFrozenPluginArtifactEditorCommand implements PluginEditorCommand
 
   execute(project: MusicProjectV2): MusicProjectV2 { return this.write(project, this.nextValue); }
   undo(project: MusicProjectV2): MusicProjectV2 { return this.write(project, this.previousValue); }
+}
+
+type PluginFields = Pick<DeviceV2, "plugin" | "pluginState" | "automation" | "frozen">;
+
+/**
+ * Run an existing v1 editor command against a v2 project without losing plug-in data.
+ *
+ * The command sees a v1 editing view (every device reduced to its v1 fields). Afterwards each
+ * device regains its v2 fields by id; devices the command created become built-ins, exactly as
+ * migration would make them. Plug-in fields are remembered across execute/undo/redo, so undoing
+ * a command that removed a plug-in device (or replaced whole tracks) restores it intact.
+ */
+export function liftEditorCommandToV2(command: EditorCommand): PluginEditorCommand {
+  const remembered = new Map<string, PluginFields>();
+
+  function remember(project: MusicProjectV2): void {
+    for (const track of project.tracks) {
+      for (const { id, plugin, pluginState, automation, frozen } of track.devices) {
+        remembered.set(id, clone({ plugin, pluginState, automation, frozen }));
+      }
+    }
+  }
+
+  function run(project: MusicProjectV2, operation: (view: ReturnType<typeof projectV2EditingView>) => ReturnType<typeof projectV2EditingView>): MusicProjectV2 {
+    remember(project);
+    const migrated = migrateProjectV1ToV2(operation(projectV2EditingView(project)));
+    for (const track of migrated.tracks) {
+      track.devices = track.devices.map((device) => {
+        const fields = remembered.get(device.id);
+        return fields ? { ...device, ...clone(fields) } : device;
+      });
+    }
+    return MusicProjectV2Schema.parse(migrated);
+  }
+
+  return {
+    id: command.id,
+    kind: command.kind,
+    execute: (project) => run(project, (view) => command.execute(view)),
+    undo: (project) => run(project, (view) => command.undo(view))
+  };
 }

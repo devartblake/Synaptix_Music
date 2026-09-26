@@ -127,3 +127,41 @@ test("frozen evidence attachment is reversible and bound to its device", () => {
   assert.deepEqual(command.undo(frozen), source);
   assert.throws(() => new SetFrozenPluginArtifactEditorCommand("track-1", "other", null, reference));
 });
+
+test("lifted v1 commands edit v2 projects without dropping plug-in data", async () => {
+  const { liftEditorCommandToV2 } = await import("./plugin.ts");
+  const { SetTrackVolumeEditorCommand } = await import("./editor.ts");
+  const { AddTrackEditorCommand } = await import("./track.ts");
+  const source = project();
+  source.tracks[0]!.devices[0]!.automation = [{ parameterId: "drive", points: [{ tick: 0, value: 2, curve: "step" }] }];
+
+  const volume = liftEditorCommandToV2(new SetTrackVolumeEditorCommand("track-1", 0, -6));
+  const quieter = volume.execute(source);
+  assert.equal(quieter.tracks[0]!.volumeDb, -6);
+  assert.deepEqual(quieter.tracks[0]!.devices, source.tracks[0]!.devices);
+  assert.deepEqual(volume.undo(quieter), source);
+
+  const addTrack = liftEditorCommandToV2(new AddTrackEditorCommand({
+    id: "track-2", name: "Bass", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, clips: [],
+    devices: [{ id: "device-bass", deviceType: "synaptix-poly-synth", deviceVersion: "1.0.0", enabled: true, parameters: [] }]
+  }));
+  const added = addTrack.execute(source);
+  assert.equal(added.tracks[1]!.devices[0]!.plugin.runtimeKind, "builtin");
+  assert.deepEqual(added.tracks[0], source.tracks[0]);
+  assert.doesNotThrow(() => MusicProjectV2Schema.parse(added));
+});
+
+test("undoing a lifted command that removed a plug-in track restores the plug-in intact", async () => {
+  const { liftEditorCommandToV2 } = await import("./plugin.ts");
+  const { RemoveTrackCommand } = await import("./index.ts");
+  const source = project();
+  source.tracks[0]!.devices[0]!.pluginState = { stateVersion: 1, encoding: "json", payload: "{}", checksumSha256: null };
+  const studioCommand = new RemoveTrackCommand("track-1");
+  const remove = liftEditorCommandToV2({
+    id: studioCommand.id, kind: studioCommand.type,
+    execute: (value) => studioCommand.execute(value), undo: (value) => studioCommand.undo(value)
+  });
+  const removed = remove.execute(source);
+  assert.equal(removed.tracks.length, 0);
+  assert.deepEqual(remove.undo(removed), source);
+});
