@@ -209,3 +209,36 @@
 @media (prefers-reduced-motion: reduce) {
   .playButton { transition: none; }
 }
+
+/* ---- Actions menu (glass drop-down) ---- */
+.menuRoot { position: relative; }
+.moreGlyph { font-size: 11px; letter-spacing: 1px; line-height: 1; }
+.menu {
+  composes: glass;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 200px;
+  padding: 6px;
+  border-radius: 16px;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+.menuItem {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sx-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+}
+.menuItem:hover:not(:disabled), .menuItem:focus-visible { background: rgb(255 255 255 / 12%); border: 0; outline: none; }
+.menuItemDanger { color: #ff8a95; }

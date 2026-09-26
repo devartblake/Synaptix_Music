@@ -83,7 +83,16 @@ test("projects can be renamed and given cover art, and downloaded renders play o
   // Library shows the new name; rename again via the Library shortcut.
   await page.goto(`/library/${projectId}`);
   await expect(page.getByRole("heading", { name: "Night Drive", level: 1 })).toBeVisible({ timeout: 20000 });
-  await page.getByRole("link", { name: "Rename" }).click();
+  const options = page.getByRole("button", { name: "Project options" });
+  await options.click();
+  await expect(page.getByRole("menuitem", { name: "Add cover" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(options).toBeFocused();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await options.click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   const reopened = page.getByLabel("Project name");
   await expect(reopened).toBeFocused({ timeout: 60000 });
   await reopened.fill("Night Drive (Extended)");
@@ -98,7 +107,9 @@ test("projects can be renamed and given cover art, and downloaded renders play o
   await expect(page.getByRole("img", { name: "Night Drive (Extended) artwork" })).toHaveJSProperty("tagName", "IMG");
   const size = await page.getByRole("img", { name: "Night Drive (Extended) artwork" }).evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight]);
   expect(size).toEqual([96, 96]);
-  await expect(page.getByRole("button", { name: "Remove cover" })).toBeVisible();
+  await page.getByRole("button", { name: "Project options" }).click();
+  await expect(page.getByRole("menuitem")).toHaveText(["Change cover", "Remove cover", "Rename"]);
+  await page.keyboard.press("Escape");
 
   // Download the render, then go offline and play it.
   await page.getByRole("button", { name: "Download for offline" }).click();

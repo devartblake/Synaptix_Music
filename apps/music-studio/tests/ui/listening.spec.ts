@@ -38,7 +38,7 @@ test("the library plays a project, keeps playing across pages, and hands audio t
   // Opening the studio releases the player; the studio has its own transport.
   await mini.getByRole("button", { name: "Play", exact: true }).click();
   await page.goto(`/library/${projectId}`);
-  await page.getByRole("link", { name: "Open in Studio" }).click();
+  await page.getByRole("link", { name: "Edit in Studio" }).click();
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await expect(page.getByRole("region", { name: "Mini player" })).toHaveCount(0);
 });

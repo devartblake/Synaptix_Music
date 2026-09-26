@@ -8,7 +8,7 @@
 A listening mode next to the studio:
 
 - **Library** (`/library`): every project saved in this browser as an "album" with generated artwork, search, play-on-hover, and Play all.
-- **Project page** (`/library/[projectId]`): blurred-artwork hero, centered title, white play button between glass circle actions (edit in Studio, repeat), a glass **Latest render** card, and the project's tracks as a list; tapping a track plays it solo.
+- **Project page** (`/library/[projectId]`): a "…" options menu in the upper right (Add/Change cover, Remove cover, Rename), blurred-artwork hero, centered title, white play button between glass circle actions (edit in Studio, repeat), a glass **Latest render** card, and the project's tracks as a list; tapping a track plays it solo.
 - **Mini player**: a floating glass capsule above the tab bar on Home and Library pages, with play/pause, next, and a progress hairline. Tapping it opens **Now Playing** (full-screen dialog: artwork, scrubber, repeat/previous/play/next, Up next queue, Open in Studio).
 
 ## What it plays

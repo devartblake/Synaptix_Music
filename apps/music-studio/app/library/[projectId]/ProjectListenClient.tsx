@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { ListeningDock } from "../../../components/player/MiniPlayer";
 import { ChevronLeftIcon, EditIcon, PauseIcon, PlayIcon, RepeatIcon, WaveIcon } from "../../../components/player/icons";
+import { ActionsMenu } from "../../../components/player/ActionsMenu";
 import { CoverArt } from "../../../components/player/CoverArt";
 import { ProjectArtwork } from "../../../components/player/ProjectArtwork";
 import playerStyles from "../../../components/player/player.module.css";
@@ -107,25 +108,18 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
         <div className={styles.heroContent}>
           <div className={styles.heroNav}>
             <Link className={playerStyles.iconButton} href="/library" aria-label="Back to Library"><ChevronLeftIcon /></Link>
-            <Link className={playerStyles.pill} href={`/studio/${encodeURIComponent(projectId)}`}><EditIcon size={16} /> Open in Studio</Link>
+            {entry && (
+              <ActionsMenu label="Project options" items={[
+                { kind: "action", label: coverUrl ? "Change cover" : "Add cover", onSelect: () => coverInput.current?.click() },
+                ...(coverUrl ? [{ kind: "action" as const, label: "Remove cover", destructive: true,
+                  onSelect: () => void removeProjectCover(projectId).then(() => setCoverMessage("Cover removed.")) }] : []),
+                { kind: "link", label: "Rename", href: `/studio/${encodeURIComponent(projectId)}?rename=1` }
+              ]} />
+            )}
           </div>
           <CoverArt className={styles.heroArt} projectId={projectId} project={project} label={entry ? `${entry.name} artwork` : undefined} />
-          {entry && (
-            <div className={styles.coverActions}>
-              <input ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp" hidden
-                onChange={(event) => void changeCover(event.target.files?.[0])} />
-              <button type="button" className={playerStyles.pill} onClick={() => coverInput.current?.click()}>
-                {coverUrl ? "Change cover" : "Add cover"}
-              </button>
-              {coverUrl && (
-                <button type="button" className={playerStyles.pill}
-                  onClick={() => void removeProjectCover(projectId).then(() => setCoverMessage("Cover removed."))}>
-                  Remove cover
-                </button>
-              )}
-              <Link className={playerStyles.pill} href={`/studio/${encodeURIComponent(projectId)}?rename=1`}>Rename</Link>
-            </div>
-          )}
+          <input ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp" hidden aria-hidden="true" tabIndex={-1}
+            onChange={(event) => void changeCover(event.target.files?.[0])} />
           {coverMessage && <p className={styles.status} role="status">{coverMessage}</p>}
           <span className={styles.badge}><WaveIcon size={14} /> {shown ? (cached ? "Rendered mix · offline" : "Rendered mix available") : "Live mix"}</span>
           <h1 className={styles.heroTitle}>{entry?.name ?? (status === "loading" ? "Loading…" : "Project not found")}</h1>
