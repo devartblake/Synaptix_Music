@@ -65,7 +65,9 @@
             "runtimeKind": "builtin",
             "moduleChecksumSha256": null
           },
-          "pluginState": null
+          "pluginState": null,
+          "automation": [],
+          "frozen": null
         }
       ],
       "clips": [

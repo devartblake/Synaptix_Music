@@ -67,7 +67,7 @@ test("v2 rejects unknown runtime kinds and malformed checksums", () => {
     id: "track-1", name: "Lead", kind: "instrument", muted: false, solo: false,
     volumeDb: 0, pan: 0, clips: [], devices: [{
       id: "device-1", deviceType: "test", deviceVersion: "1", enabled: true,
-      parameters: [], pluginState: null,
+      parameters: [], pluginState: null, automation: [], frozen: null,
       plugin: { pluginId: "test", vendorId: null, version: "1", runtimeKind: "wam", moduleChecksumSha256: null }
     }]
   });

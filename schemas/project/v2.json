@@ -352,7 +352,9 @@
         "enabled",
         "parameters",
         "plugin",
-        "pluginState"
+        "pluginState",
+        "automation",
+        "frozen"
       ],
       "properties": {
         "id": {
@@ -394,6 +396,22 @@
           "oneOf": [
             {
               "$ref": "#/$defs/pluginStateEnvelope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "automation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/automationLane"
+          }
+        },
+        "frozen": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/frozenPluginArtifactReference"
             },
             {
               "type": "null"
@@ -652,6 +670,111 @@
               "type": "null"
             }
           ]
+        }
+      }
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "checksumSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "frozenPluginArtifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "renderId",
+        "artifactId",
+        "sourceProjectId",
+        "sourceRevisionId",
+        "sourceProjectChecksumSha256",
+        "sourceDeviceId",
+        "sourcePluginStateChecksumSha256",
+        "sourceSignalChainChecksumSha256",
+        "artifactChecksumSha256",
+        "engineVersion",
+        "frozenAt"
+      ],
+      "properties": {
+        "renderId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "artifactId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sourceProjectId": {
+          "$ref": "#/$defs/id"
+        },
+        "sourceRevisionId": {
+          "$ref": "#/$defs/id"
+        },
+        "sourceProjectChecksumSha256": {
+          "$ref": "#/$defs/checksumSha256"
+        },
+        "sourceDeviceId": {
+          "$ref": "#/$defs/id"
+        },
+        "sourcePluginStateChecksumSha256": {
+          "$ref": "#/$defs/checksumSha256"
+        },
+        "sourceSignalChainChecksumSha256": {
+          "$ref": "#/$defs/checksumSha256"
+        },
+        "artifactChecksumSha256": {
+          "$ref": "#/$defs/checksumSha256"
+        },
+        "engineVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frozenAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "automationPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tick",
+        "value",
+        "curve"
+      ],
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "value": {
+          "type": "number"
+        },
+        "curve": {
+          "enum": [
+            "step",
+            "linear"
+          ]
+        }
+      }
+    },
+    "automationLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parameterId",
+        "points"
+      ],
+      "properties": {
+        "parameterId": {
+          "$ref": "#/$defs/id"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/automationPoint"
+          }
         }
       }
     }

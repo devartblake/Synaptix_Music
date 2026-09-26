@@ -66,3 +66,11 @@ export {
   type RenderJobQueueOptions,
   type RenderJobSubmitOptions
 } from "./render-job-queue.ts";
+export {
+  assessPluginProductionEligibility,
+  verifyFrozenArtifactAgainstManifest,
+  type PluginProductionAssessment,
+  type PluginProductionAssessmentOptions,
+  type PluginProductionDecision,
+  type PluginProductionRenderMode
+} from "./plugin-freeze.ts";

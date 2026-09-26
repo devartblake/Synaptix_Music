@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import Field
@@ -32,6 +33,35 @@ class PluginStateEnvelope(StrictModel):
     checksumSha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
+UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+CHECKSUM_PATTERN = r"^[0-9a-f]{64}$"
+
+
+class FrozenPluginArtifactReference(StrictModel):
+    renderId: str = Field(pattern=UUID_PATTERN)
+    artifactId: str = Field(pattern=UUID_PATTERN)
+    sourceProjectId: str = Field(min_length=1)
+    sourceRevisionId: str = Field(min_length=1)
+    sourceProjectChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
+    sourceDeviceId: str = Field(min_length=1)
+    sourcePluginStateChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
+    sourceSignalChainChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
+    artifactChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
+    engineVersion: str = Field(min_length=1)
+    frozenAt: datetime
+
+
+class AutomationPoint(StrictModel):
+    tick: int = Field(ge=0)
+    value: float
+    curve: Literal["step", "linear"]
+
+
+class AutomationLane(StrictModel):
+    parameterId: str = Field(min_length=1)
+    points: list[AutomationPoint]
+
+
 class DeviceV2(StrictModel):
     id: str = Field(min_length=1)
     deviceType: str = Field(min_length=1)
@@ -40,6 +70,8 @@ class DeviceV2(StrictModel):
     parameters: list[DeviceParameter]
     plugin: PluginReference
     pluginState: PluginStateEnvelope | None
+    automation: list[AutomationLane]
+    frozen: FrozenPluginArtifactReference | None
 
 
 class TrackV2(StrictModel):
@@ -86,4 +118,6 @@ def migrate_project_v1_to_v2(project: MusicProject) -> MusicProjectV2:
                 "moduleChecksumSha256": None,
             }
             device["pluginState"] = None
+            device["automation"] = []
+            device["frozen"] = None
     return MusicProjectV2.model_validate(payload)

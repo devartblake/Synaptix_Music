@@ -6,6 +6,7 @@ export const PROJECT_SCHEMA_VERSION_V2 = 2 as const;
 
 const IdSchema = z.string().min(1);
 const ChecksumSchema = z.string().regex(/^[0-9a-f]{64}$/);
+const UuidSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 
 export const PluginRuntimeKindSchema = z.enum([
   "builtin",
@@ -30,6 +31,31 @@ export const PluginStateEnvelopeSchema = z.object({
   checksumSha256: ChecksumSchema.nullable()
 });
 
+export const FrozenPluginArtifactReferenceSchema = z.object({
+  renderId: UuidSchema,
+  artifactId: UuidSchema,
+  sourceProjectId: IdSchema,
+  sourceRevisionId: IdSchema,
+  sourceProjectChecksumSha256: ChecksumSchema,
+  sourceDeviceId: IdSchema,
+  sourcePluginStateChecksumSha256: ChecksumSchema,
+  sourceSignalChainChecksumSha256: ChecksumSchema,
+  artifactChecksumSha256: ChecksumSchema,
+  engineVersion: z.string().min(1),
+  frozenAt: z.string().datetime({ offset: true })
+});
+
+export const AutomationPointSchema = z.object({
+  tick: z.number().int().nonnegative(),
+  value: z.number(),
+  curve: z.enum(["step", "linear"])
+});
+
+export const AutomationLaneSchema = z.object({
+  parameterId: IdSchema,
+  points: z.array(AutomationPointSchema)
+});
+
 export const DeviceParameterV2Schema = z.object({
   id: IdSchema,
   value: z.number()
@@ -42,7 +68,9 @@ export const DeviceV2Schema = z.object({
   enabled: z.boolean().default(true),
   parameters: z.array(DeviceParameterV2Schema).default([]),
   plugin: PluginReferenceSchema,
-  pluginState: PluginStateEnvelopeSchema.nullable().default(null)
+  pluginState: PluginStateEnvelopeSchema.nullable().default(null),
+  automation: z.array(AutomationLaneSchema).default([]),
+  frozen: FrozenPluginArtifactReferenceSchema.nullable().default(null)
 });
 
 export const TrackV2Schema = z.object({
@@ -70,6 +98,9 @@ export const MusicProjectV2Schema = MusicProjectSchema.omit({
 export type PluginRuntimeKind = z.infer<typeof PluginRuntimeKindSchema>;
 export type PluginReference = z.infer<typeof PluginReferenceSchema>;
 export type PluginStateEnvelope = z.infer<typeof PluginStateEnvelopeSchema>;
+export type FrozenPluginArtifactReference = z.infer<typeof FrozenPluginArtifactReferenceSchema>;
+export type AutomationPoint = z.infer<typeof AutomationPointSchema>;
+export type AutomationLane = z.infer<typeof AutomationLaneSchema>;
 export type DeviceV2 = z.infer<typeof DeviceV2Schema>;
 export type TrackV2 = z.infer<typeof TrackV2Schema>;
 export type MusicProjectV2 = z.infer<typeof MusicProjectV2Schema>;
@@ -90,7 +121,9 @@ export function migrateProjectV1ToV2(project: MusicProject): MusicProjectV2 {
           runtimeKind: "builtin" as const,
           moduleChecksumSha256: null
         },
-        pluginState: null
+        pluginState: null,
+        automation: [],
+        frozen: null
       }))
     }))
   });
