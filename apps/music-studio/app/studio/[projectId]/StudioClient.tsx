@@ -20,7 +20,9 @@ import {
   SetTrackVolumeEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
-import { liftEditorCommandToV2, type PluginEditorCommand } from "@synaptix/command-system/plugin";
+import { liftEditorCommandToV2, SetFrozenPluginArtifactEditorCommand, type PluginEditorCommand } from "@synaptix/command-system/plugin";
+import { evaluateFrozenPluginEvidence, type FrozenPluginEvidenceStatus } from "@synaptix/project-model/plugin";
+import { RenderJobSchema } from "@synaptix/render-contracts";
 import {
   BrowserAudioEngine,
   builtinProjectView,
@@ -77,6 +79,7 @@ import { MixerDrawer } from "./MixerDrawer";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack } from "./PluginRack";
+import { createFreezeManifest, FreezeError, freezeReference, storedRevision } from "../../../lib/platform/plugin-freeze-model";
 import { ProjectTitle } from "./ProjectTitle";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
@@ -238,6 +241,18 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   // Built-in controls and the v1-typed workspaces read a view without plug-in devices.
   const builtinView = useMemo(() => builtinProjectView(project), [project]);
   const deviceGestureRef = useRef<DeviceGesture | null>(null);
+  // Plug-in freezes: progress per device, and whether each attached freeze is still current.
+  const [freezeProgress, setFreezeProgress] = useState<Record<string, { busy: boolean; message: string }>>({});
+  const [freezeEvidence, setFreezeEvidence] = useState<ReadonlyMap<string, FrozenPluginEvidenceStatus>>(new Map());
+  useEffect(() => {
+    let cancelled = false;
+    const frozen = project.tracks.flatMap((track) =>
+      track.devices.filter((device) => device.frozen).map((device) => ({ trackId: track.id, deviceId: device.id })));
+    void Promise.all(frozen.map(async ({ trackId, deviceId }) =>
+      [deviceId, await evaluateFrozenPluginEvidence(project, deviceId, trackId)] as const
+    )).then((entries) => { if (!cancelled) setFreezeEvidence(new Map(entries)); });
+    return () => { cancelled = true; };
+  }, [project]);
 
   useEffect(() => {
     let cancelled = false;
@@ -478,6 +493,46 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       ticksPerQuarterNote: project.transport.ticksPerQuarterNote
     })));
     setWorkspace("arrangement");
+  }
+
+  /** Renders a first-party plug-in's output on the render worker and attaches it as a freeze. */
+  async function freezePlugin(trackId: string, deviceId: string): Promise<void> {
+    const report = (message: string, busy = true) =>
+      setFreezeProgress((current) => ({ ...current, [deviceId]: { busy, message } }));
+    const platform = async (path: string, init?: RequestInit) => {
+      const response = await fetch(`/api/platform/${path}`, { cache: "no-store", ...init });
+      if (response.status === 401) throw new FreezeError("Sign in to SynaptixPlay to freeze plug-ins.");
+      const body = await response.json().catch(() => null) as unknown;
+      if (!response.ok) throw new FreezeError((body as { message?: string } | null)?.message ?? `Freezing failed (${response.status}).`);
+      return body;
+    };
+    try {
+      if (!cloudEligible) throw new FreezeError("Freezing needs a cloud project. Demo projects stay in this browser.");
+      report("Syncing this revision…");
+      await syncNow();
+      const local = projectRef.current;
+      const stored = await storedRevision(await platform(`projects/${encodeURIComponent(local.projectId)}`), local);
+      const manifest = await createFreezeManifest(stored, trackId, deviceId);
+      report("Rendering the frozen audio…");
+      let job = RenderJobSchema.parse(await platform("render-jobs", {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": `plugin-freeze:${manifest.renderId}` },
+        body: JSON.stringify({ manifest })
+      }));
+      const deadline = Date.now() + 180_000;
+      while (!["completed", "failed", "cancelled", "dead_letter"].includes(job.status)) {
+        if (Date.now() > deadline) throw new FreezeError("The freeze render is taking too long. Check Render / export for its status.");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        job = RenderJobSchema.parse(await platform(`render-jobs/${encodeURIComponent(job.jobId)}`));
+      }
+      const reference = await freezeReference(stored, manifest, job);
+      const current = projectRef.current.tracks.find((track) => track.id === trackId)?.devices.find((device) => device.id === deviceId);
+      if (!current) throw new FreezeError("The plug-in was removed while it was freezing.");
+      await execute(new SetFrozenPluginArtifactEditorCommand(trackId, deviceId, current.frozen ?? null, reference));
+      report("", false);
+    } catch (error) {
+      report(error instanceof FreezeError ? error.message : "Freezing failed. Try again.", false);
+    }
   }
 
   async function applyGeneratedVariation(proposal: GenerationProposal, jobId: string): Promise<void> {
@@ -802,6 +857,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             {pluginTrack && <PluginRack track={pluginTrack}
               statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
               onExecute={(command) => void execute(command)}
+              freeze={{ evidence: freezeEvidence, progress: freezeProgress, onFreeze: (trackId, deviceId) => void freezePlugin(trackId, deviceId) }}
               gestures={{
                 begin: beginDeviceGesture,
                 preview: previewDeviceParameter,

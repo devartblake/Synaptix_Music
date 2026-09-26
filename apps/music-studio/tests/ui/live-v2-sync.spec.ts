@@ -73,3 +73,28 @@ test("a plain project syncs as v2 and renders to completion from the stored v2 r
 
   await page.request.delete("/api/auth/session");
 });
+
+test("freezing the Reference Drive renders it on the worker and tracks whether the freeze is current", async ({ page }) => {
+  test.setTimeout(300_000);
+  const signIn = await page.request.post("/api/auth/session", { data: { email, password } });
+  expect(signIn.ok(), await signIn.text()).toBeTruthy();
+
+  await page.goto(`/studio/${randomUUID()}`);
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await page.getByText("Bass controls", { exact: true }).click();
+  const rack = page.getByRole("region", { name: "Bass inserts" });
+  await rack.getByRole("button", { name: "Add Reference Drive" }).click();
+  await expect(rack.getByText("Active")).toBeVisible({ timeout: 15_000 });
+
+  await rack.getByRole("button", { name: "Freeze Reference Drive on Bass" }).click();
+  await expect(rack.getByRole("status").filter({ hasText: "Frozen · current" })).toBeVisible({ timeout: 240_000 });
+  await expect(rack.getByRole("button", { name: "Freeze Reference Drive on Bass" })).toHaveText("Refreeze");
+
+  // Changing the plug-in makes the freeze out of date.
+  const drive = rack.getByRole("slider", { name: "Bass Reference Drive Drive" });
+  await drive.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(rack.getByRole("status").filter({ hasText: "Frozen · out of date" })).toBeVisible({ timeout: 15_000 });
+
+  await page.request.delete("/api/auth/session");
+});

@@ -69,6 +69,9 @@ const job = {
 test("only completed project masters are eligible", () => {
   assert.deepEqual(eligibleAdaptiveRenders([job], "project-1"), [job]);
   assert.deepEqual(eligibleAdaptiveRenders([{ ...job, status: "running" }], "project-1"), []);
+  // A plug-in freeze is one device's audio, never a game state, even with a master-like file.
+  const freeze = { ...job, manifest: { ...job.manifest, scope: { kind: "plugin-freeze" as const, trackId: "t", deviceId: "d" } } };
+  assert.deepEqual(eligibleAdaptiveRenders([freeze], "project-1"), []);
 });
 
 test("builds a validated draft while keeping publication outside the authoring model", () => {
