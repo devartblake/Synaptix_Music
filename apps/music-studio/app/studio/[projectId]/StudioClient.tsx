@@ -13,9 +13,7 @@ import {
   EditorCommandHistory,
   SetLoopEnabledEditorCommand,
   SetTempoEditorCommand,
-  SetTrackMutedEditorCommand,
   SetTrackPanEditorCommand,
-  SetTrackSoloEditorCommand,
   SetTrackVolumeEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
@@ -69,6 +67,10 @@ import { MasterMeter } from "./MasterMeter";
 import { MixerDrawer } from "./MixerDrawer";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack } from "./PluginRack";
+import { ArrangementTimeline } from "./ArrangementTimeline";
+import { TransportPosition } from "./TransportPosition";
+import { CommitSlider } from "../../../components/ui/CommitSlider";
+import { arrangementBars } from "../../../lib/editor/timeline-model";
 
 /**
  * The project schema version the platform API accepts for revision uploads. Until the platform
@@ -137,25 +139,6 @@ function createStarterProjectV1(projectId: string, options: CreateEmptyProjectOp
   return project;
 }
 
-function clipStyle(clip: Clip, project: MusicProject): React.CSSProperties {
-  const beatsPerBar = project.timeSignatureMap[0]?.numerator ?? 4;
-  const ticksPerBar = project.transport.ticksPerQuarterNote * beatsPerBar;
-  const startBar = clip.range.start.bar + clip.range.start.beat / beatsPerBar;
-  const bars = clip.range.durationTicks / ticksPerBar;
-  return {
-    position: "absolute",
-    left: `${(startBar / TOTAL_BARS) * 100}%`,
-    width: `${Math.min(100, (bars / TOTAL_BARS) * 100)}%`,
-    top: 10,
-    bottom: 10,
-    border: "1px solid var(--sx-primary)",
-    borderRadius: 6,
-    background: "linear-gradient(135deg, rgb(109 124 255 / 48%), rgb(155 92 255 / 30%))",
-    padding: "8px 10px",
-    overflow: "hidden"
-  };
-}
-
 type NumericSettingsKey = "filterFrequency" | "attack" | "decay" | "sustain" | "release" | "reverbSend";
 
 const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
@@ -168,7 +151,6 @@ const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
 };
 
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
-type Gesture = { trackId: string; field: "volume" | "pan"; initial: number };
 type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
 type Workspace = "arrangement" | "generation" | "adaptive";
@@ -206,7 +188,6 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [pluginStatuses, setPluginStatuses] = useState<PluginRuntimeStatus[]>([]);
   // Built-in controls and the v1-typed workspaces read a view without plug-in devices.
   const builtinView = useMemo(() => builtinProjectView(project), [project]);
-  const gestureRef = useRef<Gesture | null>(null);
   const deviceGestureRef = useRef<DeviceGesture | null>(null);
 
   useEffect(() => {
@@ -344,27 +325,6 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     await coordinatorRef.current?.drain();
   }
 
-  function previewTrack(trackId: string, field: "volumeDb" | "pan", value: number): void {
-    setProject((current) => ({
-      ...current,
-      tracks: current.tracks.map((candidate) => candidate.id === trackId ? { ...candidate, [field]: value } : candidate)
-    }));
-  }
-
-  function beginGesture(trackId: string, field: "volume" | "pan", initial: number): void {
-    gestureRef.current = { trackId, field, initial };
-  }
-
-  async function endGesture(trackId: string, field: "volume" | "pan", next: number): Promise<void> {
-    const gesture = gestureRef.current;
-    gestureRef.current = null;
-    if (!gesture || gesture.trackId !== trackId || gesture.field !== field || gesture.initial === next) return;
-    const command = field === "volume"
-      ? new SetTrackVolumeEditorCommand(trackId, gesture.initial, next)
-      : new SetTrackPanEditorCommand(trackId, gesture.initial, next);
-    await executeV1(command);
-  }
-
   function previewDeviceParameter(trackId: string, deviceId: string, parameterId: string, value: number): void {
     setProject((current) => ({
       ...current,
@@ -418,14 +378,10 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
           const step = definition.unit === "count" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : 10) : definition.unit === "ratio" ? 0.01 : 0.001;
           return (
-            <label key={definition.id} style={{ display: "grid", gridTemplateColumns: "80px 1fr 60px", gap: 6, fontSize: 12 }}>
-              {definition.label}
-              <input type="range" min={definition.minimum} max={definition.maximum} step={step} value={value}
-                onPointerDown={() => beginDeviceGesture(track.id, device.id, definition.id, value)}
-                onChange={(event) => previewDeviceParameter(track.id, device.id, definition.id, Number(event.target.value))}
-                onPointerUp={(event) => void endDeviceGesture(track.id, device.id, definition.id, Number(event.currentTarget.value))} />
-              <span>{formatParameterValue(definition.unit, value)}</span>
-            </label>
+            <CommitSlider key={definition.id} label={definition.label} value={value}
+              min={definition.minimum} max={definition.maximum} step={step} disabled={!hydrated}
+              format={(next) => formatParameterValue(definition.unit, next)}
+              onCommit={(next) => execute(new SetDeviceParameterEditorCommand(track.id, device.id, definition.id, value, next))} />
           );
         })}
       </div>
@@ -537,6 +493,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               tabs={[{ value: "arrangement", label: "Arrangement", panelId: "arrangement-view" },
                 { value: "midi", label: "MIDI editor", panelId: "midi-view", disabled: !activeClip }]} />
             <span className="workspace-spacer" />
+            <TransportPosition engine={engine} project={builtinView} />
             <Badge>Revision {project.revisionId.slice(0, 8)}</Badge>
           </div>}
 
@@ -551,61 +508,29 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       ))}
 
       <div id="arrangement-view" role="tabpanel" aria-labelledby="arrangement-view-tab" hidden={Boolean(activeClip)}>
-      <section aria-label="Arrangement timeline" className="canvas-panel">
-        <div style={{ minWidth: 1120 }}>
-          <div className="timeline-ruler" style={{ display: "grid", gridTemplateColumns: "260px repeat(16, minmax(48px, 1fr))", borderBottom: "1px solid #343943" }}>
-            <div style={{ padding: 10 }}>Tracks and mixer</div>
-            {Array.from({ length: TOTAL_BARS }, (_, index) => <div key={index} style={{ padding: 10, borderLeft: "1px solid #2a2f38", textAlign: "center" }}>{index + 1}</div>)}
-          </div>
-          {builtinView.tracks.map((value, trackIndex) => (
-            <div key={value.id} style={{ display: "grid", gridTemplateColumns: "260px 1fr", minHeight: 96, borderBottom: "1px solid #2a2f38" }}>
-              <div className="track-header" style={{ padding: 12, display: "grid", gap: 8 }}>
-                <strong><span className="track-index">{trackIndex + 1}</span>{value.name}</strong>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Button onClick={() => void executeV1(new SetTrackMutedEditorCommand(value.id, value.muted, !value.muted))}>M {value.muted ? "On" : "Off"}</Button>
-                  <Button onClick={() => void executeV1(new SetTrackSoloEditorCommand(value.id, value.solo, !value.solo))}>S {value.solo ? "On" : "Off"}</Button>
-                </div>
-                <label style={{ display: "grid", gridTemplateColumns: "54px 1fr 42px", gap: 6, fontSize: 12 }}>
-                  Volume
-                  <input type="range" min={-36} max={6} step={1} value={value.volumeDb}
-                    onPointerDown={() => beginGesture(value.id, "volume", value.volumeDb)}
-                    onChange={(event) => previewTrack(value.id, "volumeDb", Number(event.target.value))}
-                    onPointerUp={(event) => void endGesture(value.id, "volume", Number(event.currentTarget.value))} />
-                  <span>{value.volumeDb} dB</span>
-                </label>
-                <label style={{ display: "grid", gridTemplateColumns: "54px 1fr 42px", gap: 6, fontSize: 12 }}>
-                  Pan
-                  <input type="range" min={-1} max={1} step={0.1} value={value.pan}
-                    onPointerDown={() => beginGesture(value.id, "pan", value.pan)}
-                    onChange={(event) => previewTrack(value.id, "pan", Number(event.target.value))}
-                    onPointerUp={(event) => void endGesture(value.id, "pan", Number(event.currentTarget.value))} />
-                  <span>{value.pan.toFixed(1)}</span>
-                </label>
-                {renderDeviceControls(value)}
-                {project.tracks[trackIndex] && <PluginRack track={project.tracks[trackIndex]}
-                  statuses={pluginStatuses.filter((status) => status.trackId === value.id)}
-                  onExecute={(command) => void execute(command)}
-                  gestures={{
-                    begin: beginDeviceGesture,
-                    preview: previewDeviceParameter,
-                    end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
-                  }} />}
-              </div>
-              <div className="track-lane" style={{ position: "relative", minHeight: 96, backgroundImage: "repeating-linear-gradient(to right, transparent 0, transparent calc(6.25% - 1px), #252a33 calc(6.25% - 1px), #252a33 6.25%)" }}>
-                {value.clips.map((clip) => <div key={clip.id} style={clipStyle(clip, builtinView)} onDoubleClick={() => clip.kind === "midi" && setActiveClip({ trackId: value.id, clipId: clip.id })}>
-                  <strong>{clip.name}</strong>
-                  <div style={{ fontSize: 12, opacity: 0.8 }}>{clip.kind === "midi" ? `${clip.notes.length} MIDI notes` : "Audio clip"}</div>
-                  {clip.kind === "midi" && <Button style={{ marginTop: 6 }} onClick={(event) => { event.stopPropagation(); setActiveClip({ trackId: value.id, clipId: clip.id }); }}>Edit</Button>}
-                </div>)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={setActiveClip}
+        renderControls={(track) => {
+          const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
+          return <>
+            <CommitSlider label="Volume" value={track.volumeDb} min={-36} max={6} step={1} disabled={!hydrated}
+              format={(value) => `${value} dB`} onCommit={(value) => executeV1(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))} />
+            <CommitSlider label="Pan" value={track.pan} min={-1} max={1} step={0.1} disabled={!hydrated}
+              format={(value) => value.toFixed(1)} onCommit={(value) => executeV1(new SetTrackPanEditorCommand(track.id, track.pan, value))} />
+            {renderDeviceControls(track)}
+            {pluginTrack && <PluginRack track={pluginTrack}
+              statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
+              onExecute={(command) => void execute(command)}
+              gestures={{
+                begin: beginDeviceGesture,
+                preview: previewDeviceParameter,
+                end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
+              }} />}
+          </>;
+        }} />
       </div>
 
       <div id="midi-view" role="tabpanel" aria-labelledby="midi-view-tab" hidden={!activeClip}>
-      {activeClip && <PianoRoll
+      {activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine}
         project={builtinView}
         trackId={activeClip.trackId}
         clipId={activeClip.clipId}
@@ -632,7 +557,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <dl className="property-list">
             <div className="property-row"><dt>Project</dt><dd>{project.projectId}</dd></div>
             <div className="property-row"><dt>Tracks</dt><dd>{project.tracks.length}</dd></div>
-            <div className="property-row"><dt>Length</dt><dd>{TOTAL_BARS} bars</dd></div>
+            <div className="property-row"><dt>Length</dt><dd>{arrangementBars(builtinView)} bars</dd></div>
             <div className="property-row"><dt>Tempo</dt><dd>{project.tempoMap[0]?.bpm ?? 120} BPM</dd></div>
             <div className="property-row"><dt>Sync</dt><dd>{syncLabel}</dd></div>
           </dl>

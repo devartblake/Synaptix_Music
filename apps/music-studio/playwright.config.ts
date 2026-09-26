@@ -4,6 +4,10 @@ export default defineConfig({
   testDir: "./tests/ui",
   outputDir: "./test-results",
   fullyParallel: false,
+  // Audio-enabled pages and cold Next compilations are expensive on local Docker hosts.
+  workers: 2,
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

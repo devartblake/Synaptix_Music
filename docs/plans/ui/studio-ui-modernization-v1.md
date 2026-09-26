@@ -76,7 +76,7 @@ The first six remaining tasks are grouped into three increments. Each increment 
 | Increment | Task pair | Status |
 | --- | --- | --- |
 | 1 | Shared UI components and consistent control styling; resizable/collapsible panels and mixer height | Complete |
-| 2 | Transport-driven playhead, compact track headers, richer clip selection; piano-roll/drum visual refresh and keyboard interactions | Queued |
+| 2 | Transport-driven playhead, compact track headers, richer clip selection; piano-roll/drum visual refresh and keyboard interactions | Implemented; validation in progress |
 | 3 | Bus/return channels, per-channel metering, routing controls; render/export workflow and artifact-download UI | Queued |
 
 ### Increment 1 implementation
@@ -91,6 +91,17 @@ The first six remaining tasks are grouped into three increments. Each increment 
 Validation: 24 desktop/tablet browser tests pass with two workers, including eight new layout cases, axe accessibility checks, and existing home/mixer regressions. TypeScript and package-boundary checks pass. The initial eight-worker run hit intermittent home-navigation timing failures; the two-worker run completed without failures.
 
 The optimized production build also passes. The refreshed Docker stack has six healthy services; a browser smoke check at `localhost:3000` verifies panel/mixer resizing, persisted sizes, reset, and mobile disclosure focus.
+
+### Increment 2 implementation
+
+- Added arrangement and piano-roll playheads and a bar/beat/tick readout from the audio engine transport subscription. Bar-ruler buttons seek the same transport; pause, stop, and loop wrapping use actual ticks.
+- Made track headers compact, sticky during horizontal scrolling, and independently expandable. Volume, pan, and device sliders now commit keyboard/pointer gestures through editor commands.
+- Added selectable clips with MIDI note previews and keyboard editor entry. Timeline length includes clip offsets, full durations, and the loop range instead of assuming sixteen bars.
+- Refreshed the piano-roll grid, keyboard, note states, ruler, and velocity controls using shared studio tokens. Added keyboard insertion, movement, group selection, resize, transpose, duplicate, delete, and velocity edits, with bounded movement and visible errors.
+- Replaced the independent drum cursor with transport-driven step highlighting and optional follow playback. Added bar-window navigation, arrow/Home/End focus navigation, Space/Enter toggles, V velocity cycling, and Delete clearing. Clear visible steps preserves notes in other bars.
+- Kept playback subscriptions inside display/editor components, separate from project revisions and engine graph loading.
+
+Timing uses the audio engine's existing first-time-signature contract. Supporting changing time-signature maps remains a separate engine task. Automatic screenshot comparison is still deferred; these tests capture screenshots and assert behavior/layout.
 
 ## Task checklist
 
@@ -123,11 +134,11 @@ Checked tasks describe features present in the application. Unchecked tasks incl
 - [x] Basic bar ruler, track lanes, styled clips, and clip-editor entry points.
 - [x] Track volume, pan, mute, and solo controls.
 - [x] Functional piano-roll toolbar, piano keyboard display, selection, velocity, snap/grid, and zoom controls.
-- [x] Drum lanes, step/velocity editing, and a separate preview cursor.
-- [ ] Professional timeline ruler and playhead driven by authoritative transport ticks.
-- [ ] Compact track headers and richer MIDI clip content/selection states.
-- [ ] Piano-roll and drum-sequencer visual refresh with consistent shared controls.
-- [ ] Complete keyboard note/step interactions and transport-synchronized playback feedback.
+- [x] Drum lanes, step/velocity editing, transport highlighting, and bar-window navigation.
+- [x] Bar ruler with seek controls and playhead driven by authoritative transport ticks.
+- [x] Compact track headers and richer MIDI clip content/selection states.
+- [x] Piano-roll and drum-sequencer visual refresh with consistent shared controls.
+- [x] Keyboard note/step interactions and transport-synchronized playback feedback.
 
 ### Workstream 4 — Mixer and production audio
 
@@ -165,8 +176,8 @@ The current adaptive workspace validates a draft manifest and shows a certificat
 
 1. UI tokens and primitive components — **shared components and initial editor adoption implemented**
 2. Studio shell and panel layout — **responsive shell, mobile workspace access, persisted panel dimensions/visibility, and layout reset implemented**
-3. Arrangement visual refresh
-4. Piano roll and drum visual refresh
+3. Arrangement visual refresh - **compact controls, clip previews/selection, ruler seeking, and transport playhead implemented**
+4. Piano roll and drum visual refresh - **shared styling, keyboard editing, and transport feedback implemented**
 5. Mixer and production-audio controls — **track strips and master metering implemented; buses, routing, and export UI remain**
 6. Adaptive package authoring workspace — **draft state authoring implemented; interactive preview and publication remain**
 7. Accessibility, responsiveness, and visual-regression closure — **home, generation, and mixer coverage implemented; full editor coverage and screenshot baselines remain**
