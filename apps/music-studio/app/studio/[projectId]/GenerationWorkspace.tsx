@@ -38,6 +38,14 @@ interface GenerationWorkspaceProps {
   onClose(): void;
 }
 
+/** The signed-in platform token for the live-updates connection; empty when signed out. */
+async function realtimeAccessToken(): Promise<string> {
+  const response = await fetch("/api/auth/realtime-token", { cache: "no-store" });
+  if (!response.ok) return "";
+  const body = (await response.json()) as { accessToken?: unknown };
+  return typeof body.accessToken === "string" ? body.accessToken : "";
+}
+
 function newestProjectJob(jobs: GenerationJob[], projectId: string): GenerationJob | null {
   return jobs
     .filter((job) => job.projectId === projectId)
@@ -107,6 +115,7 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
     void subscribeToGenerationJobStatus({
       hubUrl: realtimeHubUrl,
       jobId: job.jobId,
+      accessTokenFactory: realtimeAccessToken,
       onStatus: receiveRealtimeStatus,
       onRecovered: (recovered) => {
         setJob(recovered);

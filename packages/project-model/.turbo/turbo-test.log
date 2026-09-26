@@ -1,5 +1,85 @@
 
 > @synaptix/project-model@0.1.0 test
-> echo No tests yet
+> node --experimental-transform-types --test src/*.test.ts
 
-No tests yet
+(node:169556) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:169752) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: descriptors reject duplicate parameters and out-of-range defaults
+ok 1 - descriptors reject duplicate parameters and out-of-range defaults
+  ---
+  duration_ms: 7.1017
+  ...
+# Subtest: availability is resolved from trusted descriptors without touching the project
+ok 2 - availability is resolved from trusted descriptors without touching the project
+  ---
+  duration_ms: 2.4045
+  ...
+# Subtest: unknown plug-in devices survive a parse/serialize round trip exactly
+ok 3 - unknown plug-in devices survive a parse/serialize round trip exactly
+  ---
+  duration_ms: 12.363
+  ...
+# Subtest: state envelope checksums detect payload tampering
+ok 4 - state envelope checksums detect payload tampering
+  ---
+  duration_ms: 12.3491
+  ...
+# Subtest: frozen evidence stays current across descendant revisions
+ok 5 - frozen evidence stays current across descendant revisions
+  ---
+  duration_ms: 4.1248
+  ...
+# Subtest: frozen evidence goes stale when parameters, automation, clips, or upstream devices change
+ok 6 - frozen evidence goes stale when parameters, automation, clips, or upstream devices change
+  ---
+  duration_ms: 6.7992
+  ...
+# Subtest: frozen evidence is independent of downstream devices and other tracks
+ok 7 - frozen evidence is independent of downstream devices and other tracks
+  ---
+  duration_ms: 1.8047
+  ...
+# Subtest: the canonical plug-in fixture validates and carries current frozen evidence
+ok 8 - the canonical plug-in fixture validates and carries current frozen evidence
+  ---
+  duration_ms: 5.0513
+  ...
+# (node:169748) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: migrates a v1 project deterministically without mutating the source
+ok 9 - migrates a v1 project deterministically without mutating the source
+  ---
+  duration_ms: 14.0035
+  ...
+# Subtest: v1 rejects v2 and v2 rejects v1
+ok 10 - v1 rejects v2 and v2 rejects v1
+  ---
+  duration_ms: 1.5849
+  ...
+# Subtest: v2 rejects unknown runtime kinds and malformed checksums
+ok 11 - v2 rejects unknown runtime kinds and malformed checksums
+  ---
+  duration_ms: 1.7852
+  ...
+# Subtest: v2 conversions: open any version, project views, and lossless downgrade
+ok 12 - v2 conversions: open any version, project views, and lossless downgrade
+  ---
+  duration_ms: 4.835
+  ...
+# Subtest: mixer settings survive the v1 to v2 migration
+ok 13 - mixer settings survive the v1 to v2 migration
+  ---
+  duration_ms: 6.5799
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 779.5657

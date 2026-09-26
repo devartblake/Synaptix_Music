@@ -3,6 +3,7 @@
 import { Badge, Button, DisclosureMenu, ViewTabs } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import { useStudioLayout } from "../../../lib/editor/use-studio-layout";
+import { PlatformAccount, PLATFORM_SESSION_EVENT } from "../../../components/PlatformAccount";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -248,6 +249,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       historyRef.current.clear();
       setHistoryVersion((value) => value + 1);
       setHydrated(true);
+      // Revisions that could not upload earlier (e.g. before plug-in sync) go up now.
+      void syncNow();
     }).catch((error: unknown) => {
       if (!cancelled) {
         setStorageStatus(error instanceof Error ? error.message : "Project storage unavailable");
@@ -277,6 +280,15 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return lease.start();
   }, [projectId]);
 
+  useEffect(() => {
+    // Edits saved while signed out upload as soon as a session starts.
+    function onSession(event: Event) {
+      if ((event as CustomEvent<{ signedIn: boolean }>).detail?.signedIn) void syncNow();
+    }
+    window.addEventListener(PLATFORM_SESSION_EVENT, onSession);
+    return () => window.removeEventListener(PLATFORM_SESSION_EVENT, onSession);
+  });
+
   useEffect(() => engine.loadProject(project), [engine, project]);
   useEffect(() => engine.subscribePluginStatus(setPluginStatuses), [engine]);
 
@@ -304,13 +316,13 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  async function persistRevision(envelope: PlatformRevisionEnvelope, expected: string) {
+  async function persistRevision(envelope: PlatformRevisionEnvelope) {
     const hybrid = hybridRef.current;
     if (!hybrid) throw new Error("Project storage is not ready.");
     try {
       const outcome = await hybrid.saveAndQueue(
         envelope,
-        persistedRevisionRef.current || expected,
+        persistedRevisionRef.current,
         `project-revision:${envelope.projectId}:${envelope.revision.revisionId}`,
         crypto.randomUUID()
       );
@@ -331,7 +343,21 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     }
   }
 
-  async function queueRevision(nextProject: MusicProjectV2, revision: ProjectRevision, expected: string): Promise<void> {
+  /** Uploads the latest local revision if the platform never received it, then syncs. */
+  async function syncNow(): Promise<void> {
+    if (!sessionRef.current.snapshot.readOnly) {
+      try {
+        if (await hybridRef.current?.queueUnsyncedHead(projectId) === "blocked") {
+          setStorageStatus("Saved on this device; cloud sync needs platform support for plug-in projects");
+        }
+      } catch {
+        // Offline or platform unavailable: the sync status reports it.
+      }
+    }
+    await drainSync();
+  }
+
+  async function queueRevision(nextProject: MusicProjectV2, revision: ProjectRevision): Promise<void> {
     const envelope: PlatformRevisionEnvelope = { projectId: nextProject.projectId, project: nextProject, revision };
     latestEnvelopeRef.current = envelope;
     sessionRef.current.markSaving(envelope);
@@ -339,7 +365,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     journalRevision(envelope);
     let outcome;
     try {
-      outcome = await persistRevision(envelope, expected);
+      outcome = await persistRevision(envelope);
     } catch (error) {
       sessionRef.current.markFailed(error);
       setStorageStatus("Changes not saved");
@@ -357,7 +383,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
 
   async function restoreRecovery(entry: RecoveryEntry): Promise<void> {
     setRecovery(null);
-    setProject(entry.envelope.project);
+    setProject(toProjectV2(entry.envelope.project));
     historyRef.current.clear();
     setHistoryVersion((value) => value + 1);
     latestEnvelopeRef.current = entry.envelope;
@@ -381,7 +407,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
 
   async function retrySave(): Promise<void> {
-    if (await sessionRef.current.retry(persistRevision)) {
+    if (await sessionRef.current.retry(async (envelope) => { await persistRevision(envelope); })) {
       clearRecovery(projectId);
       setStorageStatus("Revision saved and queued");
       await drainSync();
@@ -395,7 +421,6 @@ export default function StudioClient({ projectId }: { projectId: string }) {
 
   async function execute(command: PluginEditorCommand): Promise<void> {
     if (session.readOnly) return;
-    const expected = project.revisionId;
     const result = await historyRef.current.execute(project, command);
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
@@ -408,7 +433,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
 
   async function addInstrument(deviceType: string): Promise<void> {
-    await execute(new AddTrackEditorCommand(createInstrumentTrack(deviceType, {
+    await executeV1(new AddTrackEditorCommand(createInstrumentTrack(deviceType, {
       bars: TOTAL_BARS,
       beatsPerBar: project.timeSignatureMap[0]?.numerator ?? 4,
       ticksPerQuarterNote: project.transport.ticksPerQuarterNote
@@ -518,7 +543,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               min={definition.minimum} max={definition.maximum} step={step} disabled={!hydrated}
               format={(next) => formatParameterValue(definition.unit, next)}
               onCommit={(next) => execute(definition.id === REVERB_SEND_PARAMETER
-                ? new SetTrackSendEditorCommand(track.id, track.reverbSend, next)
+                ? liftEditorCommandToV2(new SetTrackSendEditorCommand(track.id, track.reverbSend, next))
                 : new SetDeviceParameterEditorCommand(track.id, device.id, definition.id, value, next))} />
           );
         })}
@@ -583,7 +608,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               if (raw === "" || !Number.isFinite(next) || next < 20 || next > 300 || next === current) return;
               void executeV1(new SetTempoEditorCommand(current, next));
             }} style={{ width: 64 }} /></label>
-          <Button onClick={() => void coordinatorRef.current?.drain()}>Sync now</Button>
+          <Button onClick={() => void syncNow()}>Sync now</Button>
         </div>
         <div className="studio-status">
           <span className="status-pill" role="status" aria-label="Save state">
@@ -592,6 +617,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </span>
           <span className="status-pill"><span className={`status-dot ${syncTone}`} />{syncLabel}</span>
           <MasterMeter engine={engine} />
+          <PlatformAccount compact />
         </div>
       </header>
 
@@ -674,9 +700,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               ["piano-roll", "P", "Piano roll", "Add a melodic instrument track with a clip to use the piano roll"],
               ["drum-sequencer", "D", "Drum sequencer", "Add a drum track with a clip to use the drum sequencer"]
             ] as const).map(([kind, glyph, label, unavailable]) => {
-              const target = findEditorClip(project, kind as EditorKind, activeClip);
+              const target = findEditorClip(builtinView, kind as EditorKind, activeClip);
               const open = workspace === "arrangement" && activeClip !== null
-                && editorKindForTrack(project, activeClip.trackId) === kind;
+                && editorKindForTrack(builtinView, activeClip.trackId) === kind;
               return (
                 <Button key={kind} disabled={!target} title={target ? undefined : unavailable}
                   aria-current={open ? "page" : undefined}
@@ -778,7 +804,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onApply={applyGeneratedVariation}
         onClose={() => setWorkspace("arrangement")}
       />}
-      {workspace === "render" && <RenderWorkspace key={project.projectId} project={project} onClose={() => setWorkspace("arrangement")} onSync={async () => coordinatorRef.current?.drain()} />}
+      {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={() => setWorkspace("arrangement")} onSync={async () => coordinatorRef.current?.drain()} />}
       {workspace === "devices" && <section aria-label="Devices and effects" className="device-workspace"><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p>{project.tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} size={28} />{definition.label}</p>; })()}{renderDeviceControls(track)}</fieldset>)}<Button onClick={() => setWorkspace("arrangement")}>Back to arrangement</Button></section>}
       {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={() => setWorkspace("arrangement")} />}
         </section>
@@ -809,7 +835,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       </div>
       {mixerOpen && <MixerDrawer project={builtinView} engine={engine} storageStatus={storageStatus}
         height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
-        syncLabel={syncLabel} onExecute={executeV1} onExport={() => { changeMixerOpen(false); setWorkspace("render"); }} onClose={() => changeMixerOpen(false)} />
+        syncLabel={syncLabel} onExecute={executeV1} onExport={() => { changeMixerOpen(false); setWorkspace("render"); }} onClose={() => changeMixerOpen(false)} />}
     </main>
   );
 }

@@ -4,7 +4,8 @@ import test from "node:test";
 import { MusicProjectSchema, createEmptyProject } from "./index.ts";
 import {
   MusicProjectV2Schema,
-  migrateProjectV1ToV2
+  migrateProjectV1ToV2,
+  toProjectV2
 } from "./v2.ts";
 
 test("migrates a v1 project deterministically without mutating the source", () => {
@@ -77,7 +78,7 @@ test("v2 rejects unknown runtime kinds and malformed checksums", () => {
 });
 
 test("v2 conversions: open any version, project views, and lossless downgrade", async () => {
-  const { toProjectV2, projectV2EditingView, projectV2BuiltinView, downgradeProjectV2ToV1 } = await import("./v2.ts");
+  const { projectV2EditingView, projectV2BuiltinView, downgradeProjectV2ToV1 } = await import("./v2.ts");
   const v1 = createEmptyProject("project-1", { revisionId: "revision-1", now: "2026-09-22T00:00:00.000Z" });
   v1.tracks.push({
     id: "track-1", name: "Lead", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, clips: [],
@@ -101,4 +102,20 @@ test("v2 conversions: open any version, project views, and lossless downgrade", 
   const automated = structuredClone(toProjectV2(v1));
   automated.tracks[0]!.devices[0]!.automation.push({ parameterId: "gain", points: [] });
   assert.equal(downgradeProjectV2ToV1(automated), null);
+});
+
+test("mixer settings survive the v1 to v2 migration", () => {
+  const v1 = createEmptyProject("mixer-project", { name: "Mixer" });
+  v1.tracks.push({
+    id: "track-1", name: "Bass", kind: "instrument", muted: false, solo: false,
+    volumeDb: -6, pan: 0, reverbSend: 0.17, devices: [], clips: []
+  });
+  v1.mixer = {
+    music: { volumeDb: -3, muted: false }, drums: { volumeDb: 0, muted: true },
+    reverb: { volumeDb: -6, muted: false }, master: { volumeDb: -1, muted: false }
+  };
+
+  const v2 = toProjectV2(v1);
+  assert.equal(v2.tracks[0]?.reverbSend, 0.17);
+  assert.deepEqual(v2.mixer, v1.mixer);
 });

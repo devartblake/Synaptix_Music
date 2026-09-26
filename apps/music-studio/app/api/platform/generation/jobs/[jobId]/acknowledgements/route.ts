@@ -1,5 +1,6 @@
 import { GenerationStatusAcknowledgementSchema, PlatformErrorSchema } from "@synaptix/platform-contracts";
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../../../../lib/platform/platform-session";
 
 export const runtime = "nodejs";
 
@@ -14,10 +15,9 @@ export async function POST(
   context: { params: Promise<{ jobId: string }> }
 ): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   const { jobId } = await context.params;
-  if (!authorization && !cookie) {
+  if (!authorization) {
     return NextResponse.json(PlatformErrorSchema.parse({
       code: "authentication_required", message: "Authentication is required.", correlationId
     }), { status: 401 });
@@ -40,8 +40,7 @@ export async function POST(
         headers: {
           "content-type": "application/json",
           "x-correlation-id": correlationId,
-          ...(authorization ? { authorization } : {}),
-          ...(cookie ? { cookie } : {})
+          ...(authorization ? { authorization } : {})
         },
         body: JSON.stringify(input),
         cache: "no-store"

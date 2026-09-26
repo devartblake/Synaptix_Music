@@ -86,8 +86,9 @@ services:
       RENDER_WORKER_MINIO_ENDPOINT: minio.localhost
       RENDER_WORKER_MINIO_PORT: ${MINIO_PORT:-9000}
       RENDER_WORKER_MINIO_USE_SSL: "false"
-      RENDER_WORKER_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-synaptix_local}
-      RENDER_WORKER_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-synaptix_local_password}
+      # Prefer the scoped service account (runbook); root is a local-only fallback.
+      RENDER_WORKER_MINIO_ACCESS_KEY: ${RENDER_WORKER_MINIO_ACCESS_KEY:-${MINIO_ROOT_USER:-synaptix_local}}
+      RENDER_WORKER_MINIO_SECRET_KEY: ${RENDER_WORKER_MINIO_SECRET_KEY:-${MINIO_ROOT_PASSWORD:-synaptix_local_password}}
       RENDER_WORKER_MINIO_BUCKET: synaptix-assets
     extra_hosts:
       - "host.docker.internal:host-gateway"

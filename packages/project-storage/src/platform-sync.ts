@@ -190,6 +190,12 @@ export interface HybridProjectRepositoryOptions {
   toPlatformEnvelope?: PlatformEnvelopeConverter;
 }
 
+/**
+ * Result of queueing the local head: `current` (the platform already has it), `queued`,
+ * `blocked` (this platform cannot store the project yet), or `missing` (nothing saved locally).
+ */
+export type QueueHeadOutcome = "current" | "queued" | "blocked" | "missing";
+
 export interface SaveAndQueueResult {
   /** False when the revision was saved locally but cannot be uploaded to this platform. */
   queued: boolean;
@@ -208,6 +214,8 @@ export class HybridProjectRepository {
     private readonly local: {
       save(project: StoredMusicProject, revision?: ProjectRevision): Promise<unknown>;
       load(projectId: string): Promise<StoredMusicProject | null>;
+      /** Needed by queueUnsyncedHead to find the head's revision and ancestry. */
+      revisions?(projectId: string): Promise<ProjectRevision[]>;
     },
     private readonly platform: PlatformProjectRepository,
     private readonly queue: ProjectSyncQueue,
@@ -252,6 +260,51 @@ export class HybridProjectRepository {
       attemptCount: 0
     });
     return { queued: true };
+  }
+
+  /**
+   * Queues the latest local revision when the platform never received it: for example a plug-in
+   * revision saved while the platform only accepted v1, after the platform starts accepting v2.
+   * A head that descends from the platform's head is re-parented onto it. One that diverged keeps
+   * its own parent, so the upload surfaces as a conflict instead of overwriting the cloud copy.
+   */
+  async queueUnsyncedHead(projectId: string): Promise<QueueHeadOutcome> {
+    const project = await this.local.load(projectId);
+    const history = project && this.local.revisions ? await this.local.revisions(projectId) : [];
+    const head = history.find((revision) => revision.revisionId === project?.revisionId);
+    if (!project || !head) return "missing";
+
+    const queued = await this.queue.list();
+    if (queued.some((operation) => operation.projectId === projectId && operation.envelope.revision.revisionId === head.revisionId)) {
+      return "queued";
+    }
+    const remoteHead = (await this.platform.getProject(projectId))?.revision.revisionId ?? null;
+    if (remoteHead === head.revisionId) return "current";
+
+    let platformEnvelope = await this.toPlatformEnvelope({ projectId, project, revision: head });
+    if (!platformEnvelope) return "blocked";
+
+    const parents = new Map(history.map((revision) => [revision.revisionId, revision.parentRevisionId]));
+    let ancestor = head.parentRevisionId;
+    const seen = new Set<string>();
+    while (ancestor !== null && ancestor !== remoteHead && !seen.has(ancestor)) {
+      seen.add(ancestor);
+      ancestor = parents.get(ancestor) ?? null;
+    }
+    const expected = ancestor === remoteHead ? remoteHead : head.parentRevisionId;
+    if (platformEnvelope.revision.parentRevisionId !== expected) {
+      platformEnvelope = await rebaseEnvelope(platformEnvelope, expected);
+    }
+    await this.queue.enqueue({
+      operationId: crypto.randomUUID(),
+      projectId,
+      expectedRevisionId: expected,
+      idempotencyKey: `project-revision:${projectId}:${head.revisionId}`,
+      envelope: platformEnvelope,
+      queuedAt: new Date().toISOString(),
+      attemptCount: 0
+    });
+    return "queued";
   }
 
   async drain(): Promise<RevisionUploadResult[]> {

@@ -35,6 +35,7 @@
     "tracks": { "type": "array", "items": { "$ref": "#/$defs/track" } },
     "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
     "markers": { "type": "array", "items": { "$ref": "#/$defs/marker" } },
+    "mixer": { "$ref": "#/$defs/mixer" },
     "generationMetadata": { "$ref": "#/$defs/generationMetadata" }
   },
   "$defs": {
@@ -157,6 +158,7 @@
         "volumeDb": { "type": "number", "minimum": -96, "maximum": 24 },
         "pan": { "type": "number", "minimum": -1, "maximum": 1 },
         "outputBusId": { "$ref": "#/$defs/id" },
+        "reverbSend": { "type": "number", "minimum": 0, "maximum": 1 },
         "devices": { "type": "array", "items": { "$ref": "#/$defs/device" } },
         "clips": { "type": "array", "items": { "$ref": "#/$defs/clip" } }
       }
@@ -184,6 +186,26 @@
         "name": { "type": "string", "minLength": 1 },
         "position": { "$ref": "#/$defs/position" },
         "kind": { "enum": ["section", "cue", "loop-start", "loop-end"] }
+      }
+    },
+    "mixerChannel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["volumeDb", "muted"],
+      "properties": {
+        "volumeDb": { "type": "number", "minimum": -96, "maximum": 12 },
+        "muted": { "type": "boolean" }
+      }
+    },
+    "mixer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["music", "drums", "reverb", "master"],
+      "properties": {
+        "music": { "$ref": "#/$defs/mixerChannel" },
+        "drums": { "$ref": "#/$defs/mixerChannel" },
+        "reverb": { "$ref": "#/$defs/mixerChannel" },
+        "master": { "$ref": "#/$defs/mixerChannel" }
       }
     },
     "generationMetadata": {

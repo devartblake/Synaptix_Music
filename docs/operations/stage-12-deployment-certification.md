@@ -2,7 +2,7 @@
 
 ## Status
 
-The Stage 12 implementation is code-complete. Production closure requires this runbook to be executed against the intended staging environment and its retained evidence to pass review. Credentials must be created in the deployment secret store; no production secret belongs in Git, an image, or a certification report.
+The Stage 12 implementation is code-complete. Production closure requires this runbook to be executed against the intended staging environment and its retained evidence to pass review. A complete local rehearsal passed on 2026-09-26; its evidence and the defects it found are in `docs/operations/evidence/stage-12-local-2026-09-26/`. Credentials must be created in the deployment secret store; no production secret belongs in Git, an image, or a certification report.
 
 ## Required deployment components
 
@@ -66,8 +66,8 @@ The worker refuses to start its polling loop when the platform loader is configu
 1. Deploy the exact backend and music-worker SHAs under review.
 2. Apply the render-job migration.
 3. Confirm the worker can reach the backend, database, and MinIO only over the intended private network.
-4. Publish one small, known-good project revision to the platform.
-5. Set the non-secret `STAGE12_CERT_*` inputs and run:
+4. Publish one small, known-good project revision to the platform. `npm run publish:cert-revision` does this through the studio's own sign-in and sync routes (set `STUDIO_URL`, `SYNAPTIX_CERT_EMAIL` and `SYNAPTIX_CERT_PASSWORD` in the environment), verifies the platform's stored checksum, and prints the `STAGE12_CERT_*` values.
+5. Set the non-secret `STAGE12_CERT_*` inputs and run the command below. Running it inside the render-worker container proves that image's FFmpeg and uses the worker's own view of MinIO for signed downloads:
 
 ```bash
 npm run certify:stage12
@@ -100,4 +100,4 @@ Repository implementation and automated tests can establish deployment readiness
 
 ## Revision date
 
-2026-09-20
+2026-09-26

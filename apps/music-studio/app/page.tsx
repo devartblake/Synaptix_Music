@@ -1,3 +1,4 @@
+import { PlatformAccount } from "../components/PlatformAccount";
 import { RecentProjects } from "./RecentProjects";
 import styles from "./home.module.css";
 
@@ -18,6 +19,7 @@ export default function HomePage() {
         </a>
         <nav className={styles.navigation} aria-label="Main navigation">
           <a href="#projects">Your projects</a>
+          <PlatformAccount />
           <a className={styles.headerCta} href="/studio/local-demo">
             Open studio <span aria-hidden="true">↗</span>
           </a>

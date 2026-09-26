@@ -2,93 +2,234 @@
 > @synaptix/daw-engine@0.1.0 test
 > node --experimental-transform-types --test src/*.test.ts
 
-(node:333832) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(node:169060) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
 TAP version 13
-# (node:339236) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:171200) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: browser audio engine construction is safe without a browser AudioContext
 ok 1 - browser audio engine construction is safe without a browser AudioContext
   ---
-  duration_ms: 1.5873
+  duration_ms: 3.4428
   ...
-# (node:338568) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:171244) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: clamping keeps values within the canonical parameter range
 ok 2 - clamping keeps values within the canonical parameter range
   ---
-  duration_ms: 3.4917
+  duration_ms: 1.8237
   ...
 # Subtest: clamping is a no-op for unknown parameter identifiers
 ok 3 - clamping is a no-op for unknown parameter identifiers
   ---
-  duration_ms: 0.2578
+  duration_ms: 0.4988
   ...
 # Subtest: resolving a device parameter prefers the stored override, clamped to range
 ok 4 - resolving a device parameter prefers the stored override, clamped to range
   ---
-  duration_ms: 0.3121
+  duration_ms: 0.3325
   ...
 # Subtest: resolving a device parameter falls back to the default when unset or non-finite
 ok 5 - resolving a device parameter falls back to the default when unset or non-finite
   ---
-  duration_ms: 0.2056
+  duration_ms: 0.2284
   ...
 # Subtest: every canonical definition exposes a finite, ordered range
 ok 6 - every canonical definition exposes a finite, ordered range
   ---
-  duration_ms: 0.7878
+  duration_ms: 0.4427
   ...
-# (node:342120) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:171288) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: frequency drone rendering is deterministic and bounded
 ok 7 - frequency drone rendering is deterministic and bounded
   ---
-  duration_ms: 6.1925
+  duration_ms: 10.8633
   ...
 # Subtest: frequency drone render rejects non-positive durations
 ok 8 - frequency drone render rejects non-positive durations
   ---
-  duration_ms: 0.4051
+  duration_ms: 0.5766
   ...
-# (node:342244) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:171320) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: catalog device types are unique and each resolves to its own profile
+ok 9 - catalog device types are unique and each resolves to its own profile
+  ---
+  duration_ms: 2.1409
+  ...
+# Subtest: catalog profile defaults sit inside the device parameter slider ranges
+ok 10 - catalog profile defaults sit inside the device parameter slider ranges
+  ---
+  duration_ms: 0.732
+  ...
+# Subtest: specific keywords win over the ones they contain
+ok 11 - specific keywords win over the ones they contain
+  ---
+  duration_ms: 0.1831
+  ...
+# Subtest: an explicit device type wins over the track name, a generic one defers to it
+ok 12 - an explicit device type wins over the track name, a generic one defers to it
+  ---
+  duration_ms: 0.2059
+  ...
+# Subtest: new instrument tracks are valid, audible, and carry a starter phrase
+ok 13 - new instrument tracks are valid, audible, and carry a starter phrase
+  ---
+  duration_ms: 11.7035
+  ...
+# Subtest: pads default to a wetter reverb send than drums
+ok 14 - pads default to a wetter reverb send than drums
+  ---
+  duration_ms: 0.4952
+  ...
+# Subtest: unknown instruments are rejected
+ok 15 - unknown instruments are rejected
+  ---
+  duration_ms: 0.6259
+  ...
+# (node:171580) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: the registry instantiates the Reference Drive, loading its module once per context
+ok 16 - the registry instantiates the Reference Drive, loading its module once per context
+  ---
+  duration_ms: 16.0551
+  ...
+# Subtest: unknown, mismatched, and non-browser plug-ins are reported unavailable without throwing
+ok 17 - unknown, mismatched, and non-browser plug-ins are reported unavailable without throwing
+  ---
+  duration_ms: 0.7426
+  ...
+# Subtest: module bytes that do not match the pinned checksum are never loaded
+ok 18 - module bytes that do not match the pinned checksum are never loaded
+  ---
+  duration_ms: 2.6181
+  ...
+# Subtest: a failed module load is reported and retried on the next instantiation
+ok 19 - a failed module load is reported and retried on the next instantiation
+  ---
+  duration_ms: 1.6886
+  ...
+# Subtest: plug-in state is verified before restore and round-trips through the instance
+ok 20 - plug-in state is verified before restore and round-trips through the instance
+  ---
+  duration_ms: 3.4242
+  ...
+# Subtest: parameters, ramps, failures, and idempotent disposal reach the worklet node
+ok 21 - parameters, ramps, failures, and idempotent disposal reach the worklet node
+  ---
+  duration_ms: 1.7899
+  ...
+# Subtest: track insert chains skip built-in and bypassed devices and keep unknown ones visible
+ok 22 - track insert chains skip built-in and bypassed devices and keep unknown ones visible
+  ---
+  duration_ms: 0.5297
+  ...
+# Subtest: automation lanes become clamped, ordered parameter events with linear ramps
+ok 23 - automation lanes become clamped, ordered parameter events with linear ramps
+  ---
+  duration_ms: 0.5497
+  ...
+# Subtest: the built-in runtime sees a v1 view without plug-in devices or fields
+ok 24 - the built-in runtime sees a v1 view without plug-in devices or fields
+  ---
+  duration_ms: 9.5839
+  ...
+# Subtest: a plug-in that fails while later slots load is never rewired into the chain
+ok 25 - a plug-in that fails while later slots load is never rewired into the chain
+  ---
+  duration_ms: 1.2088
+  ...
+# Subtest: insert chains keep planned order, release without disposing, and dispose once
+ok 26 - insert chains keep planned order, release without disposing, and dispose once
+  ---
+  duration_ms: 0.7759
+  ...
+# Subtest: reuse keys change with plug-in identity or state but not with parameters
+ok 27 - reuse keys change with plug-in identity or state but not with parameters
+  ---
+  duration_ms: 0.4498
+  ...
+# (node:171824) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: device-specific profiles route drums and bass deterministically
-ok 9 - device-specific profiles route drums and bass deterministically
+ok 28 - device-specific profiles route drums and bass deterministically
   ---
-  duration_ms: 3.3489
+  duration_ms: 13.7603
   ...
 # Subtest: master meter reports clipping from stereo values
-ok 10 - master meter reports clipping from stereo values
+ok 29 - master meter reports clipping from stereo values
   ---
-  duration_ms: 1.7662
+  duration_ms: 8.8999
   ...
 # Subtest: master meter clamps sub-floor readings to silence instead of reporting drifting negative values
-ok 11 - master meter clamps sub-floor readings to silence instead of reporting drifting negative values
+ok 30 - master meter clamps sub-floor readings to silence instead of reporting drifting negative values
   ---
-  duration_ms: 0.3397
+  duration_ms: 0.2628
   ...
 # Subtest: master meter leaves audible readings just above the silence floor untouched
-ok 12 - master meter leaves audible readings just above the silence floor untouched
+ok 31 - master meter leaves audible readings just above the silence floor untouched
   ---
-  duration_ms: 2.4726
+  duration_ms: 0.1908
   ...
 # Subtest: effective instrument settings fall back to profile defaults without overrides
-ok 13 - effective instrument settings fall back to profile defaults without overrides
+ok 32 - effective instrument settings fall back to profile defaults without overrides
   ---
-  duration_ms: 0.3919
+  duration_ms: 2.3626
   ...
 # Subtest: effective instrument settings apply and clamp canonical device parameter overrides
-ok 14 - effective instrument settings apply and clamp canonical device parameter overrides
+ok 33 - effective instrument settings apply and clamp canonical device parameter overrides
   ---
-  duration_ms: 0.2504
+  duration_ms: 27.1947
   ...
-1..14
-# tests 14
+# (node:172116) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: the shipped processor source matches its pinned integrity checksum
+ok 34 - the shipped processor source matches its pinned integrity checksum
+  ---
+  duration_ms: 3.6318
+  ...
+# Subtest: processor parameter descriptors match the canonical plug-in descriptor
+ok 35 - processor parameter descriptors match the canonical plug-in descriptor
+  ---
+  duration_ms: 7.9622
+  ...
+# Subtest: a fully dry mix passes stereo audio through unchanged
+ok 36 - a fully dry mix passes stereo audio through unchanged
+  ---
+  duration_ms: 11.8662
+  ...
+# Subtest: the soft clipper is unity for small signals and bounded for large ones
+ok 37 - the soft clipper is unity for small signals and bounded for large ones
+  ---
+  duration_ms: 3.4326
+  ...
+# Subtest: gains and a-rate automation are applied per sample
+ok 38 - gains and a-rate automation are applied per sample
+  ---
+  duration_ms: 3.6466
+  ...
+# Subtest: mono input is up-mixed and missing input yields silence
+ok 39 - mono input is up-mixed and missing input yields silence
+  ---
+  duration_ms: 6.7854
+  ...
+# Subtest: the processor stops after a dispose message
+ok 40 - the processor stops after a dispose message
+  ---
+  duration_ms: 5.4387
+  ...
+# Subtest: new Reference Drive devices are valid v2 devices at descriptor defaults
+ok 41 - new Reference Drive devices are valid v2 devices at descriptor defaults
+  ---
+  duration_ms: 2.6226
+  ...
+1..41
+# tests 41
 # suites 0
-# pass 14
+# pass 41
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 1670.643
+# duration_ms 4617.7634

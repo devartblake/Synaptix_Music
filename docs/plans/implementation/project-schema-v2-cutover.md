@@ -1,6 +1,6 @@
 # Project Schema v2 Cutover
 
-**Status:** Phase 1 implemented (studio, local storage, sync gating, render worker); platform v2 acceptance and frozen playback pending
+**Status:** Phase 1 implemented. Phase 2 prerequisites (render pinning, platform validation, stranded-revision upload) implemented; flag flip waits on Stage 12 staging certification; freeze and frozen playback pending
 **Revision date:** 2026-09-26
 **Depends on:** Plugin Runtime Foundation v1 (`docs/plans/research/plugin-runtime-foundation-v1-closure.md`)
 
@@ -18,13 +18,21 @@ Read v1 and v2 everywhere, and write v2 only where the reader is known to accept
 | Render worker | Loads v1 or v2 revisions. v2 renders through its built-in view (byte-identical to the v1 source). Enabled plug-ins on rendered tracks fail the job closed, naming the devices. |
 | Generation API | No change: it produces generation proposals, not projects. Its v1 and v2 Pydantic models remain the contract. |
 
-## Phase 2 (next)
+## Phase 2
 
-1. **Platform accepts v2.** Platform API validates v2 revisions (use `schemas/project/v2.json`) and stores them; then set the flag to `2` in each environment. Plug-in projects queued locally before the switch need a re-save to upload (they are not queued while blocked).
-2. **Freeze workflow.** Studio "Freeze" action: request a stems render at the device output, attach `FrozenPluginArtifactReference` with `SetFrozenPluginArtifactEditorCommand`, show stale freezes via `evaluateFrozenPluginEvidence`.
-3. **Frozen playback in the render worker.** Load the referenced artifact, verify it with `verifyFrozenArtifactAgainstManifest`, and substitute it for the track's pre-fader signal; relax `resolveRenderableProject` to accept current freezes.
-4. **Frozen playback in the browser** when a plug-in is unavailable (currently bypassed and reported).
-5. **Retire v1 writes** once the platform and all clients read v2.
+Stage 12 constraint: publication requires a render's `projectChecksumSha256` to equal the checksum the platform stored for the revision (`AdaptiveMusicPackageEndpoints`). Every step below keeps that identity, and nothing changes the dry-stem or master render paths that Stage 12 certification exercises.
+
+| Step | Status | Change |
+| --- | --- | --- |
+| A. Render pins the stored snapshot | Done | The Render / export workspace reads the platform copy as v1 or v2 (`pinManifestToPlatformRevision`), verifies its stored checksum, checks its built-in content matches the editor (ignoring a rebased parent), and pins that snapshot's checksum. Enabled plug-ins in scope are refused before submission with a plain explanation, matching the worker's fail-closed rule. At flag `1` the pinned bytes and checksum are unchanged. |
+| B. Platform validates uploads | Done (backend) | `MusicProjectRevisionValidation` accepts `schemaVersion` 1 or 2 and requires the snapshot's project and revision IDs and the revision checksum to match the request. Snapshots stay opaque: full JSON Schema validation is deliberately not used, because schema drift between clients would reject valid projects. |
+| C. Stranded revisions upload | Done | `HybridProjectRepository.queueUnsyncedHead` queues a local head the platform never received (e.g. a plug-in revision saved at flag `1`). It runs on project load and **Sync now**. A head that descends from the platform head is re-parented onto it; a diverged head keeps its parent and surfaces as a conflict. |
+| D. Flip the flag | Waiting | Set `NEXT_PUBLIC_SYNAPTIX_PLATFORM_PROJECT_SCHEMA_VERSION=2` locally, then staging, then production, only after Stage 12 staging certification evidence is recorded and the backend with step B is deployed. Existing certified v1 revisions are immutable and stay valid. |
+| E. Freeze render | Next | New `plugin-freeze` render scope (dry stems unchanged). The worker runs first-party plug-ins through deterministic Node ports of their processors (starting with `synaptix.reference-drive`) and the studio attaches `FrozenPluginArtifactReference` with `SetFrozenPluginArtifactEditorCommand`. Adaptive authoring must exclude freeze renders from state discovery. Requires step D, since only v2 revisions carry plug-ins. |
+| F. Frozen playback | Later | Worker first: load and verify the artifact with `verifyFrozenArtifactAgainstManifest`, substitute it for the device output, and relax `resolveRenderableProject` for current freezes. Then the browser, when a plug-in is unavailable. |
+| G. Retire v1 writes | Later | Once the platform and every client read v2. Reading v1 stays permanently for old revisions and certification evidence. |
+
+**Decision (2026-09-26): freezing is limited to first-party plug-ins.** Third-party WAM plug-ins can't be rendered deterministically on the server, and capturing their output in the browser would make live browser processing a certification source. They keep failing closed.
 
 ## Decisions to revisit
 

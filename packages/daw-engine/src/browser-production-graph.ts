@@ -143,7 +143,7 @@ export class BrowserProductionAudioGraph {
     }
     gain.connect(filter);
     filter.connect(channel);
-    channel.connect(this.musicBus);
+    channel.connect(this.destination(track));
     const reverbSend = new Tone.Gain(resolveTrackSend(track));
     channel.connect(reverbSend);
     reverbSend.connect(this.reverb);

@@ -257,6 +257,12 @@ def test_local_composer_sends_schema_and_renders_the_plan() -> None:
 
     assert seen["model"] == "qwen2.5:7b"
     assert seen["format"]["title"] == "ArrangementPlan"
+    # Ollama decodes against this schema, so it must rule out empty melodies and odd patterns.
+    section = seen["format"]["$defs"]["PlanSection"]["properties"]
+    assert section["bass"]["pattern"] == "^[xo.]{16}$"
+    assert section["melody"]["minItems"] == 1
+    assert section["melody"]["items"]["minItems"] == 1
+    assert seen["format"]["properties"]["sections"]["minItems"] == 3
     assert seen["options"]["seed"] == 42
     assert "Creative brief: boss fight" in seen["messages"][1]["content"]
     assert proposal.provenance.generatorId == "synaptix-local-composer"

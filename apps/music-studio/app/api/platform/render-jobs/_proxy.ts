@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../lib/platform/platform-session";
 
 // Unlike other /api/platform/* routes, this proxies directly to the
 // render-worker service rather than through SYNAPTIX_PLATFORM_API_URL (the
@@ -17,7 +18,7 @@ export function correlationId(request: NextRequest): string {
 }
 
 export function requireAuthentication(request: NextRequest, id: string): NextResponse | null {
-  if (request.headers.get("authorization") || request.headers.get("cookie")) return null;
+  if (platformAuthorization(request)) return null;
   return NextResponse.json(
     { code: "authentication_required", message: "Authentication is required.", correlationId: id },
     { status: 401 }

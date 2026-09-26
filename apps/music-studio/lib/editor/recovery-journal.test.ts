@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEmptyProject } from "@synaptix/project-model";
+import { toProjectV2 } from "@synaptix/project-model/v2";
 import type { PlatformRevisionEnvelope } from "@synaptix/project-storage/platform-sync";
 
 import { clearRecovery, journalRevision, readRecovery } from "./recovery-journal.ts";
@@ -65,4 +66,13 @@ test("a blocked or full journal never breaks editing", () => {
   assert.equal(journalRevision(envelope("rev-2"), full), false);
   assert.equal(journalRevision(envelope("rev-2"), null), false);
   assert.equal(readRecovery("p1", null, null), null);
+});
+
+test("plug-in (schema v2) edits are recovered too", () => {
+  const store = new MemoryStore();
+  const v1 = envelope("rev-3");
+  journalRevision({ ...v1, project: toProjectV2(v1.project) }, store);
+
+  const entry = readRecovery("p1", "rev-1", store);
+  assert.equal(entry?.envelope.project.schemaVersion, 2);
 });

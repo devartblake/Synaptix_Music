@@ -1,0 +1,35 @@
+{
+  "certificationVersion": "1.0.0",
+  "passed": true,
+  "certifiedAt": "2026-09-26T16:31:39.988Z",
+  "renderWorkerApiUrl": "http://127.0.0.1:8200",
+  "jobId": "041e8141-5b3b-426f-9683-f1fb2047e155",
+  "renderId": "07ea7725-9b8c-4b8c-8282-3b2070bc2eef",
+  "projectId": "79ee2ca5-b23f-4dc7-8ba2-40ac0cf53139",
+  "revisionId": "79ee2ca5-b23f-4dc7-8ba2-40ac0cf53139-cert-1",
+  "outputFormat": "wav",
+  "artifacts": [
+    {
+      "artifactId": "e02a3cf7-4006-4f3f-9e93-33c790f7a28c",
+      "fileName": "master.wav",
+      "mediaType": "audio/wav",
+      "byteLength": 2880044,
+      "checksumSha256": "0c7898fe2a1165dcefb4e00dfa24e1fd3d0ab40659a3138bd656d7275fdde0fb"
+    },
+    {
+      "artifactId": "25ac612a-25d3-4483-8b31-db0523275d77",
+      "fileName": "preview.mp3",
+      "mediaType": "audio/mpeg",
+      "byteLength": 120429,
+      "checksumSha256": "8ce4b663909c7ac3c99df1e971ee2378b76523e2faba15181b6f327be44d4afb"
+    },
+    {
+      "artifactId": "41bd4794-446b-4cb9-9737-b070026f209e",
+      "fileName": "artifact-manifest.json",
+      "mediaType": "application/vnd.synaptix.render-manifest+json",
+      "byteLength": 1329,
+      "checksumSha256": "d801bd434b6ce18b3b064f60ca3772a766b5857e2c053da9b644d43ba87fd846"
+    }
+  ],
+  "artifactManifestChecksumSha256": "d801bd434b6ce18b3b064f60ca3772a766b5857e2c053da9b644d43ba87fd846"
+}

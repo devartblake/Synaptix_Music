@@ -1,5 +1,5 @@
 import { computeProjectChecksum } from "@synaptix/command-system";
-import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import { parseVersionedMusicProject, type StoredMusicProject } from "@synaptix/project-storage";
 
 export const PROJECT_FILE_FORMAT = "synaptix-music-project";
 export const PROJECT_FILE_VERSION = 1;
@@ -9,8 +9,8 @@ export const PROJECT_FILE_EXTENSION = ".synaptix.json";
 export class ProjectFileError extends Error {}
 
 /** Serializes a project with a checksum so corruption or edits are detected on import. */
-export async function createProjectFile(project: MusicProject, exportedAt = new Date().toISOString()): Promise<string> {
-  const validated = MusicProjectSchema.parse(project);
+export async function createProjectFile(project: StoredMusicProject, exportedAt = new Date().toISOString()): Promise<string> {
+  const validated = parseVersionedMusicProject(project);
   return JSON.stringify(
     {
       format: PROJECT_FILE_FORMAT,
@@ -24,7 +24,7 @@ export async function createProjectFile(project: MusicProject, exportedAt = new 
   );
 }
 
-export function projectFileName(project: MusicProject): string {
+export function projectFileName(project: StoredMusicProject): string {
   const slug = project.metadata.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -41,7 +41,7 @@ export async function readProjectFile(
   text: string,
   newProjectId: string = crypto.randomUUID(),
   now: string = new Date().toISOString()
-): Promise<MusicProject> {
+): Promise<StoredMusicProject> {
   let file: unknown;
   try {
     file = JSON.parse(text);
@@ -59,15 +59,18 @@ export async function readProjectFile(
   if (version !== PROJECT_FILE_VERSION) {
     throw new ProjectFileError(`This project file uses version ${String(version)}, which this studio can't read.`);
   }
-  const parsed = MusicProjectSchema.safeParse(project);
-  if (!parsed.success) {
+  // Plain (schema v1) and plug-in (schema v2) projects are both accepted.
+  let parsed: StoredMusicProject;
+  try {
+    parsed = parseVersionedMusicProject(project);
+  } catch {
     throw new ProjectFileError("This project file is incomplete or damaged and can't be imported.");
   }
-  if (checksumSha256 !== (await computeProjectChecksum(parsed.data))) {
+  if (checksumSha256 !== (await computeProjectChecksum(parsed))) {
     throw new ProjectFileError("This project file was changed or damaged after export, so it wasn't imported.");
   }
-  const copy = structuredClone(parsed.data);
+  const copy = structuredClone(parsed);
   copy.projectId = newProjectId;
   copy.metadata.updatedAt = now;
-  return MusicProjectSchema.parse(copy);
+  return parseVersionedMusicProject(copy);
 }

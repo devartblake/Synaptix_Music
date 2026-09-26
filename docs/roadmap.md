@@ -9,7 +9,7 @@ Synaptix Music has completed its foundational editor, project, synchronization, 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
-- Stage 12: 100% implementation-complete; preview/artifact manifests, deterministic MP3/OGG packaging, the production worker image, least-privilege MinIO policy, and certification harness now join the existing render stack. Operational closure remains pending live secret provisioning and staging certification evidence.
+- Stage 12: 100% implementation-complete; preview/artifact manifests, deterministic MP3/OGG packaging, the production worker image, least-privilege MinIO policy, and certification harness now join the existing render stack. The full certification runbook passed in a local Docker rehearsal on 2026-09-26 (evidence: `docs/operations/evidence/stage-12-local-2026-09-26/`). Operational closure needs that evidence accepted, or the same run repeated in staging.
 - Stage 13: approximately 75% implementation-complete (audited 2026-09-23; previously reported as ~25%). Publication hardening, the Flutter loader/offline cache, runtime scheduler, stem/intensity mixer and stingers/ducking are implemented. Telemetry dashboards and cross-device rollout certification remain, and publication stays gated on Stage 12 staging evidence.
 - Full planned DAW roadmap: 48–52% complete
 
@@ -93,7 +93,7 @@ The percentages represent planned functional scope. They do not represent produc
 
 ### Stage 12 — Production Audio and Rendering
 
-Implementation is complete. The control plane, deterministic renderer/master effects, worker loop, fail-closed platform loader, master/stem WAV output, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, production image, storage policy, and certification harness are implemented and tested. Stage 12 closes operationally only after backend PR #525 is deployed, secrets are provisioned by an authorized operator, and the staging certification runbook passes.
+Implementation is complete. The control plane, deterministic renderer/master effects, worker loop, fail-closed platform loader, master/stem WAV output, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, production image, storage policy, and certification harness are implemented and tested. Stage 12 closes operationally only after backend PR #525 is deployed, secrets are provisioned by an authorized operator, and the staging certification runbook passes. A local rehearsal of the complete runbook passed on 2026-09-26 (`docs/operations/evidence/stage-12-local-2026-09-26/`); the release owner decides whether to accept it or repeat it in staging.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
 

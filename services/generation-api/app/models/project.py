@@ -86,6 +86,7 @@ class Track(StrictModel):
     volumeDb: float = Field(ge=-96, le=24)
     pan: float = Field(ge=-1, le=1)
     outputBusId: str | None = None
+    reverbSend: float | None = Field(default=None, ge=0, le=1)
     devices: list[Device]
     clips: list[Clip]
 
@@ -127,6 +128,18 @@ class GenerationMetadata(StrictModel):
     prompt: str | None = None
 
 
+class MixerChannel(StrictModel):
+    volumeDb: float = Field(ge=-96, le=12)
+    muted: bool
+
+
+class Mixer(StrictModel):
+    music: MixerChannel
+    drums: MixerChannel
+    reverb: MixerChannel
+    master: MixerChannel
+
+
 class MusicProject(StrictModel):
     schemaVersion: Literal[1]
     projectId: str = Field(min_length=1)
@@ -139,4 +152,5 @@ class MusicProject(StrictModel):
     tracks: list[Track]
     assets: list[AssetReference]
     markers: list[Marker]
+    mixer: Mixer | None = None
     generationMetadata: GenerationMetadata | None = None

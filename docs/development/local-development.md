@@ -101,6 +101,30 @@ value. Generate one high-entropy value (for example `openssl rand -hex 32`), put
 dotnet user-secrets set "ServiceTokens:RenderWorker" "<the same token>" --project Synaptix.Backend.Api
 ```
 
+Alternatively, run SynaptixPlay in Docker next to this stack. The backend repository's
+`docker/compose.music-studio.yml` override publishes the API on 5100, moves the
+backend's own Postgres, Redis, MinIO and 8100/8200 host ports out of this stack's way,
+and points music generation at `http://host.docker.internal:8100`. Put the same
+`RENDER_WORKER_SERVICE_TOKEN` plus a `MUSIC_ADAPTIVE_ARTIFACT_SIGNING_KEY` (at least
+32 characters) in the backend's gitignored `docker/.env.music-studio`, then run this from
+the backend repository:
+
+```bash
+docker compose -f docker/compose.yml -f docker/compose.music-studio.yml \
+  --env-file docker/.env --env-file docker/.env.music-studio up -d --build backend-api
+```
+
+Cloud features (sync, generation, rendering, publishing) need a SynaptixPlay player
+account: use **Sign in to SynaptixPlay** on the home page or in the studio header. Against a
+local backend, register a player with `POST http://localhost:5100/api/v1/auth/register`
+(`email`, `password`, `handle`). Sessions last as long as the platform's access token
+(8 minutes by default); the studio then asks you to sign in again.
+
+The render worker should use a scoped MinIO account rather than the root credentials. Set
+`RENDER_WORKER_MINIO_ACCESS_KEY` and `RENDER_WORKER_MINIO_SECRET_KEY` in `.env.docker` and
+create that user with `infrastructure/minio/render-worker-policy.json` attached (see the Stage
+12 runbook). When they're unset, the local stack falls back to the root credentials.
+
 Restart both after changing it. A missing token disables worker polling; a mismatch
 makes the backend answer `401`. If the platform is containerized on the same network, it can reach
 the generator at `http://generation-api:8100` and worker at `http://render-worker:8200`;
@@ -202,6 +226,38 @@ GET  http://localhost:8100/docs
 ```
 
 The direct Python endpoint is suitable for generator development. In the integrated SynaptixPlay flow, the browser calls the Next.js BFF and the .NET platform dispatches to Python privately.
+
+### Choose a composer
+
+`SYNAPTIX_COMPOSER` selects who writes arrangements. Any AI failure falls back to the procedural composer, and the proposal carries a warning saying why.
+
+| Value | Needs | Notes |
+| --- | --- | --- |
+| `procedural` (default) | Nothing | Deterministic, rule-based |
+| `claude` | `ANTHROPIC_API_KEY`; optional `SYNAPTIX_CLAUDE_MODEL` (default `claude-opus-5`) | Each generation is a paid API call |
+| `local` | An NVIDIA GPU with about 6 GB free VRAM and Docker GPU support | Runs `SYNAPTIX_LOCAL_MODEL` (default `qwen2.5:7b`) in Ollama |
+
+To run the local composer in the Docker stack, set these in `.env.docker` and restart `run-local.sh`:
+
+```text
+SYNAPTIX_COMPOSER=local
+COMPOSE_PROFILES=local-ai
+```
+
+Download the model once (it is kept in the `synaptix-ollama` volume):
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.local.yml exec ollama ollama pull qwen2.5:7b
+```
+
+The first generation after a restart takes about a minute while the model loads; later ones take 15–40 s. Generation from the studio also needs the SynaptixPlay backend on port 5100, which dispatches jobs to the generation API.
+
+To compare models against the same game briefs (with Ollama on `127.0.0.1:11434`):
+
+```bash
+cd services/generation-api
+python -m scripts.evaluate_local_composer qwen2.5:7b llama3.1:8b
+```
 
 ## Start PostgreSQL and Redis
 

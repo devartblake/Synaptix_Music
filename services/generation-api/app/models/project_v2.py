@@ -9,6 +9,7 @@ from app.models.project import (
     DeviceParameter,
     GenerationMetadata,
     Marker,
+    Mixer,
     MusicProject,
     ProjectMetadata,
     StrictModel,
@@ -84,6 +85,7 @@ class TrackV2(StrictModel):
     volumeDb: float = Field(ge=-96, le=24)
     pan: float = Field(ge=-1, le=1)
     outputBusId: str | None = None
+    reverbSend: float | None = Field(default=None, ge=0, le=1)
     devices: list[DeviceV2]
     clips: list[Clip]
 
@@ -100,6 +102,7 @@ class MusicProjectV2(StrictModel):
     tracks: list[TrackV2]
     assets: list[AssetReference]
     markers: list[Marker]
+    mixer: Mixer | None = None
     generationMetadata: GenerationMetadata | None = None
 
 

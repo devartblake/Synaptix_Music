@@ -38,7 +38,7 @@ This index records completed Synaptix Music implementation slices and the curren
 
 ### Stage 12 — Production Audio and Rendering
 
-Stage 12 is implementation-complete: production audio, durable jobs, exact-revision loading, deterministic WAV, MP3/OGG, previews, artifact manifests, MinIO signed delivery, a production image, least-privilege policy, and certification tooling are implemented and tested. Live staging secret provisioning and certification evidence remain operational work.
+Stage 12 is implementation-complete: production audio, durable jobs, exact-revision loading, deterministic WAV, MP3/OGG, previews, artifact manifests, MinIO signed delivery, a production image, least-privilege policy, and certification tooling are implemented and tested. Live staging secret provisioning and certification evidence remain operational work; a complete local rehearsal passed on 2026-09-26 (`docs/operations/evidence/stage-12-local-2026-09-26/`).
 
 ### Completed Stage 12 foundation
 
@@ -95,7 +95,7 @@ See the per-slice status audit in `stage-13-execution-plan-v1.md`.
 ## Completion Estimate
 
 - Stages 1–11: complete
-- Stage 12: 100% implementation-complete; live credential provisioning and staging certification remain before operational closure
+- Stage 12: 100% implementation-complete; local certification rehearsal passed 2026-09-26; acceptance of that evidence (or a staging run) remains before operational closure
 - Stage 13: approximately 75% implementation-complete (2026-09-23 audit); no slice has formally exited, because publication is gated on Stage 12 staging evidence and rollout needs on-device certification
 - Full planned DAW roadmap: approximately 48–52% complete
 

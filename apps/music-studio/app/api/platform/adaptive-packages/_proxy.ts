@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../lib/platform/platform-session";
 
 export function platformBaseUrl(): string {
   const value = process.env.SYNAPTIX_PLATFORM_API_URL;
@@ -11,7 +12,7 @@ export function correlationId(request: NextRequest): string {
 }
 
 export function requireAuthentication(request: NextRequest, id: string): NextResponse | null {
-  if (request.headers.get("authorization") || request.headers.get("cookie")) return null;
+  if (platformAuthorization(request)) return null;
   return NextResponse.json(
     { code: "authentication_required", message: "Authentication is required.", correlationId: id },
     { status: 401 }
@@ -23,14 +24,12 @@ export function forwardedHeaders(
   id: string,
   includeJson = false
 ): HeadersInit {
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   const idempotencyKey = request.headers.get("idempotency-key");
   return {
     "x-correlation-id": id,
     ...(includeJson ? { "content-type": "application/json" } : {}),
     ...(authorization ? { authorization } : {}),
-    ...(cookie ? { cookie } : {}),
     ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {})
   };
 }

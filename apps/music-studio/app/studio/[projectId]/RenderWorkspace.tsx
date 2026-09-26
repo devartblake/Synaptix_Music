@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { computeProjectChecksum } from "@synaptix/command-system";
-import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import type { MusicProject } from "@synaptix/project-model";
+import type { AnyMusicProject } from "@synaptix/project-model/v2";
 import { RenderJobSchema, RenderManifestSchema, type RenderJob } from "@synaptix/render-contracts";
 import { Button, Panel, Badge } from "../../../components/ui/StudioControls";
 import {
   createExportManifest,
+  describeLivePlugins,
+  livePluginsInScope,
+  pinManifestToPlatformRevision,
   safeDownloadUrl,
   type ExportOptions
 } from "../../../lib/platform/render-export-model";
@@ -35,10 +38,14 @@ async function request(path: string, init: RequestInit = {}) {
 
 export function RenderWorkspace({
   project,
+  editorProject,
   onClose,
   onSync
 }: {
+  /** Built-in view used for the manifest and track list. */
   project: MusicProject;
+  /** The project as edited, including plug-in devices. */
+  editorProject: AnyMusicProject;
   onClose(): void;
   onSync(): Promise<unknown>;
 }) {
@@ -150,19 +157,15 @@ export function RenderWorkspace({
     await perform(async () => {
       let payload = pendingRequest;
       if (!payload) {
-        const manifest = await createExportManifest(project, options);
+        const draft = await createExportManifest(project, options);
+        const plugins = livePluginsInScope(editorProject, draft.scope);
+        if (plugins.length) throw new Error(describeLivePlugins(plugins));
         await onSync();
-        const remote = z
-          .object({ project: MusicProjectSchema })
-          .parse(await request(`projects/${encodeURIComponent(project.projectId)}`)).project;
-        if (
-          remote.revisionId !== manifest.revisionId ||
-          (await computeProjectChecksum(remote)) !== manifest.projectChecksumSha256
-        ) {
-          throw new Error(
-            "Save and sync this exact project revision before rendering. Resolve any cloud conflict, then retry."
-          );
-        }
+        const manifest = await pinManifestToPlatformRevision(
+          draft,
+          editorProject,
+          await request(`projects/${encodeURIComponent(project.projectId)}`)
+        );
         payload = { manifest, idempotencyKey: `studio-export:${manifest.renderId}` };
         if (!mounted.current) return;
         remember(payload);

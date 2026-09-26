@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../../../../lib/platform/platform-session";
 
 export const runtime = "nodejs";
 
@@ -13,13 +14,12 @@ export async function PUT(
   context: { params: Promise<{ projectId: string; revisionId: string }> }
 ): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   const idempotencyKey = request.headers.get("idempotency-key");
   const expectedRevisionId = request.headers.get("if-match");
   const { projectId, revisionId } = await context.params;
 
-  if (!authorization && !cookie) {
+  if (!authorization) {
     return NextResponse.json(
       { code: "authentication_required", message: "Authentication is required.", correlationId },
       { status: 401 }
@@ -43,8 +43,7 @@ export async function PUT(
           "x-correlation-id": correlationId,
           "idempotency-key": idempotencyKey,
           ...(expectedRevisionId ? { "if-match": expectedRevisionId } : {}),
-          ...(authorization ? { authorization } : {}),
-          ...(cookie ? { cookie } : {})
+          ...(authorization ? { authorization } : {})
         },
         body,
         cache: "no-store"

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../../lib/platform/platform-session";
 
 export const runtime = "nodejs";
 
@@ -13,11 +14,10 @@ export async function GET(
   context: { params: Promise<{ projectId: string }> }
 ): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   const { projectId } = await context.params;
 
-  if (!authorization && !cookie) {
+  if (!authorization) {
     return NextResponse.json(
       { code: "authentication_required", message: "Authentication is required.", correlationId },
       { status: 401 }
@@ -30,8 +30,7 @@ export async function GET(
       {
         headers: {
           "x-correlation-id": correlationId,
-          ...(authorization ? { authorization } : {}),
-          ...(cookie ? { cookie } : {})
+          ...(authorization ? { authorization } : {})
         },
         cache: "no-store"
       }

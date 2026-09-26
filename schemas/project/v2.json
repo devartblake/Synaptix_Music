@@ -120,6 +120,9 @@
         "$ref": "#/$defs/marker"
       }
     },
+    "mixer": {
+      "$ref": "#/$defs/mixer"
+    },
     "generationMetadata": {
       "$ref": "#/$defs/generationMetadata"
     }
@@ -472,6 +475,11 @@
         "outputBusId": {
           "$ref": "#/$defs/id"
         },
+        "reverbSend": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "devices": {
           "type": "array",
           "items": {
@@ -555,6 +563,48 @@
             "loop-start",
             "loop-end"
           ]
+        }
+      }
+    },
+    "mixerChannel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "volumeDb",
+        "muted"
+      ],
+      "properties": {
+        "volumeDb": {
+          "type": "number",
+          "minimum": -96,
+          "maximum": 12
+        },
+        "muted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "mixer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "music",
+        "drums",
+        "reverb",
+        "master"
+      ],
+      "properties": {
+        "music": {
+          "$ref": "#/$defs/mixerChannel"
+        },
+        "drums": {
+          "$ref": "#/$defs/mixerChannel"
+        },
+        "reverb": {
+          "$ref": "#/$defs/mixerChannel"
+        },
+        "master": {
+          "$ref": "#/$defs/mixerChannel"
         }
       }
     },

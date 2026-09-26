@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEmptyProject } from "@synaptix/project-model";
+import { toProjectV2 } from "@synaptix/project-model/v2";
 
 import {
   createProjectFile,
@@ -47,4 +48,12 @@ test("imports refuse edited, damaged, foreign and future files", async () => {
 test("file names are readable and safe", () => {
   assert.equal(projectFileName(project()), "boss-battle-phase-2.synaptix.json");
   assert.equal(projectFileName(createEmptyProject("x", { name: "***" })), "project.synaptix.json");
+});
+
+test("plug-in (schema v2) projects export and import as v2", async () => {
+  const file = await createProjectFile(toProjectV2(project()), "2026-09-25T00:00:00.000Z");
+  const imported = await readProjectFile(file, "new-id", "2026-09-26T00:00:00.000Z");
+
+  assert.equal(imported.schemaVersion, 2);
+  assert.equal(imported.projectId, "new-id");
 });

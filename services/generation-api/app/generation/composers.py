@@ -146,6 +146,38 @@ class ClaudeComposer:
         )
 
 
+def local_plan_schema() -> dict[str, Any]:
+    """The plan schema, tightened for Ollama's grammar-constrained decoding.
+
+    Small models satisfy a loose schema in the easiest way (empty melodies, digits
+    in step patterns, too few sections). Ollama turns this schema into a grammar,
+    so these limits shape what the model can write; the plan is still parsed with
+    the tolerant ArrangementPlan model before rendering.
+    """
+    schema = ArrangementPlan.model_json_schema()
+    defs = schema["$defs"]
+    hits = {"type": "string", "pattern": "^[xX.]{16}$"}
+    defs["PlanDrums"]["properties"].update(kick=hits, snare=hits, hat=hits)
+    note = defs["PlanMelodyNote"]["properties"]
+    note["step"].update(minimum=0, maximum=15)
+    note["degree"].update(minimum=-7, maximum=14)
+    note["length"].update(minimum=1, maximum=16)
+    section = defs["PlanSection"]["properties"]
+    section["bars"].update(minimum=1, maximum=16)
+    section["energy"].update(minimum=0, maximum=1)
+    section["chords"].update(minItems=1, maxItems=8)
+    section["chords"]["items"].update(minimum=0, maximum=6)
+    section["bass"].update(pattern="^[xo.]{16}$")
+    section["melody"].update(
+        minItems=1,
+        maxItems=4,
+        description="A 1-4 bar motif (each bar a list of 1-8 notes) repeated across the section",
+    )
+    section["melody"]["items"].update(minItems=1, maxItems=8)
+    schema["properties"]["sections"].update(minItems=3, maxItems=6)
+    return schema
+
+
 class LocalComposer:
     """An open-weight model served by Ollama on the local GPU.
 
@@ -177,7 +209,7 @@ class LocalComposer:
                 json={
                     "model": self._model,
                     "stream": False,
-                    "format": ArrangementPlan.model_json_schema(),
+                    "format": local_plan_schema(),
                     # Ollama's default 4K context can cut a full plan off mid-way.
                     "options": {"temperature": 0.7, "seed": request.seed, "num_ctx": 8192},
                     "messages": [

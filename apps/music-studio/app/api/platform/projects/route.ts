@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../lib/platform/platform-session";
 
 export const runtime = "nodejs";
 
@@ -9,18 +10,16 @@ function platformBaseUrl(): string {
 }
 
 function forwardedHeaders(request: NextRequest, correlationId: string): HeadersInit {
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   return {
     "x-correlation-id": correlationId,
-    ...(authorization ? { authorization } : {}),
-    ...(cookie ? { cookie } : {})
+    ...(authorization ? { authorization } : {})
   };
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
-  if (!request.headers.get("authorization") && !request.headers.get("cookie")) {
+  if (!platformAuthorization(request)) {
     return NextResponse.json(
       { code: "authentication_required", message: "Authentication is required.", correlationId },
       { status: 401 }

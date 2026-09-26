@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   IndexedDbProjectStorage,
   createStoredProjectRecord,
+  parseVersionedMusicProject,
   type StoredProjectSummary
 } from "@synaptix/project-storage";
 import { IndexedDbProjectSyncQueue } from "@synaptix/project-storage/platform-sync";
@@ -17,6 +18,7 @@ import {
   projectFileName,
   readProjectFile
 } from "../lib/editor/project-file";
+import { PLATFORM_SESSION_EVENT } from "../components/PlatformAccount";
 import { formatBytes } from "../lib/editor/storage-health";
 import { useStorageHealth } from "../lib/editor/use-storage-health";
 
@@ -84,7 +86,7 @@ export function RecentProjects() {
     setImportError(null);
     try {
       const project = await readProjectFile(await file.text());
-      await new IndexedDbProjectStorage().putProject(await createStoredProjectRecord(project));
+      await new IndexedDbProjectStorage().putProject(await createStoredProjectRecord(project, parseVersionedMusicProject));
       window.location.assign(`/studio/${encodeURIComponent(project.projectId)}`);
     } catch (cause) {
       setImportError(
@@ -117,6 +119,16 @@ export function RecentProjects() {
       setBusy(false);
     }
   }
+  // Retry the cloud list after signing in if it was refused for lack of a session.
+  const cloudNeedsSignIn = useRef(false);
+  useEffect(() => {
+    function onSession(event: Event) {
+      if ((event as CustomEvent<{ signedIn: boolean }>).detail?.signedIn && cloudNeedsSignIn.current) void loadCloud();
+    }
+    window.addEventListener(PLATFORM_SESSION_EVENT, onSession);
+    return () => window.removeEventListener(PLATFORM_SESSION_EVENT, onSession);
+  });
+
   async function loadCloud() {
     setBusy(true);
     setCloudMessage("Loading cloud projects…");
@@ -126,6 +138,7 @@ export function RecentProjects() {
         cache: "no-store",
         signal: AbortSignal.timeout(15000)
       });
+      cloudNeedsSignIn.current = response.status === 401;
       if (!response.ok)
         throw new Error(
           response.status === 401

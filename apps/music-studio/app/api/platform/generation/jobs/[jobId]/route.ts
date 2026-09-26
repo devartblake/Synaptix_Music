@@ -1,5 +1,6 @@
 import { GenerationJobSchema, PlatformErrorSchema } from "@synaptix/platform-contracts";
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../../../lib/platform/platform-session";
 
 export const runtime = "nodejs";
 
@@ -29,11 +30,10 @@ export async function GET(
   context: { params: Promise<{ jobId: string }> }
 ): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   const { jobId } = await context.params;
 
-  if (!authorization && !cookie) {
+  if (!authorization) {
     return errorResponse(401, "authentication_required", "Authentication is required.", correlationId);
   }
   if (!jobId) {
@@ -47,8 +47,7 @@ export async function GET(
         method: "GET",
         headers: {
           "x-correlation-id": correlationId,
-          ...(authorization ? { authorization } : {}),
-          ...(cookie ? { cookie } : {})
+          ...(authorization ? { authorization } : {})
         },
         cache: "no-store"
       }

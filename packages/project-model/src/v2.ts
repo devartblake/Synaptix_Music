@@ -83,6 +83,7 @@ export const TrackV2Schema = z.object({
   volumeDb: z.number().min(-96).max(24).default(0),
   pan: z.number().min(-1).max(1).default(0),
   outputBusId: IdSchema.optional(),
+  reverbSend: z.number().min(0).max(1).optional(),
   devices: z.array(DeviceV2Schema).default([]),
   clips: z.array(ClipSchema).default([])
 });

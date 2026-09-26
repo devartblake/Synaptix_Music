@@ -100,3 +100,62 @@ test("after a local-only plug-in revision, the next upload chains from the last 
   assert.equal(queued!.envelope.project.parentRevisionId, "revision-1");
   assert.equal(queued!.envelope.revision.checksumSha256, await computeProjectChecksum(queued!.envelope.project));
 });
+
+function platformAt(head: string | null): PlatformProjectRepository {
+  return {
+    listProjects: async () => [],
+    getProject: async () => head === null ? null : { projectId: "project-1", project: builtinProject(), revision: {
+      revisionId: head, parentRevisionId: null, transactionId: "t", commandIds: [], createdAt: "2026-09-22T00:00:00.000Z", checksumSha256: "a".repeat(64)
+    } },
+    uploadRevision: async () => { throw new Error("not used"); }
+  };
+}
+
+/** Saves revision-1 (on the platform) then a plug-in revision-2 that could not be uploaded. */
+async function localPluginHead(accepts: 1 | 2, platformHead: string | null) {
+  const local = new LocalProjectRepository<StoredMusicProject>(new InMemoryProjectStorage(), { parse: parseVersionedMusicProject });
+  const queue = new InMemoryProjectSyncQueue();
+  const hybrid = new HybridProjectRepository(local, platformAt(platformHead), queue, { toPlatformEnvelope: platformEnvelopeConverter(accepts) });
+  const first = await envelopeFor(builtinProject());
+  await local.save(first.project, first.revision);
+  const project = { ...pluginProject(), revisionId: "revision-2", parentRevisionId: "revision-1" };
+  const second = await envelopeFor(project);
+  await local.save(project, { ...second.revision, parentRevisionId: "revision-1" });
+  return { queue, hybrid };
+}
+
+test("a plug-in head saved before the platform accepted v2 is queued once it does", async () => {
+  const blocked = await localPluginHead(1, "revision-1");
+  assert.equal(await blocked.hybrid.queueUnsyncedHead("project-1"), "blocked");
+  assert.deepEqual(await blocked.queue.list(), []);
+
+  const { queue, hybrid } = await localPluginHead(2, "revision-1");
+  assert.equal(await hybrid.queueUnsyncedHead("project-1"), "queued");
+  assert.equal(await hybrid.queueUnsyncedHead("project-1"), "queued", "not queued twice");
+  const operations = await queue.list();
+  assert.equal(operations.length, 1);
+  assert.equal(operations[0]!.expectedRevisionId, "revision-1");
+  assert.equal(operations[0]!.envelope.project.schemaVersion, 2);
+  assert.equal(operations[0]!.envelope.revision.checksumSha256, await computeProjectChecksum(operations[0]!.envelope.project));
+});
+
+test("a head the platform already has, or a project with no saves, needs nothing", async () => {
+  const { hybrid } = await localPluginHead(2, "revision-2");
+  assert.equal(await hybrid.queueUnsyncedHead("project-1"), "current");
+  assert.equal(await repository(2).hybrid.queueUnsyncedHead("project-1"), "missing");
+});
+
+test("a head that diverged from the cloud keeps its parent so the upload conflicts", async () => {
+  const { queue, hybrid } = await localPluginHead(2, "someone-elses-revision");
+  assert.equal(await hybrid.queueUnsyncedHead("project-1"), "queued");
+  const [operation] = await queue.list();
+  assert.equal(operation!.expectedRevisionId, "revision-1");
+});
+
+test("a project the platform has never seen uploads as new", async () => {
+  const { queue, hybrid } = await localPluginHead(2, null);
+  assert.equal(await hybrid.queueUnsyncedHead("project-1"), "queued");
+  const [operation] = await queue.list();
+  assert.equal(operation!.expectedRevisionId, null);
+  assert.equal(operation!.envelope.project.parentRevisionId, null);
+});

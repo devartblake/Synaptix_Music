@@ -1,4 +1,4 @@
-import { MusicProjectSchema } from "@synaptix/project-model";
+import { parseVersionedMusicProject } from "@synaptix/project-storage";
 import type { PlatformRevisionEnvelope } from "@synaptix/project-storage/platform-sync";
 
 const KEY_PREFIX = "synaptix-music:recovery:v1:";
@@ -65,7 +65,7 @@ export function readRecovery(
   if (!raw) return null;
   try {
     const entry = JSON.parse(raw) as RecoveryEntry;
-    const project = MusicProjectSchema.parse(entry.envelope?.project);
+    const project = parseVersionedMusicProject(entry.envelope?.project);
     const valid =
       entry.envelope.projectId === projectId &&
       project.projectId === projectId &&

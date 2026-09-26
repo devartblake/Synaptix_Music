@@ -5,6 +5,7 @@ import {
   PlatformErrorSchema
 } from "@synaptix/platform-contracts";
 import { NextRequest, NextResponse } from "next/server";
+import { platformAuthorization } from "../../../../../lib/platform/platform-session";
 
 export const runtime = "nodejs";
 
@@ -15,11 +16,9 @@ function platformBaseUrl(): string {
 }
 
 function authHeaders(request: NextRequest): Record<string, string> {
-  const authorization = request.headers.get("authorization");
-  const cookie = request.headers.get("cookie");
+  const authorization = platformAuthorization(request);
   return {
-    ...(authorization ? { authorization } : {}),
-    ...(cookie ? { cookie } : {})
+    ...(authorization ? { authorization } : {})
   };
 }
 
@@ -33,7 +32,7 @@ function errorResponse(status: number, code: string, message: string, correlatio
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
   const headers = authHeaders(request);
-  if (!headers.authorization && !headers.cookie) {
+  if (!headers.authorization) {
     return errorResponse(401, "authentication_required", "Authentication is required.", correlationId);
   }
 
@@ -54,7 +53,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
   const headers = authHeaders(request);
-  if (!headers.authorization && !headers.cookie) {
+  if (!headers.authorization) {
     return errorResponse(401, "authentication_required", "Authentication is required.", correlationId);
   }
 

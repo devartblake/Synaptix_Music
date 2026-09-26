@@ -237,7 +237,7 @@ export class BrowserAudioEngine implements AudioTransport {
       transport.loopEnd = `${startTicks + project.transport.loopRange.durationTicks}i`;
     }
 
-    this.ensureGraph().configure(project);
+    this.ensureGraph().configure(builtinProjectView(project));
     this.rebuildAudioGraph(project);
   }
 
