@@ -67,19 +67,25 @@ def test_procedural_arrangements_stay_in_key_in_every_mode(key: str) -> None:
 
 @pytest.mark.parametrize("key", MODE_KEYS)
 def test_ai_plans_render_in_key_in_every_mode(key: str) -> None:
-    plan = ArrangementPlan.model_validate({
-        "title": "Mode check",
-        "sections": [
-            {
-                "kind": kind, "name": kind, "bars": 4, "energy": 0.7,
-                "chords": [0, 1, 2, 3, 4, 5, 6], "harmony": "arpeggio",
-                "bass": "x.o.x.o.x.o.x.o.",
-                "drums": {"kick": "x...x...", "snare": "....x...", "hat": "x.x.x.x."},
-                "melody": [MELODY],
-            }
-            for kind in ("intro", "main", "victory")
-        ],
-    })
+    plan = ArrangementPlan.model_validate(
+        {
+            "title": "Mode check",
+            "sections": [
+                {
+                    "kind": kind,
+                    "name": kind,
+                    "bars": 4,
+                    "energy": 0.7,
+                    "chords": [0, 1, 2, 3, 4, 5, 6],
+                    "harmony": "arpeggio",
+                    "bass": "x.o.x.o.x.o.x.o.",
+                    "drums": {"kick": "x...x...", "snare": "....x...", "hat": "x.x.x.x."},
+                    "melody": [MELODY],
+                }
+                for kind in ("intro", "main", "victory")
+            ],
+        }
+    )
     scale = parse_key(key).pitch_classes()
     proposal = render_plan(
         request(key), plan, generator_id="synaptix-local-composer", generator_version="1"

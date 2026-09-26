@@ -44,9 +44,10 @@ export function MixerDrawer({
   onExport: () => void;
   onClose: () => void;
 }) {
-  const [pending, setPending] = useState(false);
+  // Changes queue in the studio's edit queue, so none is dropped while another is saving.
+  const [pendingCount, setPendingCount] = useState(0);
+  const pending = pendingCount > 0;
   const [error, setError] = useState<string | null>(null);
-  const busy = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const mixer = project.mixer ?? defaultMixer();
 
@@ -55,17 +56,14 @@ export function MixerDrawer({
   }, []);
 
   async function execute(command: EditorCommand) {
-    if (busy.current) return;
-    busy.current = true;
-    setPending(true);
+    setPendingCount((count) => count + 1);
     setError(null);
     try {
       await onExecute(command);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The mixer change could not be saved.");
     } finally {
-      busy.current = false;
-      setPending(false);
+      setPendingCount((count) => count - 1);
     }
   }
 
@@ -122,7 +120,6 @@ export function MixerDrawer({
                 <ChannelMeter id={`track:${track.id}`} name={track.name} />
                 <div className={styles.switches}>
                   <Button
-                    disabled={pending}
                     aria-label={`Mute ${track.name}`}
                     aria-pressed={track.muted}
                     onClick={() =>
@@ -134,7 +131,6 @@ export function MixerDrawer({
                     Mute
                   </Button>
                   <Button
-                    disabled={pending}
                     aria-label={`Solo ${track.name}`}
                     aria-pressed={track.solo}
                     onClick={() =>
@@ -144,19 +140,18 @@ export function MixerDrawer({
                     Solo
                   </Button>
                 </div>
-                <CommitSlider
+                <CommitSlider disabled={false}
                   label={`${track.name} volume`}
                   value={track.volumeDb}
                   min={-36}
                   max={6}
                   step={1}
                   format={(value) => `${value} dB`}
-                  disabled={pending}
                   onCommit={(value) =>
                     execute(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))
                   }
                 />
-                <CommitSlider
+                <CommitSlider disabled={false}
                   label={`${track.name} pan`}
                   value={track.pan}
                   min={-1}
@@ -167,7 +162,6 @@ export function MixerDrawer({
                       ? "Center"
                       : `${Math.round(Math.abs(value) * 100)}% ${value < 0 ? "L" : "R"}`
                   }
-                  disabled={pending}
                   onCommit={(value) =>
                     execute(new SetTrackPanEditorCommand(track.id, track.pan, value))
                   }
@@ -175,7 +169,6 @@ export function MixerDrawer({
                 <label className={styles.routing}>
                   {track.name} output
                   <select
-                    disabled={pending}
                     value={track.outputBusId ?? "auto"}
                     onChange={(event) =>
                       void execute(
@@ -195,14 +188,13 @@ export function MixerDrawer({
                     <option value="master">Master direct</option>
                   </select>
                 </label>
-                <CommitSlider
+                <CommitSlider disabled={false}
                   label={`${track.name} reverb send`}
                   value={resolveTrackSend(track)}
                   min={0}
                   max={1}
                   step={0.01}
                   format={(value) => `${Math.round(value * 100)}%`}
-                  disabled={pending}
                   onCommit={(value) =>
                     execute(new SetTrackSendEditorCommand(track.id, track.reverbSend, value))
                   }
@@ -222,7 +214,6 @@ export function MixerDrawer({
                 <h3>{name}</h3>
                 <ChannelMeter id={`bus:${id}`} name={name} />
                 <Button
-                  disabled={pending}
                   aria-label={`Mute ${name}`}
                   aria-pressed={mixer[id].muted}
                   onClick={() =>
@@ -236,14 +227,13 @@ export function MixerDrawer({
                 >
                   Mute
                 </Button>
-                <CommitSlider
+                <CommitSlider disabled={false}
                   label={`${name} volume`}
                   value={mixer[id].volumeDb}
                   min={-60}
                   max={12}
                   step={1}
                   format={(value) => `${value} dB`}
-                  disabled={pending}
                   onCommit={(value) =>
                     execute(new SetMixerChannelEditorCommand(id, { ...mixer[id], volumeDb: value }))
                   }
@@ -256,7 +246,6 @@ export function MixerDrawer({
             <MasterMeter engine={engine} />
             <p>Live peak, RMS, and clipping</p>
             <Button
-              disabled={pending}
               aria-label="Mute Master"
               aria-pressed={mixer.master.muted}
               onClick={() =>
@@ -270,14 +259,13 @@ export function MixerDrawer({
             >
               Mute
             </Button>
-            <CommitSlider
+            <CommitSlider disabled={false}
               label="Master volume"
               value={mixer.master.volumeDb}
               min={-60}
               max={12}
               step={1}
               format={(value) => `${value} dB`}
-              disabled={pending}
               onCommit={(value) =>
                 execute(
                   new SetMixerChannelEditorCommand("master", { ...mixer.master, volumeDb: value })

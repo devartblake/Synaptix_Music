@@ -156,3 +156,22 @@ export function proposalSummary(proposal: GenerationProposal) {
     durationBars: proposal.sections.reduce((maximum, section) => Math.max(maximum, section.startBar + section.bars), 0)
   };
 }
+
+const MOOD_WORDS: Record<GenerationForm["mood"], string> = {
+  upbeat: "upbeat, bright and bouncy",
+  tense: "tense, urgent and driving",
+  triumphant: "triumphant and celebratory"
+};
+
+/** A MusicGen text prompt from the generation controls and the creative brief. */
+export function prototypeAudioPrompt(form: GenerationForm, brief: string): string {
+  const { tonic, mode } = splitKey(form.key);
+  const parts = [
+    `${MOOD_WORDS[form.mood]} video game music`,
+    `${form.tempo} BPM`,
+    `${tonic} ${mode}`,
+    form.energy >= 0.75 ? "high energy, full band" : form.energy <= 0.4 ? "calm and sparse" : "steady groove"
+  ];
+  const cleaned = brief.trim().replace(/\s+/g, " ");
+  return (cleaned ? `${cleaned}. ${parts.join(", ")}` : parts.join(", ")).slice(0, 500);
+}
