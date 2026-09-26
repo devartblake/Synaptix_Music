@@ -1,5 +1,6 @@
 import { computeProjectChecksum, type ProjectRevision } from "@synaptix/command-system";
 import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import { MusicProjectV2Schema, type MusicProjectV2 } from "@synaptix/project-model/v2";
 
 export const LOCAL_STORAGE_SCHEMA_VERSION = 1 as const;
 export const DEFAULT_DATABASE_NAME = "synaptix-music";
@@ -13,26 +14,42 @@ export interface StoredProjectSummary {
   checksumSha256: string;
 }
 
-export interface StoredProjectRecord extends StoredProjectSummary {
+export type StoredMusicProject = MusicProject | MusicProjectV2;
+
+/** Validates a stored snapshot. The default accepts only v1 so existing callers never receive v2. */
+export type ProjectSnapshotParser<P extends StoredMusicProject> = (value: unknown) => P;
+
+export const parseMusicProjectV1: ProjectSnapshotParser<MusicProject> = (value) => MusicProjectSchema.parse(value);
+export const parseMusicProjectV2: ProjectSnapshotParser<MusicProjectV2> = (value) => MusicProjectV2Schema.parse(value);
+
+/** Accepts any supported project schema version, dispatching on `schemaVersion`. */
+export const parseVersionedMusicProject: ProjectSnapshotParser<StoredMusicProject> = (value) => {
+  const version = (value as { schemaVersion?: unknown } | null)?.schemaVersion;
+  if (version === 1) return parseMusicProjectV1(value);
+  if (version === 2) return parseMusicProjectV2(value);
+  throw new ProjectStorageCorruptionError(`Unsupported project schema version '${String(version)}'.`);
+};
+
+export interface StoredProjectRecord<P extends StoredMusicProject = MusicProject> extends StoredProjectSummary {
   storageSchemaVersion: typeof LOCAL_STORAGE_SCHEMA_VERSION;
-  project: MusicProject;
+  project: P;
 }
 
-export interface StoredRevisionRecord {
+export interface StoredRevisionRecord<P extends StoredMusicProject = MusicProject> {
   storageSchemaVersion: typeof LOCAL_STORAGE_SCHEMA_VERSION;
   projectId: string;
   revision: ProjectRevision;
-  project: MusicProject;
+  project: P;
 }
 
 export interface LocalProjectStorage {
-  putProject(record: StoredProjectRecord): Promise<void>;
-  getProject(projectId: string): Promise<StoredProjectRecord | null>;
+  putProject(record: StoredProjectRecord<StoredMusicProject>): Promise<void>;
+  getProject(projectId: string): Promise<StoredProjectRecord<StoredMusicProject> | null>;
   listProjects(): Promise<StoredProjectSummary[]>;
   deleteProject(projectId: string): Promise<void>;
-  putRevision(record: StoredRevisionRecord): Promise<void>;
-  getRevision(projectId: string, revisionId: string): Promise<StoredRevisionRecord | null>;
-  listRevisions(projectId: string): Promise<StoredRevisionRecord[]>;
+  putRevision(record: StoredRevisionRecord<StoredMusicProject>): Promise<void>;
+  getRevision(projectId: string, revisionId: string): Promise<StoredRevisionRecord<StoredMusicProject> | null>;
+  listRevisions(projectId: string): Promise<StoredRevisionRecord<StoredMusicProject>[]>;
   clear(): Promise<void>;
 }
 
@@ -51,13 +68,16 @@ function revisionKey(projectId: string, revisionId: string): string {
   return `${projectId}:${revisionId}`;
 }
 
-function summaryFromRecord(record: StoredProjectRecord): StoredProjectSummary {
+function summaryFromRecord(record: StoredProjectRecord<StoredMusicProject>): StoredProjectSummary {
   const { projectId, name, revisionId, updatedAt, createdAt, checksumSha256 } = record;
   return { projectId, name, revisionId, updatedAt, createdAt, checksumSha256 };
 }
 
-export async function createStoredProjectRecord(project: MusicProject): Promise<StoredProjectRecord> {
-  const validated = MusicProjectSchema.parse(project);
+export async function createStoredProjectRecord<P extends StoredMusicProject = MusicProject>(
+  project: P,
+  parse: ProjectSnapshotParser<P> = parseMusicProjectV1 as ProjectSnapshotParser<P>
+): Promise<StoredProjectRecord<P>> {
+  const validated = parse(project);
   const checksumSha256 = await computeProjectChecksum(validated);
   return {
     storageSchemaVersion: LOCAL_STORAGE_SCHEMA_VERSION,
@@ -71,11 +91,12 @@ export async function createStoredProjectRecord(project: MusicProject): Promise<
   };
 }
 
-export async function createStoredRevisionRecord(
-  project: MusicProject,
-  revision: ProjectRevision
-): Promise<StoredRevisionRecord> {
-  const validated = MusicProjectSchema.parse(project);
+export async function createStoredRevisionRecord<P extends StoredMusicProject = MusicProject>(
+  project: P,
+  revision: ProjectRevision,
+  parse: ProjectSnapshotParser<P> = parseMusicProjectV1 as ProjectSnapshotParser<P>
+): Promise<StoredRevisionRecord<P>> {
+  const validated = parse(project);
   if (validated.projectId.length === 0 || validated.revisionId !== revision.revisionId) {
     throw new Error("Revision metadata does not match the project snapshot.");
   }
@@ -91,15 +112,16 @@ export async function createStoredRevisionRecord(
   };
 }
 
-export async function verifyStoredProjectRecord(
-  record: StoredProjectRecord
-): Promise<StoredProjectRecord> {
+export async function verifyStoredProjectRecord<P extends StoredMusicProject = MusicProject>(
+  record: StoredProjectRecord<StoredMusicProject>,
+  parse: ProjectSnapshotParser<P> = parseMusicProjectV1 as ProjectSnapshotParser<P>
+): Promise<StoredProjectRecord<P>> {
   if (record.storageSchemaVersion !== LOCAL_STORAGE_SCHEMA_VERSION) {
     throw new ProjectStorageCorruptionError(
       `Unsupported local storage schema version '${record.storageSchemaVersion}'.`
     );
   }
-  const project = MusicProjectSchema.parse(record.project);
+  const project = parse(record.project);
   if (record.projectId !== project.projectId || record.revisionId !== project.revisionId) {
     throw new ProjectStorageCorruptionError("Stored project metadata does not match its snapshot.");
   }
@@ -114,14 +136,14 @@ export async function verifyStoredProjectRecord(
 }
 
 export class InMemoryProjectStorage implements LocalProjectStorage {
-  private readonly projects = new Map<string, StoredProjectRecord>();
-  private readonly revisions = new Map<string, StoredRevisionRecord>();
+  private readonly projects = new Map<string, StoredProjectRecord<StoredMusicProject>>();
+  private readonly revisions = new Map<string, StoredRevisionRecord<StoredMusicProject>>();
 
-  async putProject(record: StoredProjectRecord): Promise<void> {
+  async putProject(record: StoredProjectRecord<StoredMusicProject>): Promise<void> {
     this.projects.set(record.projectId, clone(record));
   }
 
-  async getProject(projectId: string): Promise<StoredProjectRecord | null> {
+  async getProject(projectId: string): Promise<StoredProjectRecord<StoredMusicProject> | null> {
     const record = this.projects.get(projectId);
     return record ? clone(record) : null;
   }
@@ -141,16 +163,16 @@ export class InMemoryProjectStorage implements LocalProjectStorage {
     }
   }
 
-  async putRevision(record: StoredRevisionRecord): Promise<void> {
+  async putRevision(record: StoredRevisionRecord<StoredMusicProject>): Promise<void> {
     this.revisions.set(revisionKey(record.projectId, record.revision.revisionId), clone(record));
   }
 
-  async getRevision(projectId: string, revisionId: string): Promise<StoredRevisionRecord | null> {
+  async getRevision(projectId: string, revisionId: string): Promise<StoredRevisionRecord<StoredMusicProject> | null> {
     const record = this.revisions.get(revisionKey(projectId, revisionId));
     return record ? clone(record) : null;
   }
 
-  async listRevisions(projectId: string): Promise<StoredRevisionRecord[]> {
+  async listRevisions(projectId: string): Promise<StoredRevisionRecord<StoredMusicProject>[]> {
     return [...this.revisions.values()]
       .filter((record) => record.projectId === projectId)
       .sort((left, right) => right.revision.createdAt.localeCompare(left.revision.createdAt))
@@ -225,18 +247,18 @@ export class IndexedDbProjectStorage implements LocalProjectStorage {
     return this.databasePromise;
   }
 
-  async putProject(record: StoredProjectRecord): Promise<void> {
+  async putProject(record: StoredProjectRecord<StoredMusicProject>): Promise<void> {
     const database = await this.open();
     const transaction = database.transaction(PROJECT_STORE, "readwrite");
     transaction.objectStore(PROJECT_STORE).put(clone(record));
     await transactionDone(transaction);
   }
 
-  async getProject(projectId: string): Promise<StoredProjectRecord | null> {
+  async getProject(projectId: string): Promise<StoredProjectRecord<StoredMusicProject> | null> {
     const database = await this.open();
     const transaction = database.transaction(PROJECT_STORE, "readonly");
     const result = await requestResult(
-      transaction.objectStore(PROJECT_STORE).get(projectId) as IDBRequest<StoredProjectRecord | undefined>
+      transaction.objectStore(PROJECT_STORE).get(projectId) as IDBRequest<StoredProjectRecord<StoredMusicProject> | undefined>
     );
     await transactionDone(transaction);
     return result ? clone(result) : null;
@@ -246,7 +268,7 @@ export class IndexedDbProjectStorage implements LocalProjectStorage {
     const database = await this.open();
     const transaction = database.transaction(PROJECT_STORE, "readonly");
     const records = await requestResult(
-      transaction.objectStore(PROJECT_STORE).getAll() as IDBRequest<StoredProjectRecord[]>
+      transaction.objectStore(PROJECT_STORE).getAll() as IDBRequest<StoredProjectRecord<StoredMusicProject>[]>
     );
     await transactionDone(transaction);
     return records.map(summaryFromRecord).sort((left, right) =>
@@ -272,31 +294,31 @@ export class IndexedDbProjectStorage implements LocalProjectStorage {
     await transactionDone(transaction);
   }
 
-  async putRevision(record: StoredRevisionRecord): Promise<void> {
+  async putRevision(record: StoredRevisionRecord<StoredMusicProject>): Promise<void> {
     const database = await this.open();
     const transaction = database.transaction(REVISION_STORE, "readwrite");
     transaction.objectStore(REVISION_STORE).put(clone(record));
     await transactionDone(transaction);
   }
 
-  async getRevision(projectId: string, revisionId: string): Promise<StoredRevisionRecord | null> {
+  async getRevision(projectId: string, revisionId: string): Promise<StoredRevisionRecord<StoredMusicProject> | null> {
     const database = await this.open();
     const transaction = database.transaction(REVISION_STORE, "readonly");
     const result = await requestResult(
       transaction.objectStore(REVISION_STORE).get([projectId, revisionId]) as IDBRequest<
-        StoredRevisionRecord | undefined
+        StoredRevisionRecord<StoredMusicProject> | undefined
       >
     );
     await transactionDone(transaction);
     return result ? clone(result) : null;
   }
 
-  async listRevisions(projectId: string): Promise<StoredRevisionRecord[]> {
+  async listRevisions(projectId: string): Promise<StoredRevisionRecord<StoredMusicProject>[]> {
     const database = await this.open();
     const transaction = database.transaction(REVISION_STORE, "readonly");
     const records = await requestResult(
       transaction.objectStore(REVISION_STORE).index("projectId").getAll(projectId) as IDBRequest<
-        StoredRevisionRecord[]
+        StoredRevisionRecord<StoredMusicProject>[]
       >
     );
     await transactionDone(transaction);
@@ -314,25 +336,37 @@ export class IndexedDbProjectStorage implements LocalProjectStorage {
   }
 }
 
-export class LocalProjectRepository {
-  constructor(private readonly storage: LocalProjectStorage) {}
+export interface LocalProjectRepositoryOptions<P extends StoredMusicProject> {
+  /** Snapshot validator; defaults to Project Schema v1. Use parseMusicProjectV2 for plug-in projects. */
+  parse?: ProjectSnapshotParser<P>;
+}
 
-  async save(project: MusicProject, revision?: ProjectRevision): Promise<StoredProjectRecord> {
-    const record = await createStoredProjectRecord(project);
+export class LocalProjectRepository<P extends StoredMusicProject = MusicProject> {
+  private readonly parse: ProjectSnapshotParser<P>;
+
+  constructor(
+    private readonly storage: LocalProjectStorage,
+    options: LocalProjectRepositoryOptions<P> = {}
+  ) {
+    this.parse = options.parse ?? (parseMusicProjectV1 as ProjectSnapshotParser<P>);
+  }
+
+  async save(project: P, revision?: ProjectRevision): Promise<StoredProjectRecord<P>> {
+    const record = await createStoredProjectRecord(project, this.parse);
     if (revision) {
-      const revisionRecord = await createStoredRevisionRecord(project, revision);
+      const revisionRecord = await createStoredRevisionRecord(project, revision, this.parse);
       await this.storage.putRevision(revisionRecord);
     }
     await this.storage.putProject(record);
     return clone(record);
   }
 
-  async load(projectId: string): Promise<MusicProject | null> {
+  async load(projectId: string): Promise<P | null> {
     const record = await this.storage.getProject(projectId);
     if (!record) {
       return null;
     }
-    const verified = await verifyStoredProjectRecord(record);
+    const verified = await verifyStoredProjectRecord(record, this.parse);
     return clone(verified.project);
   }
 
@@ -345,7 +379,7 @@ export class LocalProjectRepository {
     return records.map((record) => clone(record.revision));
   }
 
-  async loadRevision(projectId: string, revisionId: string): Promise<MusicProject | null> {
+  async loadRevision(projectId: string, revisionId: string): Promise<P | null> {
     const record = await this.storage.getRevision(projectId, revisionId);
     if (!record) {
       return null;
@@ -354,7 +388,7 @@ export class LocalProjectRepository {
     if (checksum !== record.revision.checksumSha256) {
       throw new ProjectStorageCorruptionError("Stored revision checksum verification failed.");
     }
-    return clone(MusicProjectSchema.parse(record.project));
+    return clone(this.parse(record.project));
   }
 
   async remove(projectId: string): Promise<void> {

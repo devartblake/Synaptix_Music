@@ -1,4 +1,5 @@
 import type { Clip, MusicProject, Track } from "@synaptix/project-model";
+import type { MusicProjectV2 } from "@synaptix/project-model/v2";
 
 export type SerializedCommand =
   | { type: "add-track"; commandId: string; track: Track; index: number }
@@ -505,11 +506,11 @@ function canonicalize(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function canonicalizeProject(project: MusicProject): string {
+export function canonicalizeProject(project: MusicProject | MusicProjectV2): string {
   return canonicalize(project);
 }
 
-export async function computeProjectChecksum(project: MusicProject): Promise<string> {
+export async function computeProjectChecksum(project: MusicProject | MusicProjectV2): Promise<string> {
   const bytes = new TextEncoder().encode(canonicalizeProject(project));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
