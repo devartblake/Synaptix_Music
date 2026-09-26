@@ -38,6 +38,7 @@ function statusLabel(status: PluginRuntimeStatus | undefined, enabled: boolean):
   if (!enabled) return "Bypassed";
   if (!status || status.availability.status === "loading") return "Loading";
   if (status.availability.status === "available") return "Active";
+  if (status.availability.status === "inactive") return "Inactive";
   return "Unavailable";
 }
 
@@ -57,13 +58,14 @@ export function PluginRack({ track, statuses, onExecute, gestures }: {
         const status = statuses.find((candidate) => candidate.deviceId === device.id);
         const label = statusLabel(status, device.enabled);
         const unavailable = status?.availability.status === "unavailable" ? status.availability : null;
+        const inactive = status?.availability.status === "inactive" ? status.availability : null;
         const values = descriptor ? resolvePluginParameterValues(device, descriptor) : null;
 
         return (
           <div key={device.id} style={{ display: "grid", gap: 4, fontSize: 12 }}>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <strong style={{ flex: 1 }}>{name}</strong>
-              <span title={unavailable?.message}>{label}</span>
+              <span title={unavailable?.message ?? inactive?.message}>{label}</span>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <Button aria-pressed={!device.enabled} aria-label={`Bypass ${name} on ${track.name}`}
@@ -74,6 +76,7 @@ export function PluginRack({ track, statuses, onExecute, gestures }: {
                 onClick={() => onExecute(new RemovePluginDeviceEditorCommand(track.id, device.id))}>Remove</Button>
             </div>
             {unavailable && <p style={{ margin: 0, opacity: 0.8 }}>{unavailable.message} Its settings are kept in the project.</p>}
+            {inactive && <p style={{ margin: 0, opacity: 0.8 }}>{inactive.message} Its settings are kept in the project.</p>}
             {descriptor && values && descriptor.parameters.map((parameter) => {
               const value = values.get(parameter.id) ?? parameter.defaultValue;
               const step = parameter.kind === "continuous" ? (parameter.maximum - parameter.minimum) / 200 : 1;
@@ -94,9 +97,9 @@ export function PluginRack({ track, statuses, onExecute, gestures }: {
           </div>
         );
       })}
-      <Button onClick={() => onExecute(new InsertPluginDeviceEditorCommand(
+      {track.kind === "instrument" && <Button onClick={() => onExecute(new InsertPluginDeviceEditorCommand(
         track.id, createReferenceDriveDevice(`device-${crypto.randomUUID()}`), track.devices.length
-      ))}>Add Reference Drive</Button>
+      ))}>Add Reference Drive</Button>}
     </section>
   );
 }

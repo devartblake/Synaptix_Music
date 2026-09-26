@@ -82,3 +82,21 @@ test("v2 platforms receive plug-in projects unchanged", async () => {
   await hybrid.saveAndQueue(envelope, null, "key-1");
   assert.deepEqual((await queue.list())[0]!.envelope, envelope);
 });
+
+test("after a local-only plug-in revision, the next upload chains from the last platform revision", async () => {
+  const { queue, hybrid } = repository(1);
+  const base = builtinProject();                                   // revision-1, known to the platform
+  const withPlugin = pluginProject();
+  withPlugin.revisionId = "revision-2"; withPlugin.parentRevisionId = "revision-1";
+  const removed = builtinProject();
+  removed.revisionId = "revision-3"; removed.parentRevisionId = "revision-2";
+
+  assert.deepEqual(await hybrid.saveAndQueue(await envelopeFor(withPlugin), base.revisionId, "key-2"), { queued: false });
+  assert.deepEqual(await hybrid.saveAndQueue(await envelopeFor(removed), "revision-2", "key-3"), { queued: true });
+
+  const [queued] = await queue.list();
+  assert.equal(queued!.expectedRevisionId, "revision-1");
+  assert.equal(queued!.envelope.revision.parentRevisionId, "revision-1");
+  assert.equal(queued!.envelope.project.parentRevisionId, "revision-1");
+  assert.equal(queued!.envelope.revision.checksumSha256, await computeProjectChecksum(queued!.envelope.project));
+});

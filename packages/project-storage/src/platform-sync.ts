@@ -175,6 +175,16 @@ export function platformEnvelopeConverter(accepts: PlatformProjectSchemaVersion)
   };
 }
 
+/** Point an upload's parent at the platform-known ancestor; the checksum covers the new snapshot. */
+async function rebaseEnvelope(envelope: PlatformRevisionEnvelope, parentRevisionId: string | null): Promise<PlatformRevisionEnvelope> {
+  const project = { ...structuredClone(envelope.project), parentRevisionId } as StoredMusicProject;
+  return {
+    projectId: envelope.projectId,
+    project,
+    revision: { ...structuredClone(envelope.revision), parentRevisionId, checksumSha256: await computeProjectChecksum(project) }
+  };
+}
+
 export interface HybridProjectRepositoryOptions {
   /** Defaults to uploading revisions unchanged. */
   toPlatformEnvelope?: PlatformEnvelopeConverter;
@@ -187,6 +197,12 @@ export interface SaveAndQueueResult {
 
 export class HybridProjectRepository {
   private readonly toPlatformEnvelope: PlatformEnvelopeConverter;
+  /**
+   * Revisions saved locally but never uploaded, mapped to the last ancestor the platform can
+   * know. Later uploads chain from that ancestor, so a local-only revision never becomes the
+   * platform's expected head. Held in memory; after a reload the conflict flow resolves it.
+   */
+  private readonly localOnlyRevisions = new Map<string, string | null>();
 
   constructor(
     private readonly local: {
@@ -217,12 +233,19 @@ export class HybridProjectRepository {
     operationId = crypto.randomUUID()
   ): Promise<SaveAndQueueResult> {
     await this.local.save(envelope.project, envelope.revision);
-    const platformEnvelope = await this.toPlatformEnvelope(envelope);
-    if (!platformEnvelope) return { queued: false };
+    const platformExpected = expectedRevisionId !== null && this.localOnlyRevisions.has(expectedRevisionId)
+      ? this.localOnlyRevisions.get(expectedRevisionId)!
+      : expectedRevisionId;
+    let platformEnvelope = await this.toPlatformEnvelope(envelope);
+    if (!platformEnvelope) {
+      this.localOnlyRevisions.set(envelope.revision.revisionId, platformExpected);
+      return { queued: false };
+    }
+    if (platformExpected !== expectedRevisionId) platformEnvelope = await rebaseEnvelope(platformEnvelope, platformExpected);
     await this.queue.enqueue({
       operationId,
       projectId: envelope.projectId,
-      expectedRevisionId,
+      expectedRevisionId: platformExpected,
       idempotencyKey,
       envelope: platformEnvelope,
       queuedAt: new Date().toISOString(),
