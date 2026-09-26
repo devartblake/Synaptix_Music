@@ -75,6 +75,7 @@ import { MixerDrawer } from "./MixerDrawer";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack } from "./PluginRack";
+import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
 import { TransportPosition } from "./TransportPosition";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
@@ -204,6 +205,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     if (!open) mixerToggleRef.current?.focus();
   }
   const engine = useMemo(() => new BrowserAudioEngine(), []);
+  // Tone.js has one global transport: the listening player hands the audio to the studio.
+  useEffect(() => { usePlayer.getState().release(); }, []);
   const localRef = useRef<LocalProjectRepository<StoredMusicProject> | null>(null);
   const hybridRef = useRef<HybridProjectRepository | null>(null);
   const coordinatorRef = useRef<ProjectSyncCoordinator | null>(null);
