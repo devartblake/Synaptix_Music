@@ -1,13 +1,18 @@
 import type { MusicProject, Track } from "@synaptix/project-model";
+import type { MusicProjectV2 } from "@synaptix/project-model/v2";
 
 import { computeProjectChecksum, type ProjectRevision } from "./index.ts";
 
-export interface EditorCommand {
+export type VersionedMusicProject = MusicProject | MusicProjectV2;
+
+export interface ProjectEditorCommand<P extends VersionedMusicProject> {
   readonly id: string;
   readonly kind: string;
-  execute(project: MusicProject): MusicProject;
-  undo(project: MusicProject): MusicProject;
+  execute(project: P): P;
+  undo(project: P): P;
 }
+
+export type EditorCommand = ProjectEditorCommand<MusicProject>;
 
 interface CommandOptions {
   id?: string;
@@ -31,7 +36,7 @@ function commandId(options: CommandOptions): string {
   return options.id ?? crypto.randomUUID();
 }
 
-function clone(project: MusicProject): MusicProject {
+function clone<P extends VersionedMusicProject>(project: P): P {
   return structuredClone(project);
 }
 
@@ -142,18 +147,18 @@ export class SetTempoEditorCommand implements EditorCommand {
   }
 }
 
-interface HistoryEntry {
-  command: EditorCommand;
-  before: MusicProject;
-  after: MusicProject;
+interface HistoryEntry<P extends VersionedMusicProject> {
+  command: ProjectEditorCommand<P>;
+  before: P;
+  after: P;
 }
 
-async function revisionFor(
-  project: MusicProject,
+async function revisionFor<P extends VersionedMusicProject>(
+  project: P,
   parentRevisionId: string | null,
   transactionId: string,
   commandIdValue: string
-): Promise<{ project: MusicProject; revision: ProjectRevision }> {
+): Promise<{ project: P; revision: ProjectRevision }> {
   const createdAt = new Date().toISOString();
   const revisionId = crypto.randomUUID();
   const committed = clone(project);
@@ -173,9 +178,9 @@ async function revisionFor(
   };
 }
 
-export class EditorCommandHistory {
-  private readonly undoStack: HistoryEntry[] = [];
-  private readonly redoStack: HistoryEntry[] = [];
+export class EditorCommandHistory<P extends VersionedMusicProject = MusicProject> {
+  private readonly undoStack: HistoryEntry<P>[] = [];
+  private readonly redoStack: HistoryEntry<P>[] = [];
   private readonly maxDepth: number;
   private busy = false;
   private projectId: string | null = null;
@@ -205,14 +210,14 @@ export class EditorCommandHistory {
     };
   }
 
-  reset(project?: MusicProject): void {
+  reset(project?: P): void {
     this.undoStack.length = 0;
     this.redoStack.length = 0;
     this.projectId = project?.projectId ?? null;
     this.revisionId = project?.revisionId ?? null;
   }
 
-  private assertProject(project: MusicProject): void {
+  private assertProject(project: P): void {
     if (this.projectId !== null && this.projectId !== project.projectId) {
       throw new Error("Editor history belongs to a different project. Reset it before editing.");
     }
@@ -235,7 +240,7 @@ export class EditorCommandHistory {
     }
   }
 
-  async execute(project: MusicProject, command: EditorCommand) {
+  async execute(project: P, command: ProjectEditorCommand<P>) {
     this.assertProject(project);
     return this.exclusive(async () => {
       const before = clone(project);
@@ -249,7 +254,7 @@ export class EditorCommandHistory {
     });
   }
 
-  async undo(project: MusicProject) {
+  async undo(project: P) {
     this.assertProject(project);
     return this.exclusive(async () => {
       const entry = this.undoStack.at(-1);
@@ -263,7 +268,7 @@ export class EditorCommandHistory {
     });
   }
 
-  async redo(project: MusicProject) {
+  async redo(project: P) {
     this.assertProject(project);
     return this.exclusive(async () => {
       const entry = this.redoStack.at(-1);
