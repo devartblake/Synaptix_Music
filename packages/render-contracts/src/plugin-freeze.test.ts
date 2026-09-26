@@ -138,3 +138,12 @@ test("production certification accepts current verified freezes and rejects stal
     "frozen"
   );
 });
+
+test("device ids shared across tracks are judged by their own track's freeze evidence", async () => {
+  const value = await freeze(project([device()]));
+  // A second track reuses the device id without a freeze; ids are only unique per track.
+  value.tracks.push({ id: "track-2", name: "Pad", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, devices: [device()], clips: [] });
+  const assessment = await assessPluginProductionEligibility(value, { descriptorFor: () => descriptor(), manifestFor: () => manifest() });
+  assert.deepEqual(assessment.decisions.map((decision) => [decision.trackId, decision.mode]), [["track-1", "frozen"], ["track-2", "blocked"]]);
+  assert.equal(assessment.certifiable, false);
+});

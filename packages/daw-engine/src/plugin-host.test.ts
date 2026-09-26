@@ -232,3 +232,63 @@ test("the built-in runtime sees a v1 view without plug-in devices or fields", ()
   assert.equal(engine.snapshot().tempo, 120);
   engine.dispose();
 });
+
+function fakeInstance(deviceId: string) {
+  const node = { deviceId } as unknown as AudioNode;
+  let disposed = 0;
+  return {
+    get disposed() { return disposed; },
+    instance: { deviceId, input: node, output: node, dispose: () => { disposed += 1; } } as unknown as import("./plugin-host.ts").BrowserPluginInstance
+  };
+}
+
+test("a plug-in that fails while later slots load is never rewired into the chain", async () => {
+  const { TrackPluginChain } = await import("./plugin-host.ts");
+  const wirings: string[][] = [];
+  const target = { setInserts: (inserts: readonly { input: AudioNode }[]) => { wirings.push(inserts.map((insert) => (insert.input as unknown as { deviceId: string }).deviceId)); } };
+  const chain = new TrackPluginChain(target, 2);
+  const first = fakeInstance("first");
+  const second = fakeInstance("second");
+
+  chain.fill(0, first.instance);
+  chain.attach();
+  chain.remove(first.instance);        // processor error while slot 1 is still loading
+  chain.fill(1, second.instance);      // slot 1 finishes loading
+
+  assert.deepEqual(wirings, [["first"], [], ["second"]]);
+  assert.equal(first.disposed, 1);
+  assert.deepEqual(chain.instances.map((instance) => instance.deviceId), ["second"]);
+});
+
+test("insert chains keep planned order, release without disposing, and dispose once", async () => {
+  const { TrackPluginChain } = await import("./plugin-host.ts");
+  const wirings: string[][] = [];
+  const target = { setInserts: (inserts: readonly { input: AudioNode }[]) => { wirings.push(inserts.map((insert) => (insert.input as unknown as { deviceId: string }).deviceId)); } };
+  const chain = new TrackPluginChain(target, 3);
+  const [a, b, c] = ["a", "b", "c"].map(fakeInstance);
+  chain.fill(2, c!.instance);
+  chain.fill(0, a!.instance);
+  assert.deepEqual(wirings, [], "nothing is wired before attach");
+  chain.attach();
+  chain.fill(1, b!.instance);
+  assert.deepEqual(wirings, [["a", "c"], ["a", "b", "c"]]);
+
+  const released = chain.release();
+  assert.deepEqual(released.map((instance) => instance.deviceId), ["a", "b", "c"]);
+  assert.equal(a!.disposed + b!.disposed + c!.disposed, 0);
+  const late = fakeInstance("late");
+  chain.fill(0, late.instance);
+  assert.equal(late.disposed, 1, "a retired chain disposes late arrivals");
+  chain.dispose();
+  assert.equal(a!.disposed, 0);
+});
+
+test("reuse keys change with plug-in identity or state but not with parameters", async () => {
+  const { pluginInstanceReuseKey } = await import("./plugin-host.ts");
+  const device = driveDevice();
+  const key = pluginInstanceReuseKey("track-1", device);
+  assert.equal(pluginInstanceReuseKey("track-1", { ...device, parameters: [{ id: "drive", value: 9 }] }), key);
+  assert.notEqual(pluginInstanceReuseKey("track-2", device), key);
+  assert.notEqual(pluginInstanceReuseKey("track-1", { ...device, pluginState: { stateVersion: 1, encoding: "json", payload: "{}", checksumSha256: null } }), key);
+  assert.notEqual(pluginInstanceReuseKey("track-1", { ...device, plugin: { ...device.plugin, version: "2.0.0" } }), key);
+});

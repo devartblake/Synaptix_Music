@@ -237,3 +237,87 @@ export function planAutomationEvents(device: DeviceV2, descriptor: AudioPluginDe
   }
   return events.sort((left, right) => left.tick - right.tick || left.parameterId.localeCompare(right.parameterId));
 }
+
+/** Where a track's insert chain is wired (the built-in runtime between its filter and channel). */
+export interface PluginInsertTarget {
+  setInserts(inserts: readonly { readonly input: AudioNode; readonly output: AudioNode }[]): void;
+}
+
+/**
+ * The live insert chain of one track. Each planned device owns a slot, so instances keep
+ * their planned order whether they were reused from the previous graph or loaded later.
+ * Once attached, every change (a slot filled, a failed instance removed) rewires the target,
+ * so a failure while other slots are still loading can never leave a disposed node wired in.
+ */
+export class TrackPluginChain {
+  private readonly slots: (BrowserPluginInstance | null)[];
+  private attached = false;
+  private disposed = false;
+
+  constructor(private readonly target: PluginInsertTarget, size: number) {
+    this.slots = Array.from({ length: size }, () => null);
+  }
+
+  get instances(): BrowserPluginInstance[] {
+    return this.slots.filter((slot): slot is BrowserPluginInstance => slot !== null);
+  }
+
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
+
+  fill(index: number, instance: BrowserPluginInstance): void {
+    if (this.disposed) {
+      instance.dispose();
+      return;
+    }
+    this.slots[index] = instance;
+    this.rewire();
+  }
+
+  /** Remove and dispose an instance (for example after a processor error). */
+  remove(instance: BrowserPluginInstance): void {
+    const index = this.slots.indexOf(instance);
+    if (index < 0) return;
+    this.slots[index] = null;
+    instance.dispose();
+    this.rewire();
+  }
+
+  attach(): void {
+    this.attached = true;
+    this.rewire();
+  }
+
+  /** Hand every live instance to the caller without disposing it, and retire this chain. */
+  release(): BrowserPluginInstance[] {
+    const released = this.instances;
+    this.slots.fill(null);
+    this.disposed = true;
+    return released;
+  }
+
+  dispose(): void {
+    for (const instance of this.instances) instance.dispose();
+    this.slots.fill(null);
+    this.disposed = true;
+  }
+
+  private rewire(): void {
+    if (this.attached && !this.disposed) this.target.setInserts(this.instances);
+  }
+}
+
+/** Identity under which a live instance can be reused by the next graph rebuild. */
+export function pluginInstanceReuseKey(trackId: string, device: DeviceV2): string {
+  return JSON.stringify([
+    trackId,
+    device.id,
+    device.plugin.pluginId,
+    device.plugin.vendorId,
+    device.plugin.version,
+    device.plugin.runtimeKind,
+    device.plugin.moduleChecksumSha256,
+    device.pluginState
+  ]);
+}

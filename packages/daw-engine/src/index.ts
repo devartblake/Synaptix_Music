@@ -42,12 +42,15 @@ export {
   PluginIntegrityError,
   planAutomationEvents,
   planTrackPluginChain,
+  pluginInstanceReuseKey,
   resolvePluginParameterValues,
+  TrackPluginChain,
   type BrowserPluginHost,
   type BrowserPluginInstance,
   type PlannedPluginInsert,
   type PluginAudioContext,
   type PluginCreateContext,
+  type PluginInsertTarget,
   type PluginInstantiation,
   type PluginMidiEvent,
   type ScheduledAutomationEvent
@@ -75,7 +78,6 @@ import * as Tone from "tone";
 
 import {
   BrowserProductionAudioGraph,
-  type PluginInsertNodes,
   type ProductionInstrumentRuntime,
   type FrequencyDroneRuntime
 } from "./browser-production-graph.ts";
@@ -83,9 +85,13 @@ import { createDefaultPluginHostRegistry } from "./default-plugins.ts";
 import {
   planAutomationEvents,
   planTrackPluginChain,
+  pluginInstanceReuseKey,
+  resolvePluginParameterValues,
+  TrackPluginChain,
   type BrowserPluginHostRegistry,
   type BrowserPluginInstance,
-  type PluginAudioContext
+  type PluginAudioContext,
+  type PluginInsertTarget
 } from "./plugin-host.ts";
 import { SILENT_METER, type MasterMeterSnapshot } from "./production-audio.ts";
 
@@ -112,7 +118,7 @@ export interface PluginRuntimeStatus {
   trackId: string;
   deviceId: string;
   pluginId: string;
-  availability: PluginAvailabilityState | { status: "loading" };
+  availability: PluginAvailabilityState | { status: "loading" } | { status: "inactive"; message: string };
 }
 
 export type PluginStatusListener = (statuses: PluginRuntimeStatus[]) => void;
@@ -184,7 +190,8 @@ export class BrowserAudioEngine implements AudioTransport {
   private scheduledEventIds: number[] = [];
   private readonly subscriptions = new Set<ReturnType<typeof setInterval>>();
   private readonly pluginRegistry: BrowserPluginHostRegistry;
-  private readonly pluginInstances = new Map<string, BrowserPluginInstance[]>();
+  private readonly pluginChains = new Map<string, TrackPluginChain>();
+  private readonly pluginInstanceMeta = new Map<BrowserPluginInstance, { key: string; unsubscribe: () => void }>();
   private readonly pluginStatus = new Map<string, PluginRuntimeStatus>();
   private readonly pluginStatusListeners = new Set<PluginStatusListener>();
   private pluginContext: { tone: Tone.BaseContext; adapter: PluginAudioContext } | null = null;
@@ -235,6 +242,7 @@ export class BrowserAudioEngine implements AudioTransport {
   private rebuildAudioGraph(source: MusicProject | MusicProjectV2): void {
     const graph = this.ensureGraph();
     this.clearScheduledEvents();
+    const reusable = this.releasePluginInstances();
     this.disposeRuntimes();
     const generation = ++this.graphGeneration;
     const project = builtinProjectView(source);
@@ -243,19 +251,29 @@ export class BrowserAudioEngine implements AudioTransport {
     const ppq = project.transport.ticksPerQuarterNote;
 
     for (const track of project.tracks) {
-      if (track.kind !== "instrument") continue;
       const pluginTrack = pluginTracks?.get(track.id);
+      if (track.kind !== "instrument") {
+        // The browser engine only plays instrument tracks; say so instead of "loading" forever.
+        for (const device of pluginTrack?.devices ?? []) {
+          if (!device.enabled || device.plugin.runtimeKind === "builtin") continue;
+          this.setPluginStatus({
+            trackId: track.id, deviceId: device.id, pluginId: device.plugin.pluginId,
+            availability: { status: "inactive", message: `Browser preview does not play ${track.kind} tracks yet.` }
+          });
+        }
+        continue;
+      }
       const drone = graph.createFrequencyDrone(track);
       if (drone) {
         drone.channel.mute = !trackAudible(track, project.tracks);
         this.droneRuntimes.set(track.id, drone);
-        if (pluginTrack) void this.attachPluginChain(pluginTrack, drone, generation);
+        if (pluginTrack) void this.attachPluginChain(pluginTrack, drone, generation, reusable);
         continue;
       }
       const runtime = graph.createInstrument(track);
       runtime.channel.mute = !trackAudible(track, project.tracks);
       this.runtimes.set(track.id, runtime);
-      if (pluginTrack) void this.attachPluginChain(pluginTrack, runtime, generation);
+      if (pluginTrack) void this.attachPluginChain(pluginTrack, runtime, generation, reusable);
 
       for (const clip of track.clips) {
         if (clip.kind !== "midi") continue;
@@ -273,6 +291,8 @@ export class BrowserAudioEngine implements AudioTransport {
         }
       }
     }
+    // Instances whose devices were removed, changed identity/state, or were bypassed.
+    for (const instance of reusable.values()) instance.dispose();
     this.emitPluginStatus();
   }
 
@@ -298,58 +318,97 @@ export class BrowserAudioEngine implements AudioTransport {
   }
 
   /**
-   * Instantiate a track's plug-in inserts, then splice them in after the built-in runtime.
-   * Unavailable plug-ins are bypassed (never substituted) and reported through
-   * pluginStatuses(); the canonical project is never modified.
+   * Build a track's plug-in insert chain after the built-in runtime. Instances whose identity
+   * and state are unchanged are reused from the previous graph (parameters re-applied), so
+   * edits and transport changes do not interrupt processing; new ones load asynchronously
+   * into their planned slots. Unavailable plug-ins are bypassed (never substituted) and
+   * reported through pluginStatuses(); the canonical project is never modified.
    */
   private async attachPluginChain(
     track: TrackV2,
-    runtime: { setInserts(inserts: readonly PluginInsertNodes[]): void },
-    generation: number
+    runtime: PluginInsertTarget,
+    generation: number,
+    reusable: Map<string, BrowserPluginInstance>
   ): Promise<void> {
     const planned = planTrackPluginChain(track, this.pluginRegistry);
     if (planned.length === 0) return;
+    const chain = new TrackPluginChain(runtime, planned.length);
+    this.pluginChains.set(track.id, chain);
     const status = (deviceId: string, pluginId: string, availability: PluginRuntimeStatus["availability"]) =>
       this.setPluginStatus({ trackId: track.id, deviceId, pluginId, availability });
-    for (const insert of planned) status(insert.device.id, insert.device.plugin.pluginId, { status: "loading" });
+
+    const toLoad: { index: number; device: TrackV2["devices"][number] }[] = [];
+    planned.forEach(({ device, availability }, index) => {
+      if (availability.status === "unavailable") {
+        status(device.id, device.plugin.pluginId, availability);
+        return;
+      }
+      const key = pluginInstanceReuseKey(track.id, device);
+      const reused = reusable.get(key);
+      if (reused) {
+        reusable.delete(key);
+        reused.cancelScheduledParameters(this.pluginAudioContext().currentTime);
+        for (const [id, value] of resolvePluginParameterValues(device, reused.descriptor)) reused.setParameter(id, value);
+        this.adoptPluginInstance(track.id, chain, index, device, reused, key);
+        status(device.id, device.plugin.pluginId, { status: "available" });
+      } else {
+        status(device.id, device.plugin.pluginId, { status: "loading" });
+        toLoad.push({ index, device });
+      }
+    });
+    chain.attach();
     this.emitPluginStatus();
 
-    const instances: BrowserPluginInstance[] = [];
-    const stale = () => generation !== this.graphGeneration;
-    for (const insert of planned) {
-      const { device } = insert;
-      if (insert.availability.status === "unavailable") {
-        status(device.id, device.plugin.pluginId, insert.availability);
-        continue;
-      }
+    for (const { index, device } of toLoad) {
       const result = await this.pluginRegistry.instantiate(device, this.pluginAudioContext());
-      if (stale()) {
+      if (generation !== this.graphGeneration || chain.isDisposed) {
         if (result.status === "ready") result.instance.dispose();
-        for (const instance of instances) instance.dispose();
         return;
       }
       if (result.status === "unavailable") {
         status(device.id, device.plugin.pluginId, result.availability);
-        continue;
+      } else {
+        this.adoptPluginInstance(track.id, chain, index, device, result.instance, pluginInstanceReuseKey(track.id, device));
+        status(device.id, device.plugin.pluginId, { status: "available" });
       }
-      const instance = result.instance;
-      instance.onFailure((availability) => {
-        status(device.id, device.plugin.pluginId, availability);
-        if (!stale()) {
-          const remaining = (this.pluginInstances.get(track.id) ?? []).filter((candidate) => candidate !== instance);
-          this.pluginInstances.set(track.id, remaining);
-          runtime.setInserts(remaining);
-          instance.dispose();
-        }
-        this.emitPluginStatus();
-      });
-      instances.push(instance);
-      status(device.id, device.plugin.pluginId, { status: "available" });
-      this.scheduleAutomation(device, instance);
+      this.emitPluginStatus();
     }
-    this.pluginInstances.set(track.id, instances);
-    runtime.setInserts(instances);
-    this.emitPluginStatus();
+  }
+
+  private adoptPluginInstance(
+    trackId: string,
+    chain: TrackPluginChain,
+    index: number,
+    device: TrackV2["devices"][number],
+    instance: BrowserPluginInstance,
+    key: string
+  ): void {
+    const unsubscribe = instance.onFailure((availability) => {
+      this.setPluginStatus({ trackId, deviceId: device.id, pluginId: device.plugin.pluginId, availability });
+      this.pluginInstanceMeta.get(instance)?.unsubscribe();
+      this.pluginInstanceMeta.delete(instance);
+      chain.remove(instance);
+      this.emitPluginStatus();
+    });
+    this.pluginInstanceMeta.set(instance, { key, unsubscribe });
+    chain.fill(index, instance);
+    this.scheduleAutomation(device, instance);
+  }
+
+  /** Detach every live instance from the current graph so the next rebuild can reuse it. */
+  private releasePluginInstances(): Map<string, BrowserPluginInstance> {
+    const released = new Map<string, BrowserPluginInstance>();
+    for (const chain of this.pluginChains.values()) {
+      for (const instance of chain.release()) {
+        const meta = this.pluginInstanceMeta.get(instance);
+        this.pluginInstanceMeta.delete(instance);
+        meta?.unsubscribe();
+        if (meta && !released.has(meta.key)) released.set(meta.key, instance);
+        else instance.dispose();
+      }
+    }
+    this.pluginChains.clear();
+    return released;
   }
 
   private scheduleAutomation(device: TrackV2["devices"][number], instance: BrowserPluginInstance): void {
@@ -428,7 +487,7 @@ export class BrowserAudioEngine implements AudioTransport {
 
   allNotesOff(): void {
     for (const runtime of this.runtimes.values()) runtime.synth.releaseAll();
-    for (const instances of this.pluginInstances.values()) for (const instance of instances) instance.allNotesOff();
+    for (const chain of this.pluginChains.values()) for (const instance of chain.instances) instance.allNotesOff();
   }
 
   snapshot(): TransportSnapshot {
@@ -484,8 +543,10 @@ export class BrowserAudioEngine implements AudioTransport {
 
   private disposeRuntimes(): void {
     this.graphGeneration += 1;
-    for (const instances of this.pluginInstances.values()) for (const instance of instances) instance.dispose();
-    this.pluginInstances.clear();
+    for (const chain of this.pluginChains.values()) chain.dispose();
+    this.pluginChains.clear();
+    for (const { unsubscribe } of this.pluginInstanceMeta.values()) unsubscribe();
+    this.pluginInstanceMeta.clear();
     this.pluginStatus.clear();
     for (const runtime of this.runtimes.values()) runtime.dispose();
     this.runtimes.clear();

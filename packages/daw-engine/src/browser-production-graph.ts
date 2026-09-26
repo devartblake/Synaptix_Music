@@ -42,7 +42,8 @@ function routeInserts(
   inserts: readonly PluginInsertNodes[]
 ): void {
   source.disconnect();
-  for (const insert of previous) insert.output.disconnect();
+  // Reused instances may still be wired into a previous graph; start every insert clean.
+  for (const insert of [...previous, ...inserts]) insert.output.disconnect();
   let tail: Tone.ToneAudioNode | AudioNode = source;
   for (const insert of inserts) {
     Tone.connect(tail, insert.input);
