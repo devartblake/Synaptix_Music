@@ -25,7 +25,9 @@ async function main(): Promise<void> {
   if (projectLoader && !artifactStore) {
     throw new Error("MinIO artifact storage must be configured before the render worker can run.");
   }
-  const server = createRenderJobHttpServer(store, artifactStore ?? undefined);
+  const server = createRenderJobHttpServer(store, artifactStore ?? undefined, {
+    serviceToken: process.env.RENDER_WORKER_SERVICE_TOKEN?.trim() || undefined
+  });
   const workerAbort = new AbortController();
 
   await new Promise<void>((resolve) => server.listen(port, resolve));

@@ -82,6 +82,53 @@ function mapEventRow(row: RenderJobEventRow): RenderJobEvent {
 export class PostgresRenderJobStore {
   constructor(private readonly pool: Pool) {}
 
+  /**
+   * Evidence the SynaptixPlay backend checks before publishing an adaptive package: which render
+   * produced each artifact, whether it completed, and for which exact project revision.
+   */
+  async renderEvidence(renderIds: readonly string[], artifactIds: readonly string[]): Promise<RenderEvidence> {
+    const renders = await this.pool.query<{ job_id: string; status: RenderJobStatus; manifest: RenderManifest; result: RenderResult | null }>(
+      `SELECT job_id, status, manifest, result FROM render_jobs WHERE manifest->>'renderId' = ANY($1::text[])`,
+      [renderIds]
+    );
+    const artifacts = await this.pool.query<{
+      job_id: string;
+      status: RenderJobStatus;
+      manifest: RenderManifest;
+      artifact: RenderResult["artifacts"][number];
+    }>(
+      `SELECT j.job_id, j.status, j.manifest, a AS artifact
+         FROM render_jobs j
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(j.result->'artifacts', '[]'::jsonb)) a
+        WHERE a->>'artifactId' = ANY($1::text[])`,
+      [artifactIds]
+    );
+    const source = (manifest: RenderManifest) => ({
+      renderId: manifest.renderId,
+      projectId: manifest.projectId,
+      revisionId: manifest.revisionId,
+      projectChecksumSha256: manifest.projectChecksumSha256
+    });
+    return {
+      renders: renders.rows.map((row) => ({
+        ...source(row.manifest),
+        jobId: row.job_id,
+        status: row.status,
+        artifactManifestChecksumSha256:
+          row.result?.artifacts.find((artifact) => artifact.fileName === "artifact-manifest.json")?.checksumSha256 ?? null
+      })),
+      artifacts: artifacts.rows.map((row) => ({
+        ...source(row.manifest),
+        jobId: row.job_id,
+        status: row.status,
+        artifactId: row.artifact.artifactId,
+        fileName: row.artifact.fileName,
+        checksumSha256: row.artifact.checksumSha256,
+        byteLength: row.artifact.byteLength
+      }))
+    };
+  }
+
   private async recordEvent(
     executor: Pool | PoolClient,
     jobId: string,
@@ -378,4 +425,18 @@ export class PostgresRenderJobStore {
       : await this.pool.query<RenderJobEventRow>(`SELECT * FROM render_job_events ORDER BY event_id ASC`);
     return result.rows.map(mapEventRow);
   }
+}
+
+interface EvidenceSource {
+  renderId: string;
+  projectId: string;
+  revisionId: string;
+  projectChecksumSha256: string;
+  jobId: string;
+  status: RenderJobStatus;
+}
+
+export interface RenderEvidence {
+  renders: (EvidenceSource & { artifactManifestChecksumSha256: string | null })[];
+  artifacts: (EvidenceSource & { artifactId: string; fileName: string; checksumSha256: string; byteLength: number })[];
 }

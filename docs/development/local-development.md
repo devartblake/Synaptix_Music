@@ -104,7 +104,8 @@ dotnet user-secrets set "ServiceTokens:RenderWorker" "<the same token>" --projec
 Alternatively, run SynaptixPlay in Docker next to this stack. The backend repository's
 `docker/compose.music-studio.yml` override publishes the API on 5100, moves the
 backend's own Postgres, Redis, MinIO and 8100/8200 host ports out of this stack's way,
-and points music generation at `http://host.docker.internal:8100`. Put the same
+points music generation at `http://host.docker.internal:8100`, and points publication
+verification at the render worker on `http://host.docker.internal:8200`. Put the same
 `RENDER_WORKER_SERVICE_TOKEN` plus a `MUSIC_ADAPTIVE_ARTIFACT_SIGNING_KEY` (at least
 32 characters) in the backend's gitignored `docker/.env.music-studio`, then run this from
 the backend repository:

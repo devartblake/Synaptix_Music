@@ -1,7 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
 import { RenderManifestSchema, type RenderJobStatus } from "@synaptix/render-contracts";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
 import type { ArtifactDelivery } from "./minio-artifact-store.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
@@ -53,18 +54,39 @@ function isRenderJobStatus(value: string | null): value is RenderJobStatus {
  * authentication (matching how the Python generation-api service is a
  * private dependency, not directly exposed to the browser).
  */
+export interface RenderJobHttpServerOptions {
+  /**
+   * Shared with the SynaptixPlay backend (ServiceTokens:RenderWorker). Required for the
+   * /internal routes the backend calls; they answer 503 without it.
+   */
+  serviceToken?: string;
+}
+
 export function createRenderJobHttpServer(
   store: PostgresRenderJobStore,
-  artifactDelivery?: ArtifactDelivery
+  artifactDelivery?: ArtifactDelivery,
+  options: RenderJobHttpServerOptions = {}
 ): Server {
   return createServer((req, res) => {
-    void handleRequest(store, artifactDelivery, req, res);
+    void handleRequest(store, artifactDelivery, options, req, res);
   });
+}
+
+const RenderEvidenceRequestSchema = z.object({
+  renderIds: z.array(z.string().uuid()).max(50),
+  artifactIds: z.array(z.string().uuid()).max(500)
+});
+
+function isServiceAuthorized(req: IncomingMessage, expected: string): boolean {
+  const supplied = Buffer.from(req.headers["x-service-token"]?.toString() ?? "");
+  const wanted = Buffer.from(expected);
+  return supplied.length === wanted.length && timingSafeEqual(supplied, wanted);
 }
 
 async function handleRequest(
   store: PostgresRenderJobStore,
   artifactDelivery: ArtifactDelivery | undefined,
+  options: RenderJobHttpServerOptions,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -73,6 +95,16 @@ async function handleRequest(
   const segments = url.pathname.split("/").filter(Boolean);
 
   try {
+    if (req.method === "POST" && url.pathname === "/internal/render-evidence") {
+      if (!options.serviceToken) {
+        return sendError(res, 503, "service_authentication_unavailable", "Render-worker service authentication is not configured.", correlationId);
+      }
+      if (!isServiceAuthorized(req, options.serviceToken)) {
+        return sendError(res, 401, "service_authentication_required", "A valid render-worker service token is required.", correlationId);
+      }
+      const request = RenderEvidenceRequestSchema.parse(await readJsonBody(req));
+      return sendJson(res, 200, await store.renderEvidence(request.renderIds, request.artifactIds));
+    }
     if (req.method === "POST" && segments.length === 1 && segments[0] === "render-jobs") {
       await handleSubmit(store, req, res, correlationId);
       return;
