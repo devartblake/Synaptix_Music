@@ -9,11 +9,19 @@ import {
 } from "./production-audio.ts";
 import { FREQUENCY_DRONE_DEVICE_TYPE, resolveFrequencyDroneDevice } from "./frequency-drone.ts";
 
+/** A plug-in insert's audio endpoints (see BrowserPluginInstance). */
+export interface PluginInsertNodes {
+  readonly input: AudioNode;
+  readonly output: AudioNode;
+}
+
 export interface ProductionInstrumentRuntime {
   synth: Tone.PolySynth;
   filter: Tone.Filter;
   channel: Tone.Channel;
   reverbSend: Tone.Gain;
+  /** Route the post-filter signal through plug-in inserts, in order, before the channel strip. */
+  setInserts(inserts: readonly PluginInsertNodes[]): void;
   dispose(): void;
 }
 
@@ -23,7 +31,24 @@ export interface FrequencyDroneRuntime {
   gain: Tone.Gain;
   channel: Tone.Channel;
   lfo: Tone.LFO | null;
+  setInserts(inserts: readonly PluginInsertNodes[]): void;
   dispose(): void;
+}
+
+function routeInserts(
+  source: Tone.ToneAudioNode,
+  destination: Tone.ToneAudioNode,
+  previous: readonly PluginInsertNodes[],
+  inserts: readonly PluginInsertNodes[]
+): void {
+  source.disconnect();
+  for (const insert of previous) insert.output.disconnect();
+  let tail: Tone.ToneAudioNode | AudioNode = source;
+  for (const insert of inserts) {
+    Tone.connect(tail, insert.input);
+    tail = insert.output;
+  }
+  Tone.connect(tail, destination);
 }
 
 export type MasterMeterListener = (snapshot: MasterMeterSnapshot) => void;
@@ -77,8 +102,13 @@ export class BrowserProductionAudioGraph {
     gain.connect(filter);
     filter.connect(channel);
     channel.connect(this.musicBus);
+    let inserts: readonly PluginInsertNodes[] = [];
     const runtime: FrequencyDroneRuntime = {
       oscillators, filter, gain, channel, lfo,
+      setInserts: (next) => {
+        routeInserts(filter, channel, inserts, next);
+        inserts = [...next];
+      },
       dispose: () => {
         this.droneRuntimes.delete(runtime);
         for (const oscillator of oscillators) oscillator.dispose();
@@ -110,11 +140,16 @@ export class BrowserProductionAudioGraph {
     channel.connect(reverbSend);
     reverbSend.connect(this.reverb);
 
+    let inserts: readonly PluginInsertNodes[] = [];
     const runtime: ProductionInstrumentRuntime = {
       synth,
       filter,
       channel,
       reverbSend,
+      setInserts: (next) => {
+        routeInserts(filter, channel, inserts, next);
+        inserts = [...next];
+      },
       dispose: () => {
         this.runtimes.delete(runtime);
         synth.dispose();
