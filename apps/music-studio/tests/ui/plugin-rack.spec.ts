@@ -8,6 +8,8 @@ test("a Reference Drive insert loads, edits with undo/redo, bypasses, and surviv
   await page.goto(`/studio/plugin-rack-${test.info().project.name}`);
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
 
+  // Track controls live in a collapsed disclosure on the arrangement timeline.
+  await page.getByText("Bass controls", { exact: true }).click();
   const rack = page.getByRole("region", { name: "Bass inserts" });
   await rack.getByRole("button", { name: "Add Reference Drive" }).click();
   await expect(rack.getByText("Active")).toBeVisible({ timeout: 15_000 });
@@ -34,6 +36,8 @@ test("a Reference Drive insert loads, edits with undo/redo, bypasses, and surviv
   expect(audit.violations).toEqual([]);
 
   await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await page.getByText("Bass controls", { exact: true }).click();
   const reloaded = page.getByRole("region", { name: "Bass inserts" });
   await expect(reloaded.getByRole("slider", { name: "Bass Reference Drive Drive" })).toHaveValue(edited);
   await reloaded.getByRole("button", { name: "Remove Reference Drive from Bass" }).click();
