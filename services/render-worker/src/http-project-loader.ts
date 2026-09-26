@@ -1,11 +1,12 @@
 import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import { MusicProjectV2Schema, type MusicProjectV2 } from "@synaptix/project-model/v2";
 import { z } from "zod";
 
 import type { ProjectLoader } from "./worker.ts";
 
 const RevisionResponseSchema = z
   .object({
-    project: MusicProjectSchema
+    project: z.discriminatedUnion("schemaVersion", [MusicProjectSchema, MusicProjectV2Schema])
   })
   .passthrough();
 
@@ -29,7 +30,7 @@ export class HttpProjectLoader implements ProjectLoader {
       throw new Error("Project-loader base URL and service token are required.");
   }
 
-  async loadProject(projectId: string, revisionId: string): Promise<MusicProject> {
+  async loadProject(projectId: string, revisionId: string): Promise<MusicProject | MusicProjectV2> {
     const response = await this.fetchImplementation(
       `${this.baseUrl}/internal/music/projects/${encodeURIComponent(projectId)}/revisions/${encodeURIComponent(revisionId)}`,
       { headers: { "X-Service-Token": this.serviceToken, accept: "application/json" } }

@@ -68,3 +68,13 @@ test("environment configuration is optional but fails on partial configuration",
     })
   );
 });
+
+test("loads Project Schema v2 revisions and still rejects unknown schema versions", async () => {
+  const { migrateProjectV1ToV2 } = await import("@synaptix/project-model/v2");
+  const project = migrateProjectV1ToV2(createEmptyProject("project-a", { revisionId: "revision-a" }));
+  const loader = (body: unknown) => new HttpProjectLoader({
+    baseUrl: "https://platform.example", serviceToken: "secret", fetch: async () => Response.json(body)
+  });
+  assert.deepEqual(await loader({ project }).loadProject("project-a", "revision-a"), project);
+  await assert.rejects(loader({ project: { ...project, schemaVersion: 3 } }).loadProject("project-a", "revision-a"));
+});
