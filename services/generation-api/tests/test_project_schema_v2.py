@@ -28,8 +28,9 @@ def test_v1_to_v2_migration_is_deterministic() -> None:
     v1 = MusicProject.model_validate(load(V1_FIXTURE))
     first = migrate_project_v1_to_v2(v1)
     second = migrate_project_v1_to_v2(v1)
-    assert first.model_dump(mode="json") == second.model_dump(mode="json")
-    assert first.model_dump(mode="json") == load(V2_FIXTURE)
+    dumped = first.model_dump(mode="json", exclude_unset=True)
+    assert dumped == second.model_dump(mode="json", exclude_unset=True)
+    assert dumped == load(V2_FIXTURE)
     assert v1.schemaVersion == 1
 
 

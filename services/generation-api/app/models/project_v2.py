@@ -72,7 +72,9 @@ class MusicProjectV2(StrictModel):
 
 
 def migrate_project_v1_to_v2(project: MusicProject) -> MusicProjectV2:
-    payload = project.model_dump(mode="json")
+    # exclude_unset keeps omitted optional fields (e.g. outputBusId) absent rather
+    # than null, matching the Zod and JSON Schema v2 contracts.
+    payload = project.model_dump(mode="json", exclude_unset=True)
     payload["schemaVersion"] = 2
     for track in payload["tracks"]:
         for device in track["devices"]:
