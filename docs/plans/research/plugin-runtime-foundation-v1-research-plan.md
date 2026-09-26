@@ -1,6 +1,6 @@
 # Plugin Runtime Foundation v1 — Research Plan
 
-**Status:** Active research  
+**Status:** Closed for P1 (see `plugin-runtime-foundation-v1-closure.md`); R4 continues in P2, R8/R9 in P3  
 **Revision date:** 2026-09-22  
 **Parent plan:** `docs/plans/architecture/browser-daw-plugin-extensibility-roadmap-v1.md`
 

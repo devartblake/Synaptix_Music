@@ -352,4 +352,4 @@ This research slice is closed because:
 
 ## Next action
 
-Begin **Slice A — Project Schema v2 foundation**. This is the smallest implementation step that unlocks every later plug-in runtime task while remaining independent of WAM/VST implementation.
+Slices A-D are implemented; see `plugin-runtime-foundation-v1-closure.md` for gate evidence and deferred items. Slice E (WAM) belongs to P2.

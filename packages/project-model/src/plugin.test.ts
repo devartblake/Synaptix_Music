@@ -186,3 +186,13 @@ test("frozen evidence is independent of downstream devices and other tracks", as
   frozen.tracks[0]!.volumeDb = -6;
   assert.equal((await evaluateFrozenPluginEvidence(frozen, "device-drive")).status, "current");
 });
+
+test("the canonical plug-in fixture validates and carries current frozen evidence", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const fixture = JSON.parse(await readFile(new URL("../../../schemas/project/fixtures/plugin-v2.json", import.meta.url), "utf8"));
+  const parsed = MusicProjectV2Schema.parse(fixture);
+  assert.deepEqual(parsed, fixture);
+  const device = parsed.tracks[0]!.devices.find((candidate) => candidate.plugin.runtimeKind === "audio-worklet")!;
+  assert.equal(await verifyPluginStateEnvelope(device.pluginState!), true);
+  assert.equal((await evaluateFrozenPluginEvidence(parsed, device.id)).status, "current");
+});
