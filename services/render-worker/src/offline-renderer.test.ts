@@ -251,6 +251,20 @@ test("stems scope renders one artifact per requested track and ignores mute", ()
   assert.ok(hasSignal, "muted track is still rendered as a stem");
 });
 
+test("stem filenames are slugified and trimmed safely", () => {
+  const outcome = renderProjectOffline(
+    project([noteTrack("track-1", "---Lead   Track---", "synaptix-lead-synth")]),
+    manifest({ scope: { kind: "stems", trackIds: ["track-1"] } })
+  );
+  assert.equal(outcome.artifacts[0]?.metadata.fileName, "lead-track.wav");
+
+  const fallback = renderProjectOffline(
+    project([noteTrack("track-2", "---###---", "synaptix-bass-synth")]),
+    manifest({ scope: { kind: "stems", trackIds: ["track-2"] } })
+  );
+  assert.equal(fallback.artifacts[0]?.metadata.fileName, "track.wav");
+});
+
 test("requesting an unknown stem track fails closed", () => {
   assert.throws(
     () =>

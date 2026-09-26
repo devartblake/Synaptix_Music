@@ -234,10 +234,27 @@ function clampAndDetectClipping(buffer: StereoBuffer): boolean {
 }
 
 function slugify(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  const lower = name.toLowerCase();
+  const slugChars: string[] = [];
+  let previousWasDash = false;
+
+  for (let i = 0; i < lower.length; i++) {
+    const char = lower[i]!;
+    const isLowerAlpha = char >= "a" && char <= "z";
+    const isDigit = char >= "0" && char <= "9";
+    if (isLowerAlpha || isDigit) {
+      slugChars.push(char);
+      previousWasDash = false;
+      continue;
+    }
+    if (!previousWasDash && slugChars.length > 0) {
+      slugChars.push("-");
+      previousWasDash = true;
+    }
+  }
+
+  if (slugChars[slugChars.length - 1] === "-") slugChars.pop();
+  const slug = slugChars.join("");
   return slug.length > 0 ? slug : "track";
 }
 

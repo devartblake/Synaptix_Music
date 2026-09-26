@@ -1,12 +1,10 @@
-import type { MusicProject } from "@synaptix/project-model";
-
-import type { EditorCommand } from "./editor.ts";
+import type { EditorCommand, VersionedMusicProject } from "./editor.ts";
 
 interface DeviceCommandOptions {
   id?: string;
 }
 
-function clone(project: MusicProject): MusicProject {
+function clone<P extends VersionedMusicProject>(project: P): P {
   return structuredClone(project);
 }
 
@@ -14,10 +12,11 @@ function commandId(options: DeviceCommandOptions): string {
   return options.id ?? crypto.randomUUID();
 }
 
-function device(project: MusicProject, trackId: string, deviceId: string) {
-  const track = project.tracks.find((candidate) => candidate.id === trackId);
+function device(project: VersionedMusicProject, trackId: string, deviceId: string) {
+  const track = (project.tracks as VersionedMusicProject["tracks"][number][]).find((candidate) => candidate.id === trackId);
   if (!track) throw new Error(`Track '${trackId}' was not found.`);
-  const value = track.devices.find((candidate) => candidate.id === deviceId);
+  const value = (track.devices as Array<{ id: string; enabled: boolean; parameters: Array<{ id: string; value: number }> }>)
+    .find((candidate) => candidate.id === deviceId);
   if (!value) throw new Error(`Device '${deviceId}' was not found on track '${trackId}'.`);
   return value;
 }
@@ -36,13 +35,13 @@ export class SetDeviceEnabledEditorCommand implements EditorCommand {
     this.id = commandId(options);
   }
 
-  execute(project: MusicProject): MusicProject {
+  execute<P extends VersionedMusicProject>(project: P): P {
     const next = clone(project);
     device(next, this.trackId, this.deviceId).enabled = this.nextValue;
     return next;
   }
 
-  undo(project: MusicProject): MusicProject {
+  undo<P extends VersionedMusicProject>(project: P): P {
     const next = clone(project);
     device(next, this.trackId, this.deviceId).enabled = this.previousValue;
     return next;
@@ -67,7 +66,7 @@ export class SetDeviceParameterEditorCommand implements EditorCommand {
     this.id = commandId(options);
   }
 
-  private write(project: MusicProject, value: number): MusicProject {
+  private write<P extends VersionedMusicProject>(project: P, value: number): P {
     const next = clone(project);
     const target = device(next, this.trackId, this.deviceId);
     const parameter = target.parameters.find((candidate) => candidate.id === this.parameterId);
@@ -76,11 +75,11 @@ export class SetDeviceParameterEditorCommand implements EditorCommand {
     return next;
   }
 
-  execute(project: MusicProject): MusicProject {
+  execute<P extends VersionedMusicProject>(project: P): P {
     return this.write(project, this.nextValue);
   }
 
-  undo(project: MusicProject): MusicProject {
+  undo<P extends VersionedMusicProject>(project: P): P {
     return this.write(project, this.previousValue);
   }
 }

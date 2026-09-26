@@ -1,1 +1,3 @@
 *.sh text eol=lf
+# Plug-in module sources are hashed byte-for-byte; keep line endings stable.
+packages/daw-engine/src/reference-drive.ts text eol=lf

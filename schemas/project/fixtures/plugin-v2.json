@@ -1,0 +1,187 @@
+{
+  "projectId": "project-demo",
+  "revisionId": "revision-001-frozen",
+  "parentRevisionId": "revision-001",
+  "metadata": {
+    "name": "Canonical Fixture",
+    "createdAt": "2026-08-03T16:00:00Z",
+    "updatedAt": "2026-08-03T16:00:00Z"
+  },
+  "transport": {
+    "ticksPerQuarterNote": 960,
+    "loopEnabled": false,
+    "loopRange": null
+  },
+  "tempoMap": [
+    {
+      "id": "tempo-1",
+      "position": {
+        "bar": 0,
+        "beat": 0,
+        "tick": 0
+      },
+      "bpm": 120
+    }
+  ],
+  "timeSignatureMap": [
+    {
+      "id": "signature-1",
+      "position": {
+        "bar": 0,
+        "beat": 0,
+        "tick": 0
+      },
+      "numerator": 4,
+      "denominator": 4
+    }
+  ],
+  "assets": [],
+  "markers": [
+    {
+      "id": "marker-1",
+      "name": "Intro",
+      "position": {
+        "bar": 0,
+        "beat": 0,
+        "tick": 0
+      },
+      "kind": "section"
+    }
+  ],
+  "generationMetadata": {
+    "generatorId": "synaptix-procedural",
+    "generatorVersion": "0.1.0",
+    "seed": 42,
+    "createdAt": "2026-08-03T16:00:00Z",
+    "prompt": "Bright trivia intro"
+  },
+  "schemaVersion": 2,
+  "tracks": [
+    {
+      "id": "track-1",
+      "name": "Lead",
+      "kind": "instrument",
+      "color": "#5B8DEF",
+      "muted": false,
+      "solo": false,
+      "volumeDb": 0,
+      "pan": 0,
+      "devices": [
+        {
+          "id": "device-1",
+          "deviceType": "synaptix.basic-synth",
+          "deviceVersion": "1.0.0",
+          "enabled": true,
+          "parameters": [
+            {
+              "id": "gain",
+              "value": 0.8
+            }
+          ],
+          "plugin": {
+            "pluginId": "synaptix.basic-synth",
+            "vendorId": "synaptix",
+            "version": "1.0.0",
+            "runtimeKind": "builtin",
+            "moduleChecksumSha256": null
+          },
+          "pluginState": null,
+          "automation": [],
+          "frozen": null
+        },
+        {
+          "id": "device-reference-drive",
+          "deviceType": "synaptix.reference-drive",
+          "deviceVersion": "1.0.0",
+          "enabled": true,
+          "parameters": [
+            {
+              "id": "inputGainDb",
+              "value": 0
+            },
+            {
+              "id": "drive",
+              "value": 6
+            },
+            {
+              "id": "mix",
+              "value": 0.75
+            },
+            {
+              "id": "outputGainDb",
+              "value": 0
+            }
+          ],
+          "plugin": {
+            "pluginId": "synaptix.reference-drive",
+            "vendorId": "synaptix",
+            "version": "1.0.0",
+            "runtimeKind": "audio-worklet",
+            "moduleChecksumSha256": "ba891f3c3e6a8036c264aba2ab5c442b5fe645dc9242b3293372ae976cd0b34d"
+          },
+          "pluginState": {
+            "stateVersion": 1,
+            "encoding": "json",
+            "payload": "{\"preset\":\"warm\"}",
+            "checksumSha256": "8dd4338fae5e92b16b4263e549f88cd62653839dda8e0877b3c010976e664da4"
+          },
+          "automation": [
+            {
+              "parameterId": "mix",
+              "points": [
+                {
+                  "tick": 0,
+                  "value": 0,
+                  "curve": "linear"
+                },
+                {
+                  "tick": 3840,
+                  "value": 1,
+                  "curve": "step"
+                }
+              ]
+            }
+          ],
+          "frozen": {
+            "renderId": "7f7b8f0e-7f55-4a41-9d4e-3b1f8f3f7a10",
+            "artifactId": "0c3f3f0e-1a55-4a41-9d4e-3b1f8f3f7a11",
+            "sourceProjectId": "project-demo",
+            "sourceRevisionId": "revision-001",
+            "sourceProjectChecksumSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "sourceDeviceId": "device-reference-drive",
+            "sourcePluginStateChecksumSha256": "a579bf25025f0183d20b1cf7490d337225cfcdada2b8b353908055183c5cf127",
+            "sourceSignalChainChecksumSha256": "21d4cf43eafd700982e4b661b972ca08db6a20fc7ad58186c3876df5702a4a05",
+            "artifactChecksumSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "engineVersion": "render-worker@1.0.0",
+            "frozenAt": "2026-09-22T00:00:00Z"
+          }
+        }
+      ],
+      "clips": [
+        {
+          "id": "clip-1",
+          "kind": "midi",
+          "name": "Opening Motif",
+          "range": {
+            "start": {
+              "bar": 0,
+              "beat": 0,
+              "tick": 0
+            },
+            "durationTicks": 3840
+          },
+          "loop": false,
+          "notes": [
+            {
+              "id": "note-1",
+              "pitch": 60,
+              "velocity": 100,
+              "startTick": 0,
+              "durationTicks": 960
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
