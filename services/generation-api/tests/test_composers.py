@@ -263,6 +263,10 @@ def test_local_composer_sends_schema_and_renders_the_plan() -> None:
     assert section["melody"]["minItems"] == 1
     assert section["melody"]["items"]["minItems"] == 1
     assert seen["format"]["properties"]["sections"]["minItems"] == 3
+    # Every plan names an ensemble with at least one supporting layer, and length is capped.
+    assert "ensemble" in seen["format"]["required"]
+    assert seen["format"]["properties"]["ensemble"]["minItems"] == 5
+    assert seen["options"]["num_predict"] == 4096
     assert seen["options"]["seed"] == 42
     assert "Creative brief: boss fight" in seen["messages"][1]["content"]
     assert proposal.provenance.generatorId == "synaptix-local-composer"

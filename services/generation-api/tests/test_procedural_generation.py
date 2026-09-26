@@ -30,20 +30,23 @@ def test_different_seed_changes_generated_notes() -> None:
     first = generate_arrangement(request(seed=42))
     second = generate_arrangement(request(seed=43))
 
-    first_melody = first.tracks[3].clips[0].notes
-    second_melody = second.tracks[3].clips[0].notes
+    first_melody = next(t for t in first.tracks if t.role == "melody").clips[0].notes
+    second_melody = next(t for t in second.tracks if t.role == "melody").clips[0].notes
     assert first_melody != second_melody
 
 
 def test_proposal_has_expected_structure_and_duration() -> None:
     proposal = generate_arrangement(request())
 
-    assert [track.role for track in proposal.tracks] == [
+    roles = [track.role for track in proposal.tracks]
+    # The core parts always play, in this order; the mood and mode add supporting layers.
+    assert [role for role in roles if role in ("drums", "bass", "harmony", "melody")] == [
         "drums",
         "bass",
         "harmony",
         "melody",
     ]
+    assert len(set(roles)) == len(roles)
     assert sum(section.bars for section in proposal.sections) == 16
     assert all(
         track.clips[0].range.durationTicks == 16 * TICKS_PER_BAR for track in proposal.tracks
@@ -63,13 +66,13 @@ def test_api_returns_valid_generation_proposal() -> None:
     payload = response.json()
     assert payload["operation"] == "create-arrangement"
     assert payload["projectId"] == "project-test"
-    assert len(payload["tracks"]) == 4
+    assert {"drums", "bass", "harmony", "melody"} <= {track["role"] for track in payload["tracks"]}
 
 
 def test_api_rejects_unsupported_tempo() -> None:
     client = TestClient(app)
     payload = request().model_dump(mode="json")
-    payload["tempo"] = 200
+    payload["tempo"] = 201
 
     response = client.post("/generation/projects", json=payload)
 

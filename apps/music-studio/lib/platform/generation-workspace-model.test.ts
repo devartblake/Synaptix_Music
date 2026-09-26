@@ -59,3 +59,39 @@ test("previews say which composer wrote the arrangement", () => {
     "Procedural composer · seed 7"
   );
 });
+
+test("briefs choose a mode from their wording and keep the tonic", () => {
+  const form = formForPreset("bright-round"); // D minor
+  const key = (brief: string) => interpretCreativeBrief(form, brief).key;
+  assert.equal(key("An up-tempo heroic adventure, like a Pokémon route"), "D major");
+  assert.equal(key("The villain arrives"), "D harmonic minor");
+  assert.equal(key("Dreamy, magical forest"), "D lydian");
+  assert.equal(key("Groovy bluesy shop music"), "D mixolydian");
+  assert.equal(key("Mysterious desert ruins"), "D phrygian");
+  assert.equal(key("A cool, sneaky heist"), "D dorian");
+  assert.equal(key("Fast quiz round"), "D minor", "no mode words leaves the key alone");
+});
+
+test("a key named in the brief is used exactly", () => {
+  const form = formForPreset("bright-round");
+  const key = (brief: string) => interpretCreativeBrief(form, brief).key;
+  assert.equal(key("Victory fanfare in C major"), "C major");
+  assert.equal(key("key of F# dorian, cool and sneaky"), "F# dorian");
+  assert.equal(key("Boss theme in A harmonic minor"), "A harmonic minor");
+  assert.equal(key("Bb mixolydian key, groovy"), "Bb mixolydian");
+  assert.equal(key("Not a major battle"), "D minor", "a bare 'a major' isn't a key");
+});
+
+test("major and harmonic-minor presets send their keys", () => {
+  const adventure = buildGenerationJobRequest("p", "r", formForPreset("adventure-route"), "i", "c", "2026-09-26T00:00:00.000Z");
+  const villain = buildGenerationJobRequest("p", "r", formForPreset("villain-encounter"), "i", "c", "2026-09-26T00:00:00.000Z");
+  assert.equal(adventure.generation.key, "C major");
+  assert.equal(villain.generation.key, "A harmonic minor");
+});
+
+test("an up-tempo brief asks for real speed", () => {
+  const form = formForPreset("bright-round"); // 120 BPM
+  assert.equal(interpretCreativeBrief(form, "An up-tempo route theme").tempo, 152);
+  assert.equal(interpretCreativeBrief(form, "Fast quiz round").tempo, 132);
+  assert.equal(formForPreset("adventure-route").tempo, 156);
+});

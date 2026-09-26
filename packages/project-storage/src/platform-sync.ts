@@ -201,6 +201,13 @@ export interface SaveAndQueueResult {
   queued: boolean;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The platform stores projects by UUID; others (such as the local demo) are browser-only. */
+export function isPlatformProjectId(projectId: string): boolean {
+  return UUID_PATTERN.test(projectId);
+}
+
 export class HybridProjectRepository {
   private readonly toPlatformEnvelope: PlatformEnvelopeConverter;
   /**
@@ -269,6 +276,7 @@ export class HybridProjectRepository {
    * its own parent, so the upload surfaces as a conflict instead of overwriting the cloud copy.
    */
   async queueUnsyncedHead(projectId: string): Promise<QueueHeadOutcome> {
+    if (!isPlatformProjectId(projectId)) return "blocked";
     const project = await this.local.load(projectId);
     const history = project && this.local.revisions ? await this.local.revisions(projectId) : [];
     const head = history.find((revision) => revision.revisionId === project?.revisionId);
@@ -310,6 +318,12 @@ export class HybridProjectRepository {
   async drain(): Promise<RevisionUploadResult[]> {
     const results: RevisionUploadResult[] = [];
     for (const operation of await this.queue.list()) {
+      // Uploads queued for browser-only projects (e.g. before this check existed) can never
+      // succeed and would block every later upload, so drop them.
+      if (!isPlatformProjectId(operation.projectId)) {
+        await this.queue.remove(operation.operationId);
+        continue;
+      }
       const result = await this.platform.uploadRevision(
         operation.envelope,
         operation.expectedRevisionId,

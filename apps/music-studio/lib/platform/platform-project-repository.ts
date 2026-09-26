@@ -16,10 +16,18 @@ export function extractErrorMessage(body: string, status: number): string {
   return body;
 }
 
+/** A platform request that failed with an HTTP status, so callers can tell 401 from outages. */
+export class PlatformRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "PlatformRequestError";
+  }
+}
+
 function requireOk(response: Response): Promise<Response> {
   if (response.ok) return Promise.resolve(response);
   return response.text().then((body) => {
-    throw new Error(extractErrorMessage(body, response.status));
+    throw new PlatformRequestError(extractErrorMessage(body, response.status), response.status);
   });
 }
 

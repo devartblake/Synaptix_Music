@@ -3,14 +3,18 @@
  * SynaptixPlay platform through the studio's own sign-in and sync routes, then print the
  * STAGE12_CERT_* values for `npm run certify:stage12`.
  *
- *   STUDIO_URL=http://localhost:3000 \
- *   SYNAPTIX_CERT_EMAIL=... SYNAPTIX_CERT_PASSWORD=... \
  *   npm run publish:cert-revision
  *
- * Credentials come from the environment only, never arguments, and are never printed.
+ * STUDIO_URL defaults to http://localhost:3000. The player account comes from
+ * SYNAPTIX_CERT_EMAIL and SYNAPTIX_CERT_PASSWORD, read from the environment, then the
+ * gitignored .env.docker; if neither has them, an interactive terminal asks for them (the
+ * password isn't shown). Credentials are never accepted as arguments and never printed.
  * The musical content is fixed, so every run publishes identical music under a new project.
  */
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+import { pathToFileURL } from "node:url";
 
 import { computeProjectChecksum } from "@synaptix/command-system";
 import { createEmptyProject, type MusicProject } from "@synaptix/project-model";
@@ -20,10 +24,48 @@ const PPQ = 960;
 const TICKS_PER_BAR = PPQ * 4;
 const FIXED_TIME = "2026-01-01T00:00:00.000Z";
 
-function required(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required.`);
-  return value;
+/** A problem the operator can fix; printed without a stack trace. */
+export class UsageError extends Error {}
+
+/** Reads a line from the terminal; with `hidden`, typed characters aren't shown. */
+function ask(question: string, hidden = false): Promise<string> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  if (hidden) {
+    const output = rl as unknown as { _writeToOutput(text: string): void };
+    const write = output._writeToOutput.bind(rl);
+    output._writeToOutput = (text) => write(text.startsWith(question) ? question : "");
+  }
+  return new Promise((resolve) =>
+    rl.question(question, (answer) => {
+      rl.close();
+      if (hidden) process.stdout.write("\n");
+      resolve(answer.trim());
+    })
+  );
+}
+
+/** A value from the gitignored local-stack settings file, .env.docker, if present. */
+function localSetting(name: string): string | undefined {
+  try {
+    const line = readFileSync(".env.docker", "utf8").match(new RegExp(`^${name}=(.*)$`, "m"));
+    return line?.[1]?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A setting from the environment, then .env.docker, then a prompt when running in an
+ * interactive terminal.
+ */
+export async function setting(name: string, prompt: string, hidden = false): Promise<string> {
+  const value = process.env[name]?.trim() || localSetting(name);
+  if (value) return value;
+  if (process.stdin.isTTY) {
+    const answer = await ask(prompt, hidden);
+    if (answer) return answer;
+  }
+  throw new UsageError(`${name} is required. Set it in the environment, or run in a terminal to be asked for it.`);
 }
 
 /** Drums and a four-chord synth part: enough to exercise instruments, sends and the master. */
@@ -66,14 +108,42 @@ export function certificationProject(projectId: string): MusicProject {
   return project;
 }
 
-async function main(): Promise<void> {
-  const studio = required("STUDIO_URL").replace(/\/$/, "");
-  const signIn = await fetch(`${studio}/api/auth/session`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: required("SYNAPTIX_CERT_EMAIL"), password: required("SYNAPTIX_CERT_PASSWORD") })
-  });
-  if (!signIn.ok) throw new Error(`Sign-in failed (${signIn.status}): ${(await signIn.json() as { message?: string }).message ?? ""}`);
+export interface CertificationInputs {
+  projectId: string;
+  revisionId: string;
+  checksumSha256: string;
+  endTick: number;
+}
+
+/** The STAGE12_CERT_* environment for `certify-stage12-render-pipeline.mjs`. */
+export function certificationEnvironment(inputs: CertificationInputs): Record<string, string> {
+  return {
+    STAGE12_CERT_PROJECT_ID: inputs.projectId,
+    STAGE12_CERT_REVISION_ID: inputs.revisionId,
+    STAGE12_CERT_PROJECT_CHECKSUM_SHA256: inputs.checksumSha256,
+    STAGE12_CERT_END_TICK: String(inputs.endTick)
+  };
+}
+
+/** Signs in through the studio, uploads the certification project, and verifies the stored copy. */
+export async function publishCertificationRevision(): Promise<CertificationInputs> {
+  const studio = (process.env.STUDIO_URL?.trim() || "http://localhost:3000").replace(/\/$/, "");
+  const email = await setting("SYNAPTIX_CERT_EMAIL", "SynaptixPlay email: ");
+  const password = await setting("SYNAPTIX_CERT_PASSWORD", "SynaptixPlay password: ", true);
+  let signIn: Response;
+  try {
+    signIn = await fetch(`${studio}/api/auth/session`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+  } catch {
+    throw new UsageError(`The studio at ${studio} couldn't be reached. Start it (sh run-local.sh) or set STUDIO_URL.`);
+  }
+  if (!signIn.ok) {
+    const message = (await signIn.json().catch(() => ({})) as { message?: string }).message;
+    throw new UsageError(`Sign-in failed (${signIn.status}): ${message ?? "no details"}`);
+  }
   const cookie = signIn.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
 
   const project = certificationProject(randomUUID());
@@ -109,10 +179,15 @@ async function main(): Promise<void> {
     throw new Error("The platform's stored revision does not match what was uploaded.");
 
   await fetch(`${studio}/api/auth/session`, { method: "DELETE", headers: { cookie } });
-  console.log(`STAGE12_CERT_PROJECT_ID=${project.projectId}`);
-  console.log(`STAGE12_CERT_REVISION_ID=${revision.revisionId}`);
-  console.log(`STAGE12_CERT_PROJECT_CHECKSUM_SHA256=${checksumSha256}`);
-  console.log(`STAGE12_CERT_END_TICK=${BARS * TICKS_PER_BAR}`);
+  return { projectId: project.projectId, revisionId: revision.revisionId, checksumSha256, endTick: BARS * TICKS_PER_BAR };
 }
 
-await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  try {
+    const inputs = await publishCertificationRevision();
+    for (const [name, value] of Object.entries(certificationEnvironment(inputs))) console.log(`${name}=${value}`);
+  } catch (error) {
+    console.error(error instanceof UsageError ? error.message : error);
+    process.exitCode = 1;
+  }
+}

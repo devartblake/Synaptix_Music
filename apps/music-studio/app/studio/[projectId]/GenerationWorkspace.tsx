@@ -4,7 +4,15 @@ import { Button } from "../../../components/ui/StudioControls";
 
 import { useEffect, useRef, useState } from "react";
 
-import type { GenerationProposal } from "@synaptix/generator-contracts";
+import {
+  composeKey,
+  KEY_MODES,
+  KEY_TONICS,
+  splitKey,
+  type GenerationProposal,
+  type KeyMode,
+  type KeyTonic
+} from "@synaptix/generator-contracts";
 import {
   TerminalGenerationJobStatuses,
   type GenerationJob,
@@ -219,10 +227,12 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
         </label>
         <div className="generation-fields">
           <label>Mood<select value={form.mood} onChange={(event) => updateForm("mood", event.target.value as GenerationForm["mood"])}><option value="upbeat">Upbeat</option><option value="tense">Tense</option><option value="triumphant">Triumphant</option></select></label>
-          <label>Key<select value={form.key} onChange={(event) => updateForm("key", event.target.value as GenerationForm["key"])}>{["C minor", "D minor", "E minor", "F minor", "G minor", "A minor"].map((key) => <option key={key}>{key}</option>)}</select></label>
-          <label>Tempo<input type="number" min={90} max={140} value={form.tempo} onChange={(event) => updateForm("tempo", event.target.valueAsNumber)} /></label>
+          <label>Key<select value={splitKey(form.key).tonic} onChange={(event) => updateForm("key", composeKey(event.target.value as KeyTonic, splitKey(form.key).mode))}>{KEY_TONICS.map((tonic) => <option key={tonic} value={tonic}>{tonic.replace("#", "♯").replace(/^([A-G])b$/, "$1♭")}</option>)}</select></label>
+          <label>Mode<select value={splitKey(form.key).mode} aria-describedby="generation-mode-character" onChange={(event) => updateForm("key", composeKey(splitKey(form.key).tonic, event.target.value as KeyMode))}>{KEY_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label>
+          <label>Tempo<input type="number" min={60} max={200} value={form.tempo} onChange={(event) => updateForm("tempo", event.target.valueAsNumber)} /></label>
           <label>Bars<select value={form.durationBars} onChange={(event) => updateForm("durationBars", Number(event.target.value))}>{[8, 16, 24, 32, 48, 64].map((bars) => <option key={bars}>{bars}</option>)}</select></label>
         </div>
+        <p id="generation-mode-character" className="generation-mode-character">{KEY_MODES.find((mode) => mode.id === splitKey(form.key).mode)?.character}</p>
         <label>Energy <output>{Math.round(form.energy * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={form.energy} onChange={(event) => updateForm("energy", Number(event.target.value))} /></label>
         <label>Complexity <output>{Math.round(form.complexity * 100)}%</output><input type="range" min="0" max="1" step="0.05" value={form.complexity} onChange={(event) => updateForm("complexity", Number(event.target.value))} /></label>
         <label>Seed<input type="number" min="0" max="2147483647" value={form.seed} onChange={(event) => updateForm("seed", event.target.valueAsNumber)} /></label>

@@ -4,7 +4,8 @@ import type {
 } from "@synaptix/project-storage/platform-sync";
 
 export interface ProjectSyncSnapshot {
-  state: "idle" | "syncing" | "offline" | "conflict" | "error";
+  /** `signed-out`: the platform needs a SynaptixPlay sign-in; local saves are unaffected. */
+  state: "idle" | "syncing" | "offline" | "signed-out" | "conflict" | "error";
   lastSyncedAt: string | null;
   conflicts: RevisionUploadResult[];
   error: string | null;
@@ -21,7 +22,7 @@ export class ProjectSyncCoordinator {
 
   async drain(): Promise<ProjectSyncSnapshot> {
     if (this.inFlight) return this.inFlight;
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
       const snapshot: ProjectSyncSnapshot = {
         state: "offline",
         lastSyncedAt: null,
@@ -47,12 +48,15 @@ export class ProjectSyncCoordinator {
         return snapshot;
       })
       .catch((error: unknown) => {
-        const snapshot: ProjectSyncSnapshot = {
-          state: "error",
-          lastSyncedAt: null,
-          conflicts: [],
-          error: error instanceof Error ? error.message : "Project synchronization failed."
-        };
+        const signedOut = (error as { status?: unknown } | null)?.status === 401;
+        const snapshot: ProjectSyncSnapshot = signedOut
+          ? { state: "signed-out", lastSyncedAt: null, conflicts: [], error: null }
+          : {
+              state: "error",
+              lastSyncedAt: null,
+              conflicts: [],
+              error: error instanceof Error ? error.message : "Project synchronization failed."
+            };
         this.onChange(snapshot);
         return snapshot;
       })

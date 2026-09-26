@@ -66,7 +66,7 @@ The worker refuses to start its polling loop when the platform loader is configu
 1. Deploy the exact backend and music-worker SHAs under review.
 2. Apply the render-job migration.
 3. Confirm the worker can reach the backend, database, and MinIO only over the intended private network.
-4. Publish one small, known-good project revision to the platform. `npm run publish:cert-revision` does this through the studio's own sign-in and sync routes (set `STUDIO_URL`, `SYNAPTIX_CERT_EMAIL` and `SYNAPTIX_CERT_PASSWORD` in the environment), verifies the platform's stored checksum, and prints the `STAGE12_CERT_*` values.
+4. Publish one small, known-good project revision to the platform. `npm run publish:cert-revision` does this through the studio's own sign-in and sync routes, verifies the platform's stored checksum, and prints the `STAGE12_CERT_*` values. `STUDIO_URL` defaults to `http://localhost:3000`. The script asks for the player's email and password (the password isn't shown), or reads `SYNAPTIX_CERT_EMAIL` and `SYNAPTIX_CERT_PASSWORD` from the environment for unattended runs.
 5. Set the non-secret `STAGE12_CERT_*` inputs and run the command below. Running it inside the render-worker container proves that image's FFmpeg and uses the worker's own view of MinIO for signed downloads:
 
 ```bash
@@ -76,6 +76,8 @@ npm run certify:stage12
 The command submits a real render, waits for completion, requests signed delivery for every artifact, downloads each artifact, verifies byte length and SHA-256, requires `preview.mp3` and `artifact-manifest.json`, checks FFmpeg encoder availability, and writes `stage12-certification-report.json`.
 
 6. Repeat with `STAGE12_CERT_OUTPUT_FORMAT=mp3`, `ogg`, and `wav`.
+
+   Against the local Docker stack, `npm run certify:stage12:local` does steps 4–6 in one command. It publishes the revision (asking for the player's email and password), renders OGG, MP3, WAV and a repeated WAV inside the render-worker container, and checks that the repeats are byte-identical. It also runs the automatable step 7 checks (wrong token, expired signed URL, unavailable revision). It writes reports, build identifiers and a README to `docs/operations/evidence/stage-12-local-<timestamp>/`, and refuses to run if the worker uses the MinIO root credentials. Set `BACKEND_REPO` to the backend checkout to record its commit.
 7. Exercise negative paths:
    - wrong service token returns `401`;
    - unset backend token returns `503`;

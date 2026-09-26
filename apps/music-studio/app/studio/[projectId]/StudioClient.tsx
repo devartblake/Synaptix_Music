@@ -25,7 +25,6 @@ import {
   builtinProjectView,
   createFrequencyDroneTrack,
   createInstrumentTrack,
-  INSTRUMENT_CATALOG,
   instrumentDefinition,
   resolveInstrumentDefinition,
   DEVICE_PARAMETER_DEFINITIONS,
@@ -59,6 +58,7 @@ import {
 import {
   HybridProjectRepository,
   IndexedDbProjectSyncQueue,
+  isPlatformProjectId,
   platformEnvelopeConverter,
   type PlatformRevisionEnvelope,
   type RevisionUploadResult
@@ -69,7 +69,8 @@ import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-pr
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
 import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
-import { InstrumentIcon, INSTRUMENT_ACCENTS } from "./InstrumentIcon";
+import { InstrumentIcon } from "./InstrumentIcon";
+import { InstrumentPicker } from "./InstrumentPicker";
 import { MasterMeter } from "./MasterMeter";
 import { MixerDrawer } from "./MixerDrawer";
 import { RenderWorkspace } from "./RenderWorkspace";
@@ -179,6 +180,8 @@ type ActiveClip = { trackId: string; clipId: string };
 type Workspace = "arrangement" | "generation" | "adaptive" | "render" | "devices";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
+  // Browser-only projects (such as the local demo) are saved locally and never uploaded.
+  const cloudEligible = isPlatformProjectId(projectId);
   const [project, setProject] = useState(() => createStarterProject(projectId, seedOptions(projectId)));
   const [playing, setPlaying] = useState(false);
   const [storageStatus, setStorageStatus] = useState("Loading project…");
@@ -226,8 +229,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   useEffect(() => {
     let cancelled = false;
     const local = new LocalProjectRepository<StoredMusicProject>(new IndexedDbProjectStorage(), { parse: parseVersionedMusicProject });
+    const toPlatform = platformEnvelopeConverter(PLATFORM_PROJECT_SCHEMA_VERSION);
     const hybrid = new HybridProjectRepository(local, new HttpPlatformProjectRepository(), new IndexedDbProjectSyncQueue(), {
-      toPlatformEnvelope: platformEnvelopeConverter(PLATFORM_PROJECT_SCHEMA_VERSION)
+      toPlatformEnvelope: (envelope) => isPlatformProjectId(envelope.projectId) ? toPlatform(envelope) : Promise.resolve(null)
     });
     const coordinator = new ProjectSyncCoordinator(hybrid, setSync);
     localRef.current = local;
@@ -345,7 +349,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
 
   /** Uploads the latest local revision if the platform never received it, then syncs. */
   async function syncNow(): Promise<void> {
-    if (!sessionRef.current.snapshot.readOnly) {
+    if (cloudEligible && !sessionRef.current.snapshot.readOnly) {
       try {
         if (await hybridRef.current?.queueUnsyncedHead(projectId) === "blocked") {
           setStorageStatus("Saved on this device; cloud sync needs platform support for plug-in projects");
@@ -374,7 +378,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     clearRecovery(envelope.projectId);
     sessionRef.current.markSaved(revision.revisionId);
     if (outcome && !outcome.queued) {
-      setStorageStatus("Revision saved locally; cloud sync needs platform support for plug-in projects");
+      setStorageStatus(cloudEligible
+        ? "Revision saved locally; cloud sync needs platform support for plug-in projects"
+        : "Revision saved locally; demo projects stay in this browser");
       return;
     }
     setStorageStatus("Revision saved and queued");
@@ -571,15 +577,19 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return () => media.removeEventListener("change", enforce);
   }, [engine]);
 
-  const syncLabel = sync.state === "syncing" ? "Syncing…"
-    : sync.state === "offline" ? "Offline"
-      : sync.state === "conflict" ? "Conflict"
-        : sync.error ?? (sync.lastSyncedAt ? `Synced ${new Date(sync.lastSyncedAt).toLocaleTimeString()}` : "Local only");
+  const syncLabel = !cloudEligible ? "Local only"
+    : sync.state === "syncing" ? "Syncing…"
+      : sync.state === "offline" ? "Offline"
+        : sync.state === "signed-out" ? "Sign in to sync"
+          : sync.state === "conflict" ? "Conflict"
+            : sync.error ?? (sync.lastSyncedAt ? `Synced ${new Date(sync.lastSyncedAt).toLocaleTimeString()}` : "Local only");
   const history = historyRef.current;
   void historyVersion;
   void hydrated;
 
-  const syncTone = sync.state === "conflict" || sync.error ? "danger" : sync.state === "offline" ? "warning" : "";
+  const syncTone = !cloudEligible ? ""
+    : sync.state === "conflict" || sync.error ? "danger"
+      : sync.state === "offline" || sync.state === "signed-out" ? "warning" : "";
 
   return (
     <main className={`studio-shell${mixerOpen ? " studio-shell-mixer-open" : ""}`}
@@ -722,17 +732,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </nav>
           <section className="sidebar-card" aria-label="Add instrument">
             <strong>Instruments</strong>
-            <fieldset className="instrument-picker" aria-label="Choose an instrument">
-              {INSTRUMENT_CATALOG.map((entry) => (
-                <label key={entry.deviceType} className="instrument-tile" title={entry.description}
-                  style={{ "--instrument-accent": INSTRUMENT_ACCENTS[entry.profile.kind] } as React.CSSProperties}>
-                  <input type="radio" name="new-instrument" value={entry.deviceType}
-                    checked={newInstrument === entry.deviceType} onChange={() => setNewInstrument(entry.deviceType)} />
-                  <InstrumentIcon kind={entry.profile.kind} size={32} />
-                  <span>{entry.label}</span>
-                </label>
-              ))}
-            </fieldset>
+            <InstrumentPicker value={newInstrument} onChange={setNewInstrument} />
             <p>{instrumentDefinition(newInstrument)?.description}</p>
             <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add instrument track</Button>
           </section>

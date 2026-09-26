@@ -1,9 +1,15 @@
 import random
 
+from app.generation.orchestration import (
+    PlannedBar,
+    assemble_tracks,
+    choose_ensemble,
+    default_layers,
+)
+from app.generation.theory import Key, parse_key
 from app.models.generation import (
     GeneratedMidiClip,
     GeneratedSection,
-    GeneratedTrack,
     GenerationProposal,
     GenerationProvenance,
     GenerationRequest,
@@ -13,6 +19,7 @@ from app.models.project import MidiNote, MusicalPosition, MusicalRange
 TICKS_PER_QUARTER_NOTE = 960
 TICKS_PER_BAR = TICKS_PER_QUARTER_NOTE * 4
 
+# Kept for callers of the original minor-only API; new code uses app.generation.theory.
 ROOT_MIDI_BY_KEY = {
     "C minor": 48,
     "D minor": 50,
@@ -110,11 +117,11 @@ def _drum_notes(bars: int, energy: float, rng: random.Random) -> list[MidiNote]:
     return notes
 
 
-def _bass_notes(bars: int, root: int, energy: float, rng: random.Random) -> list[MidiNote]:
+def _bass_notes(bars: int, key: Key, energy: float, rng: random.Random) -> list[MidiNote]:
     notes: list[MidiNote] = []
     for bar in range(bars):
-        degree = CHORD_DEGREES[bar % len(CHORD_DEGREES)]
-        pitch = root - 12 + MINOR_SCALE[degree]
+        degree = key.progression[bar % len(key.progression)]
+        pitch = key.pitch(degree, octave=-1)
         for beat in range(4):
             index = bar * 4 + beat
             variation = 12 if beat == 3 and rng.random() < energy * 0.35 else 0
@@ -131,14 +138,13 @@ def _bass_notes(bars: int, root: int, energy: float, rng: random.Random) -> list
     return notes
 
 
-def _harmony_notes(bars: int, root: int) -> list[MidiNote]:
+def _harmony_notes(bars: int, key: Key) -> list[MidiNote]:
     notes: list[MidiNote] = []
     index = 0
     for bar in range(bars):
-        degree = CHORD_DEGREES[bar % len(CHORD_DEGREES)]
-        chord_root = root + MINOR_SCALE[degree]
-        chord = (chord_root, chord_root + 3, chord_root + 7)
-        for pitch in chord:
+        degree = key.progression[bar % len(key.progression)]
+        # Diatonic triads: stacked thirds within the scale, so every chord stays in key.
+        for pitch in key.triad(degree):
             notes.append(
                 _note(
                     "harmony",
@@ -155,7 +161,7 @@ def _harmony_notes(bars: int, root: int) -> list[MidiNote]:
 
 def _melody_notes(
     bars: int,
-    root: int,
+    key: Key,
     complexity: float,
     energy: float,
     rng: random.Random,
@@ -170,9 +176,9 @@ def _melody_notes(
             if rng.random() > 0.55 + complexity * 0.35:
                 continue
             movement = rng.choice((-2, -1, 0, 1, 2))
-            previous_degree = max(0, min(len(MINOR_SCALE) - 1, previous_degree + movement))
-            octave = 12 if energy > 0.7 and rng.random() < 0.18 else 0
-            pitch = root + 12 + MINOR_SCALE[previous_degree] + octave
+            previous_degree = max(0, min(len(key.scale) - 1, previous_degree + movement))
+            octave = 1 if energy > 0.7 and rng.random() < 0.18 else 0
+            pitch = key.pitch(previous_degree, octave=1 + octave)
             notes.append(
                 _note(
                     "melody",
@@ -199,55 +205,45 @@ def _clip(role: str, bars: int, notes: list[MidiNote]) -> GeneratedMidiClip:
 
 def generate_arrangement(request: GenerationRequest) -> GenerationProposal:
     rng = random.Random(request.seed)
-    root = ROOT_MIDI_BY_KEY[request.key]
+    key = parse_key(request.key)
     sections = _sections(request.durationBars)
 
     drum_notes = _drum_notes(request.durationBars, request.energy, rng)
     bass_notes = _bass_notes(
         request.durationBars,
-        root,
+        key,
         request.energy,
         rng,
     )
-    harmony_notes = _harmony_notes(request.durationBars, root)
+    harmony_notes = _harmony_notes(request.durationBars, key)
     melody_notes = _melody_notes(
         request.durationBars,
-        root,
+        key,
         request.complexity,
         request.energy,
         rng,
     )
 
-    tracks = [
-        GeneratedTrack(
-            id="track-drums",
-            role="drums",
-            name="Drums",
-            instrumentId="synaptix-drum-machine-01",
-            clips=[_clip("drums", request.durationBars, drum_notes)],
-        ),
-        GeneratedTrack(
-            id="track-bass",
-            role="bass",
-            name="Bass",
-            instrumentId="synaptix-bass-synth-01",
-            clips=[_clip("bass", request.durationBars, bass_notes)],
-        ),
-        GeneratedTrack(
-            id="track-harmony",
-            role="harmony",
-            name="Harmony",
-            instrumentId="synaptix-poly-synth-01",
-            clips=[_clip("harmony", request.durationBars, harmony_notes)],
-        ),
-        GeneratedTrack(
-            id="track-melody",
-            role="melody",
-            name="Lead Melody",
-            instrumentId="synaptix-lead-synth-01",
-            clips=[_clip("melody", request.durationBars, melody_notes)],
-        ),
+    ensemble = choose_ensemble(key, request.mood, request.energy, request.complexity)
+    section_energy = {"intro": -0.15, "main": 0.0, "tension": 0.15, "victory": 0.1}
+    plan = [
+        PlannedBar(
+            bar=bar,
+            degree=key.progression[bar % len(key.progression)],
+            kind=section.kind,
+            energy=max(0.0, min(1.0, request.energy + section_energy[section.kind])),
+            layers=default_layers(ensemble, section.kind),
+        )
+        for section in sections
+        for bar in range(section.startBar, section.startBar + section.bars)
     ]
+    tracks = assemble_tracks(
+        key,
+        request.durationBars,
+        ensemble,
+        {"drums": drum_notes, "bass": bass_notes, "harmony": harmony_notes, "melody": melody_notes},
+        plan,
+    )
 
     return GenerationProposal(
         operation="create-arrangement",
@@ -261,7 +257,7 @@ def generate_arrangement(request: GenerationRequest) -> GenerationProposal:
         tracks=tracks,
         provenance=GenerationProvenance(
             generatorId="synaptix-procedural-composer",
-            generatorVersion="0.1.0",
+            generatorVersion="0.2.0",
             seed=request.seed,
         ),
         warnings=[],
