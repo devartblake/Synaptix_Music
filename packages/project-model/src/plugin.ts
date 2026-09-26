@@ -247,8 +247,13 @@ export function computePluginStateChecksum(device: DeviceV2): Promise<string> {
   return sha256Hex(canonicalize(deviceStateEvidence(device)));
 }
 
-function locateDevice(project: MusicProjectV2, deviceId: string) {
+/**
+ * Device ids are only required to be unique within a track, so callers that know the track
+ * should pass it; without one, the first matching device in track order is used.
+ */
+function locateDevice(project: MusicProjectV2, deviceId: string, trackId?: string) {
   for (const track of project.tracks) {
+    if (trackId !== undefined && track.id !== trackId) continue;
     const index = track.devices.findIndex((candidate) => candidate.id === deviceId);
     if (index >= 0) return { track, index };
   }
@@ -259,8 +264,12 @@ function locateDevice(project: MusicProjectV2, deviceId: string) {
  * Checksum of every input that reaches a device's output: the timing context, the track's
  * clips and assets they reference, and each device up to and including the target.
  */
-export async function computeSignalChainChecksum(project: MusicProjectV2, deviceId: string): Promise<string> {
-  const located = locateDevice(project, deviceId);
+export async function computeSignalChainChecksum(
+  project: MusicProjectV2,
+  deviceId: string,
+  trackId?: string
+): Promise<string> {
+  const located = locateDevice(project, deviceId, trackId);
   if (!located) throw new Error(`Device '${deviceId}' was not found.`);
   const { track, index } = located;
   const assetIds = new Set(track.clips.flatMap((clip) => (clip.kind === "audio" ? [clip.assetId] : [])));
@@ -289,9 +298,10 @@ export type FrozenPluginEvidenceStatus =
  */
 export async function evaluateFrozenPluginEvidence(
   project: MusicProjectV2,
-  deviceId: string
+  deviceId: string,
+  trackId?: string
 ): Promise<FrozenPluginEvidenceStatus> {
-  const located = locateDevice(project, deviceId);
+  const located = locateDevice(project, deviceId, trackId);
   if (!located) throw new Error(`Device '${deviceId}' was not found.`);
   const device = located.track.devices[located.index]!;
   const reference = device.frozen;
@@ -303,7 +313,7 @@ export async function evaluateFrozenPluginEvidence(
   if (reference.sourcePluginStateChecksumSha256 !== (await computePluginStateChecksum(device))) {
     reasons.push("Plug-in identity, parameters, state, or automation changed after freezing.");
   }
-  if (reference.sourceSignalChainChecksumSha256 !== (await computeSignalChainChecksum(project, device.id))) {
+  if (reference.sourceSignalChainChecksumSha256 !== (await computeSignalChainChecksum(project, device.id, located.track.id))) {
     reasons.push("Clips, timing, or upstream devices changed after freezing.");
   }
   return reasons.length === 0 ? { status: "current", reference } : { status: "stale", reference, reasons };

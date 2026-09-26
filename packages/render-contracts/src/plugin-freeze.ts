@@ -78,7 +78,7 @@ export async function assessPluginProductionEligibility(
         decisions.push({ ...base, mode: "deterministic", reasons: [] });
         continue;
       }
-      const evidence = await evaluateFrozenPluginEvidence(project, device.id);
+      const evidence = await evaluateFrozenPluginEvidence(project, device.id, track.id);
       if (evidence.status === "absent") {
         decisions.push({ ...base, mode: "blocked", reasons: ["Browser-only or external plug-in has no frozen artifact."] });
         continue;
