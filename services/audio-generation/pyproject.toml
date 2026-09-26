@@ -1,0 +1,44 @@
+[project]
+name = "synaptix-audio-generation"
+version = "0.1.0"
+description = "Prototype text-to-audio generation (MusicGen) for Synaptix Music. Non-commercial weights: outputs are prototype-only."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.116.1",
+  "numpy>=1.26,<3",
+  "pydantic==2.11.7",
+  "uvicorn[standard]==0.35.0",
+]
+
+[project.optional-dependencies]
+# Installed in the Docker image on top of its PyTorch CUDA base. Not needed for tests.
+model = [
+  "sentencepiece==0.2.0",
+  "transformers==4.46.3",
+]
+dev = [
+  "httpx==0.28.1",
+  "pytest==8.4.1",
+  "ruff==0.12.7",
+]
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

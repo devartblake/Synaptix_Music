@@ -154,6 +154,15 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .generation-form textarea, .generation-form select, .generation-form input[type="number"] { width: 100%; padding: 9px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: #0c1017; color: var(--sx-text); resize: vertical; }
 .generation-form output { justify-self: end; margin-top: -20px; color: var(--sx-text); }
 .generation-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.prototype-audio { display: grid; gap: 10px; margin-top: 18px; padding: 16px; border: 1px dashed var(--sx-warning); border-radius: var(--sx-radius-md); }
+.prototype-audio header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.prototype-audio h3 { margin: 0; font-size: 15px; }
+.prototype-audio form { display: grid; gap: 10px; }
+.prototype-badge { padding: 3px 8px; border: 1px solid var(--sx-warning); border-radius: 999px; color: var(--sx-warning); font-size: 11px; font-weight: 650; }
+.prototype-note { margin: 0; color: var(--sx-text-muted); font-size: 12px; line-height: 1.45; }
+.prototype-clip { display: grid; gap: 6px; margin: 0; }
+.prototype-clip audio { width: 100%; }
+.prototype-clip figcaption { color: var(--sx-text-muted); font-size: 12px; }
 .generation-mode-character { margin: -4px 0 0; color: var(--sx-text-muted); font-size: 12px; }
 .generation-submit, .generation-apply { min-height: 42px; border-color: rgb(109 124 255 / 65%); background: linear-gradient(135deg, var(--sx-primary), var(--sx-secondary)); color: white; font-weight: 750; }
 .generation-preview { min-width: 0; }

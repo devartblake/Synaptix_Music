@@ -226,6 +226,14 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   // An unsaved edit left behind by a crash or a closed tab, offered back on load.
   const [recovery, setRecovery] = useState<RecoveryEntry | null>(null);
   const historyRef = useRef(new EditorCommandHistory<MusicProjectV2>());
+  // Edits, undo and redo run one at a time, each from the latest project: the history refuses
+  // overlapping operations, and a fast second edit must build on the first, not on stale state.
+  const projectRef = useRef(project);
+  const editQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingEditsRef = useRef(0);
+  useEffect(() => {
+    if (pendingEditsRef.current === 0) projectRef.current = project;
+  }, [project]);
   const [pluginStatuses, setPluginStatuses] = useState<PluginRuntimeStatus[]>([]);
   // Built-in controls and the v1-typed workspaces read a view without plug-in devices.
   const builtinView = useMemo(() => builtinProjectView(project), [project]);
@@ -389,7 +397,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       return;
     }
     setStorageStatus("Revision saved and queued");
-    await drainSync();
+    // Cloud upload runs in the background so queued edits never wait on the network.
+    void drainSync();
   }
 
   async function restoreRecovery(entry: RecoveryEntry): Promise<void> {
@@ -430,12 +439,31 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return execute(liftEditorCommandToV2(command));
   }
 
-  async function execute(command: PluginEditorCommand): Promise<void> {
-    if (session.readOnly) return;
-    const result = await historyRef.current.execute(project, command);
-    setProject(result.project);
-    setHistoryVersion((value) => value + 1);
-    await queueRevision(result.project, result.revision);
+  /** Runs a history operation after any queued ones, then saves its revision. */
+  function enqueueEdit(
+    operation: (current: MusicProjectV2) => Promise<{ project: MusicProjectV2; revision: ProjectRevision } | null>
+  ): Promise<void> {
+    if (session.readOnly) return Promise.resolve();
+    pendingEditsRef.current += 1;
+    const run = editQueueRef.current.then(async () => {
+      try {
+        const result = await operation(projectRef.current);
+        if (!result) return;
+        projectRef.current = result.project;
+        setProject(result.project);
+        setHistoryVersion((value) => value + 1);
+        await queueRevision(result.project, result.revision);
+      } finally {
+        pendingEditsRef.current -= 1;
+      }
+    });
+    // A failed edit must not block the ones queued after it.
+    editQueueRef.current = run.catch(() => undefined);
+    return run;
+  }
+
+  function execute(command: PluginEditorCommand): Promise<void> {
+    return enqueueEdit((current) => historyRef.current.execute(current, command));
   }
 
   async function addFrequencyDrone(frequencyHz: number): Promise<void> {
@@ -457,22 +485,12 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     setActiveClip(null);
   }
 
-  async function undo(): Promise<void> {
-    if (session.readOnly) return;
-    const result = await historyRef.current.undo(project);
-    if (!result) return;
-    setProject(result.project);
-    setHistoryVersion((value) => value + 1);
-    await queueRevision(result.project, result.revision);
+  function undo(): Promise<void> {
+    return enqueueEdit((current) => historyRef.current.undo(current));
   }
 
-  async function redo(): Promise<void> {
-    if (session.readOnly) return;
-    const result = await historyRef.current.redo(project);
-    if (!result) return;
-    setProject(result.project);
-    setHistoryVersion((value) => value + 1);
-    await queueRevision(result.project, result.revision);
+  function redo(): Promise<void> {
+    return enqueueEdit((current) => historyRef.current.redo(current));
   }
 
   async function useCloud(conflict: RevisionUploadResult): Promise<void> {
