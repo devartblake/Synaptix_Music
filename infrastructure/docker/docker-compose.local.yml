@@ -8,6 +8,9 @@ services:
     environment:
       SYNAPTIX_PLATFORM_API_URL: ${SYNAPTIX_PLATFORM_API_URL:-}
       NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL: ${NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL:-}
+      # Project Schema v2 cutover step D: upload plug-in projects as v2. The local backend validates
+      # v2 uploads (backend 7a24915e+); set 1 only against an older platform.
+      NEXT_PUBLIC_SYNAPTIX_PLATFORM_PROJECT_SCHEMA_VERSION: ${NEXT_PUBLIC_SYNAPTIX_PLATFORM_PROJECT_SCHEMA_VERSION:-2}
       RENDER_WORKER_API_URL: http://render-worker:8200
       # Prototype MusicGen audio (local-ai profile). Empty hides the studio's prototype audio panel.
       AUDIO_GENERATION_API_URL: ${AUDIO_GENERATION_API_URL:-}
