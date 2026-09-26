@@ -61,6 +61,14 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .studio-title { min-width: 0; }
 .studio-title h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .studio-title small { display: block; color: var(--sx-text-muted); font-size: 11px; margin-top: 3px; }
+.studio-project-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.studio-project-name > h1 { min-width: 0; }
+.studio-rename { min-height: 26px; width: 26px; padding: 0; flex: none; border-color: transparent; background: transparent; color: var(--sx-text-muted); font-size: 13px; }
+.studio-rename:hover:not(:disabled) { color: var(--sx-text); }
+.studio-rename-form { display: grid; gap: 4px; }
+.studio-rename-form input { min-height: 30px; padding: 4px 8px; border: 1px solid var(--sx-primary); border-radius: var(--sx-radius-sm); background: var(--sx-surface-raised); color: var(--sx-text); font-size: 15px; font-weight: 700; }
+.studio-rename-form [role="alert"] { color: var(--sx-danger); font-size: 11px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .transport { display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid var(--sx-line-soft); border-radius: 10px; background: var(--sx-surface); }
 .transport-primary { border-color: rgb(109 124 255 / 55%); background: linear-gradient(145deg, rgb(109 124 255 / 34%), rgb(155 92 255 / 24%)); }
 .studio-status { justify-self: end; display: flex; align-items: center; gap: 12px; }

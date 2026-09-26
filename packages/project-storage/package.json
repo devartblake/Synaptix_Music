@@ -7,7 +7,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./platform-sync": "./src/platform-sync.ts"
+    "./platform-sync": "./src/platform-sync.ts",
+    "./media": "./src/media.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

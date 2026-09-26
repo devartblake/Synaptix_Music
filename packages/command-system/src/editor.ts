@@ -135,6 +135,40 @@ export class SetMixerChannelEditorCommand implements EditorCommand {
   }
 }
 
+export const PROJECT_NAME_MAX_LENGTH = 120;
+
+/** Trim, collapse whitespace, and bound a project name; empty names are rejected. */
+export function normalizeProjectName(name: string): string {
+  const normalized = name.replace(/\s+/g, " ").trim();
+  if (normalized.length === 0) throw new RangeError("Project name cannot be empty.");
+  return normalized.slice(0, PROJECT_NAME_MAX_LENGTH);
+}
+
+/** Renames the project (metadata.name). Works on schema v1 and v2 projects. */
+export class RenameProjectEditorCommand {
+  readonly id: string;
+  readonly kind = "rename-project";
+  readonly nextName: string;
+
+  constructor(
+    readonly previousName: string,
+    nextName: string,
+    options: CommandOptions = {}
+  ) {
+    this.nextName = normalizeProjectName(nextName);
+    this.id = commandId(options);
+  }
+
+  private write<P extends VersionedMusicProject>(project: P, name: string): P {
+    const next = clone(project);
+    next.metadata.name = name;
+    return next;
+  }
+
+  execute<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.nextName); }
+  undo<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.previousName); }
+}
+
 export class SetLoopEnabledEditorCommand implements EditorCommand {
   readonly id: string;
   readonly kind = "set-loop-enabled";

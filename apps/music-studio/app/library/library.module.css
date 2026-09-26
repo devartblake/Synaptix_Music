@@ -28,7 +28,7 @@
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 18px; }
 .card { position: relative; display: grid; gap: 8px; min-width: 0; }
 .cardArt { position: relative; aspect-ratio: 1; border-radius: 16px; overflow: hidden; box-shadow: 0 14px 34px rgb(0 0 0 / 35%); }
-.cardArt svg { width: 100%; height: 100%; display: block; }
+.cardArt svg, .cardArt img { width: 100%; height: 100%; display: block; }
 .cardPlay { position: absolute; right: 10px; bottom: 10px; width: 48px; height: 48px; min-height: 48px; opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease; }
 .card:hover .cardPlay, .card:focus-within .cardPlay, .cardPlay[aria-pressed="true"] { opacity: 1; transform: none; }
 .cardTitle { font-weight: 650; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -39,12 +39,14 @@
 /* ---- Project (album) page ---- */
 .hero { position: relative; overflow: hidden; }
 .heroBackdrop { position: absolute; inset: -20% -10% 0; filter: blur(60px) saturate(150%); opacity: .75; }
-.heroBackdrop svg { width: 100%; height: 100%; }
+.heroBackdrop svg, .heroBackdrop img { width: 100%; height: 100%; }
 .heroShade { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(7 8 12 / 10%), rgb(7 8 12 / 55%) 60%, #07080c); }
 .heroContent { position: relative; max-width: 720px; margin: 0 auto; padding: 20px 24px 8px; display: grid; justify-items: center; gap: 16px; text-align: center; }
 .heroNav { width: 100%; display: flex; justify-content: space-between; }
 .heroArt { width: min(260px, 62vw); aspect-ratio: 1; border-radius: 20px; overflow: hidden; box-shadow: 0 26px 60px rgb(0 0 0 / 55%); }
 .heroArt svg { width: 100%; height: 100%; display: block; }
+.coverActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.cardArt > a { display: block; width: 100%; height: 100%; }
 .badge { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgb(255 255 255 / 12%); border: 1px solid rgb(255 255 255 / 14%); }
 .heroTitle { margin: 0; font-size: clamp(28px, 5vw, 38px); letter-spacing: -.03em; }
 .heroMeta { margin: -8px 0 0; color: var(--sx-text-muted); font-size: 14px; }
@@ -68,6 +70,11 @@
 .renderText small { color: var(--sx-text-muted); text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
 .renderText strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .renderText span { color: var(--sx-text-muted); font-size: 13px; }
+.downloadRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.offlineActions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
+.linkButton { min-height: 28px; padding: 2px 0; border: 0; background: transparent; color: var(--sx-active); font-size: 13px; font-weight: 650; }
+.linkButton:hover:not(:disabled) { background: transparent; border: 0; text-decoration: underline; }
+.offlineError { color: var(--sx-danger); font-size: 12px; }
 .trackList { display: grid; }
 .trackPlay { color: var(--sx-text-muted); }
 .status { color: var(--sx-text-muted); font-size: 13px; margin: 0; }

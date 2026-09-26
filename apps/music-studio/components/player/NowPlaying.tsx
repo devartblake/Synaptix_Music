@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatClock, playbackItemKey } from "../../lib/player/playback-model";
 import { currentItem, usePlayer } from "../../lib/player/player-store";
 import { ChevronDownIcon, EditIcon, NextIcon, PauseIcon, PlayIcon, PreviousIcon, RepeatIcon } from "./icons";
-import { ProjectArtwork } from "./ProjectArtwork";
+import { CoverArt } from "./CoverArt";
 import styles from "./player.module.css";
 
 /** Full-screen Now Playing sheet (modal dialog), opened from the mini player. */
@@ -31,7 +31,7 @@ export function NowPlaying() {
     <dialog ref={dialogRef} className={styles.sheet} aria-label="Now playing"
       onClose={() => state.setExpanded(false)}>
       {item && <>
-        <div className={styles.sheetBackdrop} aria-hidden="true"><ProjectArtwork seed={item.projectId} /></div>
+        <div className={styles.sheetBackdrop} aria-hidden="true"><CoverArt projectId={item.projectId} /></div>
         <div className={styles.sheetShade} aria-hidden="true" />
         <div className={styles.sheetContent}>
           <div className={styles.sheetTop}>
@@ -44,7 +44,7 @@ export function NowPlaying() {
             </Link>
           </div>
 
-          <ProjectArtwork className={styles.sheetArt} seed={item.projectId} label={`${item.title} artwork`} />
+          <CoverArt className={styles.sheetArt} projectId={item.projectId} label={`${item.title} artwork`} />
 
           <div className={styles.sheetTitle}>
             <h2>{item.title}</h2>
@@ -87,7 +87,7 @@ export function NowPlaying() {
                   aria-current={index === state.index ? "true" : undefined}
                   onClick={() => void state.playQueue(state.queue, index)}>
                   <span className={styles.rowIndex}>{index + 1}</span>
-                  <ProjectArtwork className={styles.rowArt} seed={queued.projectId} />
+                  <CoverArt className={styles.rowArt} projectId={queued.projectId} />
                   <span className={styles.rowText}><strong>{queued.title}</strong><span>{queued.subtitle}</span></span>
                   <span />
                 </button>

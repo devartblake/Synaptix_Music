@@ -77,3 +77,27 @@ test("failed command construction leaves history unchanged", () => {
   assert.equal(history.snapshot().redoDepth, 0);
   assert.equal(history.isBusy, false);
 });
+
+test("project rename is one undoable history entry on v1 and v2 projects", async () => {
+  const { RenameProjectEditorCommand, normalizeProjectName, PROJECT_NAME_MAX_LENGTH } = await import("./editor.ts");
+  const { migrateProjectV1ToV2 } = await import("@synaptix/project-model/v2");
+  const { createEmptyProject } = await import("@synaptix/project-model");
+  const v1 = createEmptyProject("project-rename", { revisionId: "r1", now: "2026-09-26T00:00:00.000Z", name: "Untitled Project" });
+
+  const command = new RenameProjectEditorCommand(v1.metadata.name, "  Night   Drive  ");
+  assert.equal(command.nextName, "Night Drive");
+  const renamed = command.execute(v1);
+  assert.equal(renamed.metadata.name, "Night Drive");
+  assert.equal(v1.metadata.name, "Untitled Project");
+  assert.equal(command.undo(renamed).metadata.name, "Untitled Project");
+
+  const v2 = migrateProjectV1ToV2(v1);
+  const history = new EditorCommandHistory<typeof v2>();
+  const result = await history.execute(v2, new RenameProjectEditorCommand(v2.metadata.name, "Sunrise"));
+  assert.equal(result.project.metadata.name, "Sunrise");
+  assert.equal(result.project.schemaVersion, 2);
+  assert.equal((await history.undo(result.project))!.project.metadata.name, "Untitled Project");
+
+  assert.throws(() => normalizeProjectName("   "), RangeError);
+  assert.equal(normalizeProjectName("x".repeat(500)).length, PROJECT_NAME_MAX_LENGTH);
+});

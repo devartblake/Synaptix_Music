@@ -7,6 +7,8 @@ import { z } from "zod";
 import { create } from "zustand";
 
 import { platformRequest } from "../platform/platform-request";
+import { coverUrlFor } from "./covers";
+import { cachedRenderUrl } from "./offline-renders";
 import { safeDownloadUrl } from "../platform/render-export-model";
 import {
   listeningProject,
@@ -51,6 +53,7 @@ let engine: BrowserAudioEngine | null = null;
 let audio: HTMLAudioElement | null = null;
 let loaded: { project: MusicProjectV2; durationTicks: number } | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let localRenderUrl: string | null = null;
 let loadToken = 0;
 
 function stopBackends(): void {
@@ -62,6 +65,8 @@ function stopBackends(): void {
     audio.removeAttribute("src");
     audio.load();
   }
+  if (localRenderUrl) URL.revokeObjectURL(localRenderUrl);
+  localRenderUrl = null;
   loaded = null;
 }
 
@@ -93,7 +98,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
   function updateMediaSession(item: PlaybackItem, playing: boolean): void {
     if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
-    navigator.mediaSession.metadata = new MediaMetadata({ title: item.title, artist: item.subtitle, album: "Synaptix Music" });
+    const cover = coverUrlFor(item.projectId);
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: item.title, artist: item.subtitle, album: "Synaptix Music",
+      artwork: cover ? [{ src: cover, sizes: "1024x1024" }] : []
+    });
     navigator.mediaSession.playbackState = playing ? "playing" : "paused";
     navigator.mediaSession.setActionHandler("play", () => void get().toggle());
     navigator.mediaSession.setActionHandler("pause", () => void get().toggle());
@@ -127,13 +136,23 @@ export const usePlayer = create<PlayerState>((set, get) => {
           if (get().repeat !== "one" && snapshot.playing && snapshot.positionTicks >= loaded.durationTicks) void finished();
         }, 200);
       } else {
-        const result = DownloadSchema.parse(await platformRequest(
-          `render-jobs/${encodeURIComponent(item.jobId)}/artifacts/${encodeURIComponent(item.artifactId)}/download-url`
-        ));
-        if (token !== loadToken) return;
-        if (result.artifactId !== item.artifactId) throw new Error("The render link did not match the requested file.");
+        // A downloaded copy plays offline; otherwise stream from a fresh signed link.
+        const local = await cachedRenderUrl(item.artifactId);
+        let source = local;
+        if (!source) {
+          const result = DownloadSchema.parse(await platformRequest(
+            `render-jobs/${encodeURIComponent(item.jobId)}/artifacts/${encodeURIComponent(item.artifactId)}/download-url`
+          ));
+          if (result.artifactId !== item.artifactId) throw new Error("The render link did not match the requested file.");
+          source = safeDownloadUrl(result.downloadUrl);
+        }
+        if (token !== loadToken) {
+          if (local) URL.revokeObjectURL(local);
+          return;
+        }
+        localRenderUrl = local;
         audio ??= new Audio();
-        audio.src = safeDownloadUrl(result.downloadUrl);
+        audio.src = source;
         audio.loop = get().repeat === "one";
         audio.ontimeupdate = () => set({ positionSeconds: audio!.currentTime, durationSeconds: audio!.duration || 0 });
         audio.onended = () => void finished();

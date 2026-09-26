@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { RenderJobSchema, type RenderJob } from "@synaptix/render-contracts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { RenderJobSchema, type RenderArtifact, type RenderJob } from "@synaptix/render-contracts";
 import { z } from "zod";
 
 import { ListeningDock } from "../../../components/player/MiniPlayer";
 import { ChevronLeftIcon, EditIcon, PauseIcon, PlayIcon, RepeatIcon, WaveIcon } from "../../../components/player/icons";
+import { CoverArt } from "../../../components/player/CoverArt";
 import { ProjectArtwork } from "../../../components/player/ProjectArtwork";
 import playerStyles from "../../../components/player/player.module.css";
 import { platformRequest } from "../../../lib/platform/platform-request";
 import { formatClock, playbackItemKey, summarizeTracks, type PlaybackItem } from "../../../lib/player/playback-model";
+import { removeProjectCover, setProjectCover, useCoverUrl } from "../../../lib/player/covers";
+import { formatBytes, useOfflineRenders } from "../../../lib/player/offline-renders";
 import { currentItem, usePlayer } from "../../../lib/player/player-store";
 import { mixItem, projectSubtitle, useLibrary } from "../../../lib/player/use-library";
 import styles from "../library.module.css";
@@ -18,7 +21,7 @@ import styles from "../library.module.css";
 type LatestRender =
   | { state: "loading" }
   | { state: "none"; reason: string }
-  | { state: "ready"; job: RenderJob; artifactId: string; fileName: string; durationSeconds: number };
+  | { state: "ready"; job: RenderJob; artifact: RenderArtifact };
 
 /** Newest completed render of this project, preferring its short preview file for listening. */
 function useLatestRender(projectId: string): LatestRender {
@@ -33,7 +36,7 @@ function useLatestRender(projectId: string): LatestRender {
         const job = jobs[0];
         if (!job?.result) return setLatest({ state: "none", reason: "No rendered mix yet." });
         const master = job.result.artifacts.find((artifact) => artifact.trackId === null) ?? job.result.artifacts[0]!;
-        setLatest({ state: "ready", job, artifactId: master.artifactId, fileName: master.fileName, durationSeconds: master.durationSeconds });
+        setLatest({ state: "ready", job, artifact: master });
       })
       .catch(() => {
         if (!controller.signal.aborted) setLatest({ state: "none", reason: "Sign in to the platform to hear rendered mixes." });
@@ -51,6 +54,22 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
   const player = usePlayer();
   const nowPlaying = currentItem(player);
   const playing = player.status === "playing";
+  const coverUrl = useCoverUrl(projectId);
+  const coverInput = useRef<HTMLInputElement>(null);
+  const [coverMessage, setCoverMessage] = useState<string | null>(null);
+
+  async function changeCover(file: File | undefined) {
+    if (!file) return;
+    setCoverMessage("Saving cover…");
+    try {
+      await setProjectCover(projectId, file);
+      setCoverMessage("Cover updated.");
+    } catch (cause) {
+      setCoverMessage(cause instanceof Error ? cause.message : "Couldn't save this cover.");
+    } finally {
+      if (coverInput.current) coverInput.current.value = "";
+    }
+  }
 
   const tracks = useMemo(() => (project ? summarizeTracks(project) : []), [project]);
   const mix = entry && project ? mixItem(entry) : null;
@@ -65,23 +84,50 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
     void player.playQueue(queue, Math.max(0, queue.findIndex((candidate) => playbackItemKey(candidate) === playbackItemKey(item))));
   }
 
-  const renderItem: PlaybackItem | null = render.state === "ready" && entry ? {
-    kind: "render", projectId, title: entry.name, subtitle: `Rendered mix · ${render.fileName}`,
-    jobId: render.job.jobId, renderId: render.job.manifest.renderId, artifactId: render.artifactId
+  const offline = useOfflineRenders();
+  useEffect(() => { void useOfflineRenders.getState().refresh(); }, []);
+  // The platform's newest render when reachable; otherwise the newest copy downloaded here.
+  const downloadedHere = offline.renders.find((cached) => cached.projectId === projectId);
+  const shown = render.state === "ready"
+    ? { jobId: render.job.jobId, renderId: render.job.manifest.renderId, artifactId: render.artifact.artifactId,
+      fileName: render.artifact.fileName, durationSeconds: render.artifact.durationSeconds, byteLength: render.artifact.byteLength }
+    : downloadedHere ?? null;
+  const cached = shown ? offline.renders.find((candidate) => candidate.artifactId === shown.artifactId) : undefined;
+  const pending = shown ? offline.pending[shown.artifactId] : undefined;
+  const renderItem: PlaybackItem | null = shown && entry ? {
+    kind: "render", projectId, title: entry.name, subtitle: `Rendered mix · ${shown.fileName}`,
+    jobId: shown.jobId, renderId: shown.renderId, artifactId: shown.artifactId
   } : null;
 
   return (
     <div className={styles.shell}>
       <header className={styles.hero}>
-        <div className={styles.heroBackdrop} aria-hidden="true"><ProjectArtwork seed={projectId} project={project} /></div>
+        <div className={styles.heroBackdrop} aria-hidden="true"><CoverArt projectId={projectId} project={project} /></div>
         <div className={styles.heroShade} aria-hidden="true" />
         <div className={styles.heroContent}>
           <div className={styles.heroNav}>
             <Link className={playerStyles.iconButton} href="/library" aria-label="Back to Library"><ChevronLeftIcon /></Link>
             <Link className={playerStyles.pill} href={`/studio/${encodeURIComponent(projectId)}`}><EditIcon size={16} /> Open in Studio</Link>
           </div>
-          <ProjectArtwork className={styles.heroArt} seed={projectId} project={project} label={entry ? `${entry.name} artwork` : undefined} />
-          <span className={styles.badge}><WaveIcon size={14} /> {render.state === "ready" ? "Rendered mix available" : "Live mix"}</span>
+          <CoverArt className={styles.heroArt} projectId={projectId} project={project} label={entry ? `${entry.name} artwork` : undefined} />
+          {entry && (
+            <div className={styles.coverActions}>
+              <input ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp" hidden
+                onChange={(event) => void changeCover(event.target.files?.[0])} />
+              <button type="button" className={playerStyles.pill} onClick={() => coverInput.current?.click()}>
+                {coverUrl ? "Change cover" : "Add cover"}
+              </button>
+              {coverUrl && (
+                <button type="button" className={playerStyles.pill}
+                  onClick={() => void removeProjectCover(projectId).then(() => setCoverMessage("Cover removed."))}>
+                  Remove cover
+                </button>
+              )}
+              <Link className={playerStyles.pill} href={`/studio/${encodeURIComponent(projectId)}?rename=1`}>Rename</Link>
+            </div>
+          )}
+          {coverMessage && <p className={styles.status} role="status">{coverMessage}</p>}
+          <span className={styles.badge}><WaveIcon size={14} /> {shown ? (cached ? "Rendered mix · offline" : "Rendered mix available") : "Live mix"}</span>
           <h1 className={styles.heroTitle}>{entry?.name ?? (status === "loading" ? "Loading…" : "Project not found")}</h1>
           {entry && <p className={styles.heroMeta}>{projectSubtitle(project)} · {formatClock(entry.durationSeconds)}</p>}
           {mix && (
@@ -108,13 +154,31 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
 
         {entry && (
           <section className={styles.renderCard} aria-label="Latest render">
-            <ProjectArtwork className={styles.renderArt} seed={projectId} project={project} />
+            <CoverArt className={styles.renderArt} projectId={projectId} project={project} />
             <div className={styles.renderText}>
               <small>Latest render</small>
-              {render.state === "ready"
-                ? <><strong>{render.fileName}</strong><span>{formatClock(render.durationSeconds)} · mastered by the render worker</span></>
+              {shown
+                ? <><strong>{shown.fileName}</strong>
+                  <span>
+                    {formatClock(shown.durationSeconds)} · {cached ? `Downloaded · ${formatBytes(cached.byteLength)}` : "Streams from the cloud"}
+                  </span></>
                 : <><strong>{render.state === "loading" ? "Checking renders…" : "Hear the live mix"}</strong>
                   <span>{render.state === "none" ? render.reason : "Looking for a finished render"}</span></>}
+              {shown && (
+                <span className={styles.offlineActions}>
+                  {cached
+                    ? <button type="button" className={styles.linkButton} onClick={() => void offline.remove(shown.artifactId)}>
+                      Remove download
+                    </button>
+                    : render.state === "ready" && (
+                      <button type="button" className={styles.linkButton} disabled={pending === "downloading"}
+                        onClick={() => void offline.download(render.job, render.artifact)}>
+                        {pending === "downloading" ? "Downloading…" : "Download for offline"}
+                      </button>
+                    )}
+                  {pending && pending !== "downloading" && <span role="alert" className={styles.offlineError}>{pending}</span>}
+                </span>
+              )}
             </div>
             {renderItem
               ? <button type="button" className={playerStyles.iconButton} onClick={() => playItem(renderItem)}

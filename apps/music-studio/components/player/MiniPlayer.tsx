@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { currentItem, usePlayer } from "../../lib/player/player-store";
 import { HomeIcon, LibraryIcon, NextIcon, PauseIcon, PlayIcon, SearchIcon, StudioIcon } from "./icons";
 import { NowPlaying } from "./NowPlaying";
-import { ProjectArtwork } from "./ProjectArtwork";
+import { CoverArt } from "./CoverArt";
 import styles from "./player.module.css";
 
 /**
@@ -43,7 +43,7 @@ export function ListeningDock({ showTabs = true }: { showTabs?: boolean }) {
           <section className={styles.mini} aria-label="Mini player">
             <button type="button" className={styles.miniOpen} onClick={() => setExpanded(true)}
               aria-label={`Open Now Playing: ${item.title}`}>
-              <ProjectArtwork className={styles.miniArt} seed={item.projectId} />
+              <CoverArt className={styles.miniArt} projectId={item.projectId} />
               <span className={styles.miniText}>
                 <strong>{item.title}</strong>
                 <span className={status === "error" ? styles.miniError : undefined}>

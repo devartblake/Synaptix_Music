@@ -12,6 +12,7 @@ import { SetDeviceEnabledEditorCommand, SetDeviceParameterEditorCommand } from "
 import { AddTrackEditorCommand } from "@synaptix/command-system/track";
 import {
   EditorCommandHistory,
+  RenameProjectEditorCommand,
   SetLoopEnabledEditorCommand,
   SetTempoEditorCommand,
   SetTrackPanEditorCommand,
@@ -75,6 +76,7 @@ import { MixerDrawer } from "./MixerDrawer";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack } from "./PluginRack";
+import { ProjectTitle } from "./ProjectTitle";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
 import { TransportPosition } from "./TransportPosition";
@@ -591,7 +593,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         <div className="studio-brand">
           <a className="studio-home" href="/" aria-label="Back to projects"><span className="studio-mark" aria-hidden="true">S</span><span>Projects</span></a>
           <div className="studio-title">
-            <h1>{project.metadata.name}</h1>
+            <ProjectTitle name={project.metadata.name} disabled={!hydrated || session.readOnly}
+              onRename={(next) => execute(new RenameProjectEditorCommand(project.metadata.name, next))} />
             <small>{project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus}</small>
           </div>
         </div>
