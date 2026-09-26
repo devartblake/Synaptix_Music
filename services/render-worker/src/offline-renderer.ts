@@ -6,9 +6,11 @@ import {
   renderFrequencyDroneMono,
   resolveFrequencyDroneDevice,
   resolveEffectiveInstrumentSettings,
+  resolveTrackOutput,
+  resolveTrackSend,
   type EffectiveInstrumentSettings
 } from "@synaptix/daw-engine/production-audio";
-import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
+import { defaultMixer, type MusicProject, type MusicalPosition, type Track } from "@synaptix/project-model";
 import {
   RENDER_CONTRACT_VERSION,
   type RenderArtifact,
@@ -328,6 +330,8 @@ export function renderProjectOffline(
       left: new Float64Array(totalSamples),
       right: new Float64Array(totalSamples)
     };
+    const mixer = project.mixer ?? defaultMixer();
+    const channelGain = (settings: { muted: boolean; volumeDb: number }) => settings.muted ? 0 : 10 ** (settings.volumeDb / 20);
     for (const track of instrumentTracks) {
       const trackBuffer = renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, false) ?? renderTrackBuffer(
         track,
@@ -340,13 +344,18 @@ export function renderProjectOffline(
         bpm,
         false
       );
-      mixInto(master, trackBuffer);
-      if (!track.devices.some((device) => device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE))
-        mixIntoScaled(reverbSend, trackBuffer, resolveEffectiveInstrumentSettings(track).reverbSend);
+      const output = resolveTrackOutput(track);
+      mixIntoScaled(master, trackBuffer, output === "master" ? 1 : channelGain(mixer[output]));
+      mixIntoScaled(reverbSend, trackBuffer, resolveTrackSend(track));
     }
-    mixInto(master, applyReverb(reverbSend, MASTER_REVERB_DECAY_SECONDS, sampleRate));
+    mixIntoScaled(master, applyReverb(reverbSend, MASTER_REVERB_DECAY_SECONDS, sampleRate), channelGain(mixer.reverb));
     const compressed = applyCompressor(master, MASTER_COMPRESSOR, sampleRate);
     master = compressed.buffer;
+    const masterGain = channelGain(mixer.master);
+    for (let index = 0; index < totalSamples; index++) {
+      master.left[index]! *= masterGain;
+      master.right[index]! *= masterGain;
+    }
     warnings.push(...compressed.warnings);
     artifacts.push(buildArtifact(manifest, master, null, "master.wav", warnings));
   }

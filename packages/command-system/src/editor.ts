@@ -1,4 +1,5 @@
 import type { MusicProject, Track } from "@synaptix/project-model";
+import { defaultMixer, MixerChannelSchema, type MixerChannelId, type MixerChannel } from "@synaptix/project-model";
 
 import { computeProjectChecksum, type ProjectRevision } from "./index.ts";
 
@@ -87,6 +88,46 @@ export class SetTrackVolumeEditorCommand extends TrackFieldCommand<number> {
 export class SetTrackPanEditorCommand extends TrackFieldCommand<number> {
   readonly kind = "set-track-pan";
   protected write(value: Track, next: number): void { value.pan = next; }
+}
+
+export class SetTrackOutputEditorCommand extends TrackFieldCommand<string | undefined> {
+  readonly kind = "set-track-output";
+  protected write(value: Track, next: string | undefined): void {
+    if (next !== undefined && !["music", "drums", "master"].includes(next)) throw new Error("Unknown output bus.");
+    if (next === undefined) delete value.outputBusId;
+    else value.outputBusId = next;
+  }
+}
+
+export class SetTrackSendEditorCommand extends TrackFieldCommand<number | undefined> {
+  readonly kind = "set-track-reverb-send";
+  protected write(value: Track, next: number | undefined): void {
+    if (next !== undefined && (!Number.isFinite(next) || next < 0 || next > 1)) throw new Error("Send must be between zero and one.");
+    if (next === undefined) delete value.reverbSend;
+    else value.reverbSend = next;
+  }
+}
+
+export class SetMixerChannelEditorCommand implements EditorCommand {
+  readonly id = crypto.randomUUID();
+  readonly kind = "set-mixer-channel";
+  private previous: MusicProject["mixer"];
+  constructor(readonly channel: MixerChannelId, readonly settings: MixerChannel) {
+    if (!["music", "drums", "reverb", "master"].includes(channel)) throw new Error("Unknown mixer channel.");
+    MixerChannelSchema.parse(settings);
+  }
+  execute(project: MusicProject): MusicProject {
+    this.previous = structuredClone(project.mixer);
+    const next = clone(project);
+    next.mixer = { ...(next.mixer ?? defaultMixer()), [this.channel]: MixerChannelSchema.parse(this.settings) };
+    return next;
+  }
+  undo(project: MusicProject): MusicProject {
+    const next = clone(project);
+    if (this.previous) next.mixer = structuredClone(this.previous);
+    else delete next.mixer;
+    return next;
+  }
 }
 
 export class SetLoopEnabledEditorCommand implements EditorCommand {

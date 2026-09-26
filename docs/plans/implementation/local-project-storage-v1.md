@@ -54,6 +54,8 @@ Future schema changes must use additive `onupgradeneeded` migrations. Destructiv
 
 ## Deferred follow-up
 
+> **Update (2026-09-25):** multi-tab writer leases and project import/export (`.synaptix.json` with checksum verification, imported as a new copy) are implemented. Storage quota reporting (usage on home, warnings at 80% and 95%, plain-language full-storage save errors) and a write-ahead crash-recovery journal (restore or discard after reopening) are also implemented.
+
 - Debounced autosave orchestration
 - Crash-recovery draft journal
 - Storage quota reporting and eviction UX

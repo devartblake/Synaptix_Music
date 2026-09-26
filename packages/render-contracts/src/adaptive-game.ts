@@ -48,6 +48,16 @@ export const AdaptiveCuePointSchema = z.object({
   semantic: z.enum(["entry", "exit", "impact", "loop", "custom"])
 }).strict();
 
+/**
+ * Musical grid the package was authored on. Optional so v1 manifests without
+ * it stay valid; runtimes fall back to their configured tempo when absent.
+ */
+export const AdaptiveMusicClockSchema = z.object({
+  beatsPerMinute: z.number().min(20).max(300),
+  beatsPerBar: z.number().int().min(1).max(32),
+  barsPerPhrase: z.number().int().min(1).max(64)
+}).strict();
+
 export const AdaptiveGameAudioManifestSchema = z.object({
   contractVersion: z.literal(ADAPTIVE_GAME_AUDIO_CONTRACT_VERSION),
   packageId: z.string().uuid(),
@@ -59,6 +69,7 @@ export const AdaptiveGameAudioManifestSchema = z.object({
   states: z.array(AdaptiveMusicStateSchema).min(1),
   transitions: z.array(AdaptiveTransitionSchema).default([]),
   cuePoints: z.array(AdaptiveCuePointSchema).default([]),
+  clock: AdaptiveMusicClockSchema.optional(),
   createdAt: z.string().datetime()
 }).strict().superRefine((value, context) => {
   const stateIds = new Set(value.states.map((state) => state.stateId));
@@ -102,6 +113,7 @@ export const AdaptiveRuntimeEventSchema = z.discriminatedUnion("type", [
   }).strict()
 ]);
 
+export type AdaptiveMusicClock = z.infer<typeof AdaptiveMusicClockSchema>;
 export type AdaptiveGameAudioManifest = z.infer<typeof AdaptiveGameAudioManifestSchema>;
 export type AdaptiveMusicState = z.infer<typeof AdaptiveMusicStateSchema>;
 export type AdaptiveTransition = z.infer<typeof AdaptiveTransitionSchema>;

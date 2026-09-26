@@ -82,6 +82,7 @@ export const TrackSchema = z.object({
   volumeDb: z.number().min(-96).max(24).default(0),
   pan: z.number().min(-1).max(1).default(0),
   outputBusId: IdSchema.optional(),
+  reverbSend: z.number().min(0).max(1).optional(),
   devices: z.array(DeviceSchema).default([]),
   clips: z.array(ClipSchema).default([])
 });
@@ -111,6 +112,23 @@ export const GenerationMetadataSchema = z.object({
   prompt: z.string().optional()
 });
 
+export const MixerChannelSchema = z.object({
+  volumeDb: z.number().min(-96).max(12).default(0),
+  muted: z.boolean().default(false)
+});
+export const MixerSchema = z.object({
+  music: MixerChannelSchema,
+  drums: MixerChannelSchema,
+  reverb: MixerChannelSchema,
+  master: MixerChannelSchema
+});
+export type MixerChannelId = "music" | "drums" | "reverb" | "master";
+export type MixerChannel = z.infer<typeof MixerChannelSchema>;
+export function defaultMixer(): z.infer<typeof MixerSchema> {
+  return { music: { volumeDb: 0, muted: false }, drums: { volumeDb: 0, muted: false },
+    reverb: { volumeDb: 0, muted: false }, master: { volumeDb: 0, muted: false } };
+}
+
 export const MusicProjectSchema = z.object({
   schemaVersion: z.literal(PROJECT_SCHEMA_VERSION),
   projectId: IdSchema,
@@ -129,6 +147,8 @@ export const MusicProjectSchema = z.object({
   tempoMap: z.array(TempoEventSchema).min(1),
   timeSignatureMap: z.array(TimeSignatureEventSchema).min(1),
   tracks: z.array(TrackSchema),
+  // Optional so legacy snapshots retain their canonical checksum.
+  mixer: MixerSchema.optional(),
   assets: z.array(AssetReferenceSchema).default([]),
   markers: z.array(MarkerSchema).default([]),
   generationMetadata: GenerationMetadataSchema.optional()

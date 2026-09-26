@@ -36,6 +36,13 @@ services:
       context: ../..
       dockerfile: services/generation-api/Dockerfile
     init: true
+    environment:
+      # procedural (default) | claude | local
+      SYNAPTIX_COMPOSER: ${SYNAPTIX_COMPOSER:-procedural}
+      SYNAPTIX_CLAUDE_MODEL: ${SYNAPTIX_CLAUDE_MODEL:-claude-opus-5}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SYNAPTIX_LOCAL_MODEL_URL: ${SYNAPTIX_LOCAL_MODEL_URL:-http://ollama:11434}
+      SYNAPTIX_LOCAL_MODEL: ${SYNAPTIX_LOCAL_MODEL:-qwen2.5:7b}
     ports:
       - "127.0.0.1:${GENERATION_PORT:-8100}:8100"
     healthcheck:
@@ -49,6 +56,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Optional local model server for SYNAPTIX_COMPOSER=local. Enable with
+  # COMPOSE_PROFILES=local-ai; needs an NVIDIA GPU with Docker GPU support.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-ai"]
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - synaptix-ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   render-worker:
     build:
@@ -122,4 +146,7 @@ services:
         mc mb --ignore-existing local/synaptix-assets
 
 volumes:
+  # Fixed name so downloaded models are shared across stack restarts.
+  synaptix-ollama:
+    name: synaptix-ollama
   minio-data:

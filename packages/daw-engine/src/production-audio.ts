@@ -13,21 +13,19 @@ import {
   resolveDeviceParameterValue,
   REVERB_SEND_PARAMETER
 } from "./device-parameters.ts";
+import { resolveInstrumentDefinition, type InstrumentProfile } from "./instrument-catalog.ts";
 
-export type InstrumentProfileKind = "drums" | "bass" | "poly" | "lead";
-
-const DEFAULT_REVERB_SEND = 0.16;
-
-export interface InstrumentProfile {
-  kind: InstrumentProfileKind;
-  oscillator: "sine" | "square" | "triangle" | "sawtooth";
-  attack: number;
-  decay: number;
-  sustain: number;
-  release: number;
-  filterFrequency: number;
-  destinationBus: "music" | "drums";
-}
+export {
+  createInstrumentTrack,
+  INSTRUMENT_CATALOG,
+  instrumentDefinition,
+  resolveInstrumentDefinition,
+  type CreateInstrumentTrackOptions,
+  type InstrumentDefinition,
+  type InstrumentOscillator,
+  type InstrumentProfile,
+  type InstrumentProfileKind
+} from "./instrument-catalog.ts";
 
 export interface MasterMeterSnapshot {
   peakDbfs: number;
@@ -50,36 +48,10 @@ function deviceType(track: Track): string {
 }
 
 export function resolveInstrumentProfile(track: Track): InstrumentProfile {
-  const type = deviceType(track);
-  const name = track.name.toLowerCase();
-
-  if (type.includes("drum") || name.includes("drum")) {
-    return {
-      kind: "drums", oscillator: "sine", attack: 0.001, decay: 0.08,
-      sustain: 0.05, release: 0.08, filterFrequency: 12000, destinationBus: "drums"
-    };
-  }
-  if (type.includes("bass") || name.includes("bass")) {
-    return {
-      kind: "bass", oscillator: "square", attack: 0.005, decay: 0.14,
-      sustain: 0.45, release: 0.18, filterFrequency: 1800, destinationBus: "music"
-    };
-  }
-  if (type.includes("lead") || name.includes("lead")) {
-    return {
-      kind: "lead", oscillator: "sawtooth", attack: 0.008, decay: 0.1,
-      sustain: 0.3, release: 0.16, filterFrequency: 7000, destinationBus: "music"
-    };
-  }
-  return {
-    kind: "poly", oscillator: "triangle", attack: 0.015, decay: 0.18,
-    sustain: 0.4, release: 0.3, filterFrequency: 5000, destinationBus: "music"
-  };
+  return { ...resolveInstrumentDefinition(deviceType(track), track.name).profile };
 }
 
-export interface EffectiveInstrumentSettings extends InstrumentProfile {
-  reverbSend: number;
-}
+export type EffectiveInstrumentSettings = InstrumentProfile;
 
 export function resolveEffectiveInstrumentSettings(track: Track): EffectiveInstrumentSettings {
   const profile = resolveInstrumentProfile(track);
@@ -91,8 +63,18 @@ export function resolveEffectiveInstrumentSettings(track: Track): EffectiveInstr
     decay: resolveDeviceParameterValue(device, ENVELOPE_DECAY_PARAMETER, profile.decay),
     sustain: resolveDeviceParameterValue(device, ENVELOPE_SUSTAIN_PARAMETER, profile.sustain),
     release: resolveDeviceParameterValue(device, ENVELOPE_RELEASE_PARAMETER, profile.release),
-    reverbSend: resolveDeviceParameterValue(device, REVERB_SEND_PARAMETER, DEFAULT_REVERB_SEND)
+    reverbSend: track.reverbSend ?? resolveDeviceParameterValue(device, REVERB_SEND_PARAMETER, profile.reverbSend)
   };
+}
+
+export function resolveTrackOutput(track: Track): "music" | "drums" | "master" {
+  return track.outputBusId === "master" || track.outputBusId === "music" || track.outputBusId === "drums"
+    ? track.outputBusId : resolveInstrumentProfile(track).destinationBus;
+}
+
+export function resolveTrackSend(track: Track): number {
+  return track.reverbSend ?? (track.devices.some((device) => device.deviceType === "synaptix-frequency-drone")
+    ? 0 : resolveEffectiveInstrumentSettings(track).reverbSend);
 }
 
 export function normalizeMeterValue(value: number | readonly number[]): number {

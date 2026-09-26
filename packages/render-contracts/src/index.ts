@@ -8,10 +8,12 @@ export {
   ADAPTIVE_GAME_AUDIO_CONTRACT_VERSION,
   AdaptiveCuePointSchema,
   AdaptiveGameAudioManifestSchema,
+  AdaptiveMusicClockSchema,
   AdaptiveMusicStateSchema,
   AdaptiveRuntimeEventSchema,
   AdaptiveTransitionSchema,
   type AdaptiveGameAudioManifest,
+  type AdaptiveMusicClock,
   type AdaptiveMusicState,
   type AdaptiveRuntimeEvent,
   type AdaptiveTransition

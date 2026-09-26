@@ -95,6 +95,25 @@ export class AddMidiNoteCommand extends MidiNotesCommand {
   }
 }
 
+/** Adds several notes as one undoable step (e.g. a paste). */
+export class AddMidiNotesCommand extends MidiNotesCommand {
+  readonly kind = "add-midi-notes";
+  readonly notes: readonly MidiNote[];
+  constructor(trackId: string, clipId: string, notes: readonly MidiNote[], options: MidiCommandOptions = {}) {
+    if (notes.length === 0) throw new Error("At least one MIDI note is required.");
+    super(trackId, clipId, options);
+    this.notes = structuredClone([...notes]);
+  }
+  protected mutate(notes: MidiNote[], clip: MidiClip): MidiNote[] {
+    const existing = new Set(notes.map((note) => note.id));
+    for (const note of this.notes) {
+      if (existing.has(note.id)) throw new Error(`MIDI note '${note.id}' already exists.`);
+      validateNote(note, clip);
+    }
+    return [...notes, ...structuredClone([...this.notes])];
+  }
+}
+
 export class RemoveMidiNotesCommand extends MidiNotesCommand {
   readonly kind = "remove-midi-notes";
   readonly noteIds: ReadonlySet<string>;

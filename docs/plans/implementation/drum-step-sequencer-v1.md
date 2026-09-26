@@ -27,4 +27,6 @@ Every completed edit creates one command-history entry and one canonical project
 
 ## Follow-up
 
+> **Update (2026-09-25):** note audition (Preview) and panic ("Stop sound") are implemented, and the cursor follows the project transport.
+
 The next slice should bind the cursor to the authoritative audio transport, add note audition and panic handling, expand device-provided lane metadata beyond pitch overrides, and harden editor history and integration tests.

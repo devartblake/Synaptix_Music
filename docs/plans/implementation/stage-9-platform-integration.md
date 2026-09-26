@@ -2,6 +2,8 @@
 
 ## Status
 
+> **Historical plan.** Completed and superseded by Stages 10–13. Deferred items below were delivered later (platform endpoints, SignalR job updates, project sync) or are tracked in `docs/roadmap.md`.
+
 **Synaptix Music boundary complete in PR #9.** The remaining backend implementation belongs primarily in `TycoonTycoon_Backend`.
 
 ## Objective

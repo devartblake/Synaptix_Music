@@ -126,7 +126,7 @@ CI independently validates TypeScript, Python, Rust/WASM, and Docker Compose.
 
 ## Current Development Stage
 
-Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is implementation-complete and awaiting live staging certification; Stage 13 execution planning is active.
+Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is implementation-complete and awaiting live staging certification; Stage 13 is about 75% implementation-complete.
 
 Completed Stage 12 foundation work includes:
 
@@ -145,6 +145,7 @@ Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted ma
 - [Architecture decisions](docs/architecture/decisions/README.md)
 - [Implementation-stage index](docs/plans/implementation/README.md)
 - [Stage 12 deployment certification](docs/operations/stage-12-deployment-certification.md)
+- [Stage 13 adaptive audio certification and rollout](docs/operations/stage-13-adaptive-audio-certification.md)
 - [Stage 13 execution plan](docs/plans/implementation/stage-13-execution-plan-v1.md)
 - [Alpha release notes](docs/releases/alpha-foundation.md)
 - [Project changelog](CHANGELOG.md)

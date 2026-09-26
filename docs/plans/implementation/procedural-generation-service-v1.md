@@ -90,6 +90,8 @@ The endpoint currently executes synchronously because generation is inexpensive 
 
 ## Deferred
 
+> **Update (2026-09-25):** model inference has started. The generation API has switchable composers: procedural (default), Claude (arrangement plans rendered to notes), and a local-model slot for the next increment. Audio generation on the local GPU is the increment after that.
+
 - Additional genres and meters
 - Chord and section regeneration endpoints
 - Converting proposals into serialized editor commands

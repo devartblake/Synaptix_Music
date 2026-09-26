@@ -15,6 +15,8 @@ class GenerationRequest(StrictModel):
     energy: float = Field(default=0.6, ge=0, le=1)
     complexity: float = Field(default=0.5, ge=0, le=1)
     seed: int = Field(default=1, ge=0, le=2_147_483_647)
+    # Free-text creative direction; AI composers read it, the procedural one ignores it.
+    brief: str | None = Field(default=None, max_length=2000)
 
 
 class GeneratedSection(StrictModel):
@@ -41,10 +43,19 @@ class GeneratedTrack(StrictModel):
     clips: list[GeneratedMidiClip]
 
 
+GeneratorId = Literal[
+    "synaptix-procedural-composer",
+    "synaptix-claude-composer",
+    "synaptix-local-composer",
+]
+
+
 class GenerationProvenance(StrictModel):
-    generatorId: Literal["synaptix-procedural-composer"]
-    generatorVersion: Literal["0.1.0"]
+    generatorId: GeneratorId
+    generatorVersion: str = Field(min_length=1)
     seed: int
+    # The model that composed the plan, for AI composers.
+    model: str | None = None
 
 
 class GenerationProposal(StrictModel):

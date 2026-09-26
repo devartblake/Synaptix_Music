@@ -9,10 +9,21 @@ export {
 } from "./frequency-drone.ts";
 export { BrowserProductionAudioGraph } from "./browser-production-graph.ts";
 export {
+  createInstrumentTrack,
+  INSTRUMENT_CATALOG,
+  instrumentDefinition,
+  resolveInstrumentDefinition,
+  type CreateInstrumentTrackOptions,
+  type InstrumentDefinition,
+  type InstrumentOscillator
+} from "./instrument-catalog.ts";
+export {
   meterSnapshot,
   normalizeMeterValue,
   primaryDevice,
   resolveEffectiveInstrumentSettings,
+  resolveTrackOutput,
+  resolveTrackSend,
   resolveInstrumentProfile,
   SILENT_METER,
   type EffectiveInstrumentSettings,
@@ -44,6 +55,7 @@ import {
   type FrequencyDroneRuntime
 } from "./browser-production-graph.ts";
 import { SILENT_METER, type MasterMeterSnapshot } from "./production-audio.ts";
+import { FREQUENCY_DRONE_DEVICE_TYPE } from "./frequency-drone.ts";
 
 export interface TransportSnapshot {
   initialized: boolean;
@@ -78,6 +90,7 @@ export interface AudioTransport {
   meter(): MasterMeterSnapshot;
   subscribe(listener: TransportListener, intervalMs?: number): () => void;
   subscribeMeter(listener: MasterMeterListener, intervalMs?: number): () => void;
+  subscribeChannelMeters(listener: (meters: Record<string, MasterMeterSnapshot>) => void, intervalMs?: number): () => void;
   dispose(): void;
 }
 
@@ -142,6 +155,7 @@ export class BrowserAudioEngine implements AudioTransport {
       transport.loopEnd = `${startTicks + project.transport.loopRange.durationTicks}i`;
     }
 
+    this.ensureGraph().configure(project);
     this.rebuildAudioGraph(project);
   }
 
@@ -212,17 +226,25 @@ export class BrowserAudioEngine implements AudioTransport {
 
   async auditionNote({ trackId, pitch, velocity = 100, durationSeconds = 0.18 }: NoteAuditionRequest): Promise<void> {
     await this.initialize();
-    const runtime = this.runtimes.get(trackId);
-    if (!runtime) throw new Error(`Track runtime ${trackId} is not available for audition.`);
-    runtime.synth.triggerAttackRelease(
+    const track = this.project?.tracks.find((candidate) => candidate.id === trackId);
+    if (!track || track.kind !== "instrument") {
+      throw new Error(`Track ${trackId} is not available for audition.`);
+    }
+    // Drones sound continuously and have no note input to preview.
+    if (track.devices.some((device) => device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE)) return;
+    this.ensureGraph().auditionNote(
+      track,
       Tone.Frequency(clampMidiValue(Math.round(pitch), 0, 127), "midi").toFrequency(),
       clampMidiValue(durationSeconds, 0.03, 2),
-      undefined,
       clampMidiValue(velocity, 1, 127) / 127
     );
   }
 
-  allNotesOff(): void { for (const runtime of this.runtimes.values()) runtime.synth.releaseAll(); }
+  /** Panic: release every sounding note, including note previews. */
+  allNotesOff(): void {
+    for (const runtime of this.runtimes.values()) runtime.synth.releaseAll();
+    this.graph?.stopAuditions();
+  }
 
   snapshot(): TransportSnapshot {
     if (!browserAudioAvailable()) {
@@ -265,6 +287,14 @@ export class BrowserAudioEngine implements AudioTransport {
     return () => { clearInterval(timer); this.subscriptions.delete(timer); };
   }
 
+  subscribeChannelMeters(listener: (meters: Record<string, MasterMeterSnapshot>) => void, intervalMs = 80): () => void {
+    const read = () => listener(this.graph?.channelMeters() ?? {});
+    read();
+    const timer = setInterval(read, Math.max(50, intervalMs));
+    this.subscriptions.add(timer);
+    return () => { clearInterval(timer); this.subscriptions.delete(timer); };
+  }
+
   private clearScheduledEvents(): void {
     if (!browserAudioAvailable()) {
       this.scheduledEventIds = [];
@@ -276,7 +306,7 @@ export class BrowserAudioEngine implements AudioTransport {
   }
 
   private disposeRuntimes(): void {
-    for (const runtime of this.runtimes.values()) runtime.dispose();
+    this.graph?.clearTracks();
     this.runtimes.clear();
   }
 

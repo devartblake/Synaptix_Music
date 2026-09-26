@@ -76,6 +76,30 @@
   color: var(--sx-text-muted);
   font-size: 10px;
 }
+.trackActions .newClip {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  padding: 3px 7px;
+  color: var(--sx-text-muted);
+}
+.trackActions .newClip:hover {
+  color: var(--sx-text);
+}
+.trackActions .newClip + .deleteTrack {
+  margin-left: 0;
+}
+.trackActions .deleteTrack {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  padding: 3px 7px;
+  color: var(--sx-text-muted);
+}
+.trackActions .deleteTrack:hover {
+  border-color: var(--sx-danger);
+  color: var(--sx-danger);
+}
 .trackControls {
   margin-top: 8px;
 }
@@ -191,6 +215,62 @@
 .editorScroll {
   overflow: auto;
   max-height: 540px;
+}
+/* Pinned to the bottom of the scroll view so velocities stay visible while scrolling pitches. */
+.velocityLane {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  height: 84px;
+  border-top: 1px solid var(--sx-line);
+  background: var(--sx-surface-raised);
+}
+.velocityLaneLabel {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding: 6px;
+  background: var(--sx-surface-raised);
+  color: var(--sx-text-muted);
+  font-size: 10px;
+}
+.velocityLaneBody {
+  position: relative;
+  margin: 8px 0 0;
+  touch-action: none;
+}
+.velocityBar {
+  position: absolute;
+  bottom: 0;
+  width: 6px;
+  min-height: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px 3px 0 0;
+  background: #5669be;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.velocityBar::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -2px;
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+  background: #a4b1ff;
+}
+.velocityBar[data-selected="true"] {
+  background: #8d9cff;
+}
+.velocityBar[data-selected="true"]::before {
+  background: #edf1ff;
+}
+.velocityBar:focus-visible {
+  outline: 2px solid var(--sx-active);
+  outline-offset: 2px;
 }
 .pianoGrid {
   position: relative;

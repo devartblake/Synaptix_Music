@@ -1,0 +1,3 @@
+/* Isolate component baselines from development chrome and sticky global transport. */
+nextjs-portal { display: none !important; }
+.studio-topbar { visibility: hidden !important; }

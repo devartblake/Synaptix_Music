@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createEmptyProject, type MusicProject, type Track } from "@synaptix/project-model";
+import { createEmptyProject, defaultMixer, type MusicProject, type Track } from "@synaptix/project-model";
 import {
   RenderResultSchema,
   RENDER_CONTRACT_VERSION,
@@ -323,4 +323,38 @@ test("muted frequency drone is silent in master but explicit stem remains audibl
   const masterSignal = Array.from({length:(master.artifacts[0]!.bytes.length-44)/4},(_,frame)=>readLeftSample(master.artifacts[0]!.bytes,frame)).some(value=>value!==0);
   const stemSignal = Array.from({length:(stem.artifacts[0]!.bytes.length-44)/4},(_,frame)=>readLeftSample(stem.artifacts[0]!.bytes,frame)).some(value=>value!==0);
   assert.equal(masterSignal,false); assert.equal(stemSignal,true);
+});
+
+
+test("master rendering respects bus routing, return mute, and post-compressor master gain", () => {
+  const value = project([noteTrack("track-1", "Bass", "synaptix-poly-synth", { reverbSend: 0 })]);
+  const render = () => renderProjectOffline(value, manifest()).artifacts[0]!.bytes;
+  const peak = (bytes: Buffer) => {
+    let max = 0;
+    for (let offset = 44; offset < bytes.length; offset += 2) max = Math.max(max, Math.abs(bytes.readInt16LE(offset)));
+    return max;
+  };
+  const original = render();
+  value.mixer = defaultMixer();
+  assert.deepEqual(render(), original);
+  value.mixer.music.muted = true;
+  assert.equal(peak(render()), 0);
+  value.tracks[0]!.outputBusId = "drums";
+  assert.ok(peak(render()) > 0);
+  value.mixer.drums.muted = true;
+  assert.equal(peak(render()), 0);
+  value.tracks[0]!.outputBusId = "master";
+  const full = peak(render());
+  value.mixer.master.volumeDb = -6;
+  assert.ok(Math.abs(peak(render()) / full - 10 ** (-6 / 20)) < 0.002);
+  value.mixer.master.muted = true;
+  assert.equal(peak(render()), 0);
+  value.mixer.master.muted = false;
+  value.tracks[0]!.outputBusId = "music";
+  value.tracks[0]!.reverbSend = 1;
+  assert.ok(peak(render()) > 0, "post-track send bypasses a muted dry bus");
+  value.mixer.reverb.muted = true;
+  assert.equal(peak(render()), 0);
+  const stem = renderProjectOffline(value, manifest({ scope: { kind: "stems", trackIds: ["track-1"] } })).artifacts[0]!.bytes;
+  assert.ok(peak(stem) > 0, "isolated stems exclude bus and master controls");
 });

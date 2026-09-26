@@ -20,10 +20,34 @@ export const PublishAdaptivePackageRequestSchema = z.object({
   projectChecksumSha256: ChecksumSchema,
   name: z.string().min(1).max(200),
   manifest: z.unknown(),
-  artifacts: z.array(AdaptivePackageArtifactInputSchema).min(1)
+  artifacts: z.array(AdaptivePackageArtifactInputSchema).min(1),
+  expiresAt: IsoDateSchema.optional()
 }).strict();
 
-export const AdaptivePackagePublishOutcomeSchema = z.enum([
+// The platform serializes .NET enums by member name ("Accepted"); normalize to camelCase.
+function camelEnum<const T extends readonly [string, ...string[]]>(values: T) {
+  return z.preprocess(
+    (value) => typeof value === "string" ? value.charAt(0).toLowerCase() + value.slice(1) : value,
+    z.enum(values)
+  );
+}
+
+export const AdaptivePackageRetentionStatusSchema = z.enum([
+  "pending",
+  "active",
+  "superseded",
+  "revoked",
+  "expired"
+]);
+
+export const AdaptivePackageArtifactDescriptorSchema = z.object({
+  artifactId: UuidSchema,
+  mediaType: z.string().min(1),
+  checksumSha256: ChecksumSchema,
+  byteLength: z.number().int().positive()
+}).strict();
+
+export const AdaptivePackagePublishOutcomeSchema = camelEnum([
   "accepted",
   "alreadyPublished",
   "forbidden",
@@ -50,7 +74,9 @@ export const AdaptivePackageVersionSummarySchema = z.object({
   version: z.number().int().positive(),
   revisionId: IdSchema,
   projectChecksumSha256: ChecksumSchema,
-  createdAt: IsoDateSchema
+  createdAt: IsoDateSchema,
+  retentionStatus: AdaptivePackageRetentionStatusSchema,
+  expiresAt: IsoDateSchema.nullable()
 }).strict();
 
 export const AdaptivePackageVersionSchema = z.object({
@@ -60,7 +86,21 @@ export const AdaptivePackageVersionSchema = z.object({
   revisionId: IdSchema,
   projectChecksumSha256: ChecksumSchema,
   manifest: z.unknown(),
-  createdAt: IsoDateSchema
+  createdAt: IsoDateSchema,
+  retentionStatus: AdaptivePackageRetentionStatusSchema,
+  expiresAt: IsoDateSchema.nullable(),
+  artifacts: z.array(AdaptivePackageArtifactDescriptorSchema)
+}).strict();
+
+export const RevokeAdaptivePackageVersionRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(500)
+}).strict();
+
+export const AdaptivePackageRevokeResponseSchema = z.object({
+  outcome: camelEnum(["revoked", "alreadyRevoked", "forbidden", "notFound"]),
+  packageId: UuidSchema,
+  version: z.number().int().positive(),
+  restoredVersion: z.number().int().positive().nullable()
 }).strict();
 
 export const AdaptivePackageDeliveryGrantRequestSchema = z.object({
@@ -89,3 +129,6 @@ export type AdaptivePackageVersionSummary = z.infer<typeof AdaptivePackageVersio
 export type AdaptivePackageVersion = z.infer<typeof AdaptivePackageVersionSchema>;
 export type AdaptivePackageDeliveryGrantRequest = z.infer<typeof AdaptivePackageDeliveryGrantRequestSchema>;
 export type AdaptivePackageDeliveryGrant = z.infer<typeof AdaptivePackageDeliveryGrantSchema>;
+export type AdaptivePackageRetentionStatus = z.infer<typeof AdaptivePackageRetentionStatusSchema>;
+export type RevokeAdaptivePackageVersionRequest = z.infer<typeof RevokeAdaptivePackageVersionRequestSchema>;
+export type AdaptivePackageRevokeResponse = z.infer<typeof AdaptivePackageRevokeResponseSchema>;

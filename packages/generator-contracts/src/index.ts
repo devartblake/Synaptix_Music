@@ -30,8 +30,16 @@ export const GenerationRequestSchema = z.object({
   durationBars: z.number().int().min(8).max(64).default(16),
   energy: z.number().min(0).max(1).default(0.6),
   complexity: z.number().min(0).max(1).default(0.5),
-  seed: z.number().int().min(0).max(2_147_483_647).default(1)
+  seed: z.number().int().min(0).max(2_147_483_647).default(1),
+  /** Free-text creative direction; AI composers read it, the procedural one ignores it. */
+  brief: z.string().max(2000).optional()
 });
+
+export const GeneratorIdSchema = z.enum([
+  "synaptix-procedural-composer",
+  "synaptix-claude-composer",
+  "synaptix-local-composer"
+]);
 
 export const GeneratedSectionSchema = z.object({
   id: z.string().min(1),
@@ -68,9 +76,11 @@ export const GenerationProposalSchema = z.object({
   sections: z.array(GeneratedSectionSchema).min(3),
   tracks: z.array(GeneratedTrackSchema).min(4),
   provenance: z.object({
-    generatorId: z.literal("synaptix-procedural-composer"),
-    generatorVersion: z.literal("0.1.0"),
-    seed: z.number().int()
+    generatorId: GeneratorIdSchema,
+    generatorVersion: z.string().min(1),
+    seed: z.number().int(),
+    /** The model that composed the plan, for AI composers. */
+    model: z.string().nullable().optional()
   }),
   warnings: z.array(z.string())
 });

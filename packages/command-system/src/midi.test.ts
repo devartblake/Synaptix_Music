@@ -5,6 +5,7 @@ import { createEmptyProject, type MusicProject } from "@synaptix/project-model";
 
 import {
   AddMidiNoteCommand,
+  AddMidiNotesCommand,
   ClearDrumPatternCommand,
   DuplicateMidiNotesCommand,
   MoveMidiNotesCommand,
@@ -135,4 +136,25 @@ test("invalid MIDI edits fail closed", () => {
     () => new MoveMidiNotesCommand("track-1", "clip-1", ["note-1"], -200, 0).execute(original),
     /startTick/
   );
+});
+
+test("adding several notes is one reversible step and fails closed as a whole", () => {
+  const original = project();
+  const add = new AddMidiNotesCommand("track-1", "clip-1", [
+    { id: "p1", pitch: 60, velocity: 90, startTick: 0, durationTicks: 240 },
+    { id: "p2", pitch: 64, velocity: 90, startTick: 240, durationTicks: 240 }
+  ]);
+  const added = add.execute(original);
+  assert.deepEqual(notes(added).map((note) => note.id), ["p1", "note-1", "p2", "note-2"]);
+  assert.equal(notes(add.undo(added)).length, 2);
+
+  assert.throws(
+    () => new AddMidiNotesCommand("track-1", "clip-1", [
+      { id: "ok", pitch: 60, velocity: 90, startTick: 0, durationTicks: 240 },
+      { id: "note-1", pitch: 61, velocity: 90, startTick: 0, durationTicks: 240 }
+    ]).execute(original),
+    /already exists/
+  );
+  assert.equal(notes(original).length, 2, "a failed batch leaves the clip untouched");
+  assert.throws(() => new AddMidiNotesCommand("track-1", "clip-1", []), /At least one/);
 });

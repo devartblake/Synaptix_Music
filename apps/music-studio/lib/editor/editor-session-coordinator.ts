@@ -15,6 +15,8 @@ export interface ProjectTabLeaseMessage {
   projectId: string;
   tabId: string;
   sentAt: number;
+  /** When the sending tab opened the project; the earliest open tab keeps editing. */
+  claimedAt?: number;
 }
 
 export interface BroadcastChannelLike {
@@ -110,7 +112,8 @@ export class EditorSessionCoordinator {
 export class ProjectTabLease {
   private readonly tabId = crypto.randomUUID();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly seen = new Map<string, number>();
+  private readonly seen = new Map<string, { sentAt: number; claimedAt: number }>();
+  private claimedAt = 0;
   private readonly projectId: string;
   private readonly channel: BroadcastChannelLike;
   private readonly onCompetingTab: (tabId: string | null) => void;
@@ -135,6 +138,7 @@ export class ProjectTabLease {
   }
 
   start(): () => void {
+    this.claimedAt = this.now();
     this.channel.addEventListener("message", this.onMessage);
     this.send("claim");
     this.heartbeatTimer = setInterval(() => {
@@ -158,20 +162,40 @@ export class ProjectTabLease {
     const message = event.data;
     if (message.projectId !== this.projectId || message.tabId === this.tabId) return;
     if (message.type === "release") this.seen.delete(message.tabId);
-    else this.seen.set(message.tabId, message.sentAt);
+    else {
+      this.seen.set(message.tabId, {
+        sentAt: message.sentAt,
+        claimedAt: message.claimedAt ?? message.sentAt
+      });
+      // Answer a newcomer at once so it learns it is not the first tab.
+      if (message.type === "claim") this.send("heartbeat");
+    }
     this.prune();
   };
 
+  /** A tab that opened earlier (ties broken by ID) owns editing. */
+  private precedes(tabId: string, claimedAt: number): boolean {
+    return claimedAt < this.claimedAt || (claimedAt === this.claimedAt && tabId < this.tabId);
+  }
+
   private prune(): void {
     const cutoff = this.now() - this.expiryMs;
-    for (const [tabId, sentAt] of this.seen) {
+    let owner: string | null = null;
+    for (const [tabId, { sentAt, claimedAt }] of this.seen) {
       if (sentAt < cutoff) this.seen.delete(tabId);
+      else if (owner === null && this.precedes(tabId, claimedAt)) owner = tabId;
     }
-    this.onCompetingTab(this.seen.keys().next().value ?? null);
+    this.onCompetingTab(owner);
   }
 
   private send(type: ProjectTabLeaseMessage["type"]): void {
-    this.channel.postMessage({ type, projectId: this.projectId, tabId: this.tabId, sentAt: this.now() });
+    this.channel.postMessage({
+      type,
+      projectId: this.projectId,
+      tabId: this.tabId,
+      sentAt: this.now(),
+      claimedAt: this.claimedAt
+    });
   }
 }
 

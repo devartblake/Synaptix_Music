@@ -9,13 +9,20 @@ import {
   boundedNoteMove,
   boundedNoteResize as clampResizeDelta
 } from "../../../lib/editor/note-editing";
-import { barTicks } from "../../../lib/editor/timeline-model";
+import { barTicks, clipPlaybackTick } from "../../../lib/editor/timeline-model";
+import {
+  copyNotes,
+  pasteNotes,
+  readNoteClipboard,
+  writeNoteClipboard
+} from "../../../lib/editor/note-clipboard";
 import { Playhead } from "./TransportPosition";
 import styles from "./editing.module.css";
 
 import type { EditorCommand } from "@synaptix/command-system/editor";
 import {
   AddMidiNoteCommand,
+  AddMidiNotesCommand,
   DuplicateMidiNotesCommand,
   MoveMidiNotesCommand,
   QuantizeMidiNotesCommand,
@@ -41,6 +48,7 @@ import {
   toggleSelection
 } from "../../../lib/editor/piano-roll-model";
 import { DrumStepSequencer } from "./DrumStepSequencer";
+import { useAudition } from "../../../lib/editor/use-audition";
 
 const LOWEST_PITCH = 36;
 const HIGHEST_PITCH = 84;
@@ -134,6 +142,27 @@ function PianoRollEditor({
   const [pending, setPending] = useState(false);
   const busy = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  const preview = useAudition(engine, trackId);
+  const [clipboardReady, setClipboardReady] = useState(() => readNoteClipboard() !== null);
+  // Live value while a velocity bar is dragged; committed as one command on release.
+  const [velocityDrag, setVelocityDrag] = useState<{ ids: string[]; value: number } | null>(null);
+  const velocityLaneRef = useRef<HTMLDivElement>(null);
+
+  function velocityFromPointer(clientY: number): number {
+    const rect = velocityLaneRef.current?.getBoundingClientRect();
+    if (!rect || rect.height <= 0) return 100;
+    const share = 1 - (clientY - rect.top) / rect.height;
+    return Math.min(127, Math.max(1, Math.round(share * 126) + 1));
+  }
+
+  function velocityTargets(noteId: string): string[] {
+    return selected.has(noteId) ? selectedIds : [noteId];
+  }
+
+  async function commitVelocity(ids: string[], value: number): Promise<void> {
+    const changed = clip.notes.some((note) => ids.includes(note.id) && note.velocity !== value);
+    if (changed) await onExecute(new SetMidiVelocityCommand(trackId, clip.id, ids, value));
+  }
   async function onExecute(command: EditorCommand): Promise<void> {
     if (busy.current) return;
     busy.current = true;
@@ -178,6 +207,7 @@ function PianoRollEditor({
       startTick,
       durationTicks: Math.min(gridTicks, clip.range.durationTicks - startTick)
     };
+    preview.audition(pitch, velocity);
     await onExecute(new AddMidiNoteCommand(trackId, clip.id, note));
     setSelected(new Set([note.id]));
   }
@@ -195,6 +225,8 @@ function PianoRollEditor({
           ? selected
           : new Set([noteId]);
     setSelected(nextSelected);
+    const pressed = clip.notes.find((note) => note.id === noteId);
+    if (pressed && mode === "move") preview.audition(pressed.pitch, pressed.velocity);
     if (!nextSelected.has(noteId)) {
       dragRef.current = null;
       return;
@@ -258,6 +290,45 @@ function PianoRollEditor({
     setMarquee(null);
   }
 
+  function copySelection(ids: string[]): boolean {
+    const copied = copyNotes(clip.notes, ids);
+    if (!copied) return false;
+    writeNoteClipboard(copied);
+    setClipboardReady(true);
+    return true;
+  }
+
+  async function cutSelection(ids: string[]): Promise<void> {
+    if (!copySelection(ids)) return;
+    await onExecute(new RemoveMidiNotesCommand(trackId, clip.id, ids));
+    setSelected(new Set());
+  }
+
+  /**
+   * Pastes right after the selection, so repeated pastes build a sequence;
+   * with nothing selected, at the playhead when it is inside this clip.
+   */
+  async function paste(): Promise<void> {
+    const board = readNoteClipboard();
+    if (!board) return;
+    const chosen = clip.notes.filter((note) => selected.has(note.id));
+    const selectionEnd = chosen.length
+      ? Math.max(...chosen.map((note) => note.startTick + note.durationTicks))
+      : null;
+    const raw =
+      selectionEnd ?? clipPlaybackTick(project, clip, engine.snapshot().positionTicks) ?? 0;
+    const at = snapEnabled
+      ? Math.ceil(raw / gridTicks) * gridTicks
+      : raw;
+    const notes = pasteNotes(board, clip.range.durationTicks, at);
+    if (!notes.length) {
+      setError("The copied notes don't fit after this point. Select earlier notes or move the playhead.");
+      return;
+    }
+    await onExecute(new AddMidiNotesCommand(trackId, clip.id, notes));
+    setSelected(new Set(notes.map((note) => note.id)));
+  }
+
   async function removeSelected(): Promise<void> {
     if (selectedIds.length === 0) return;
     await onExecute(new RemoveMidiNotesCommand(trackId, clip.id, selectedIds));
@@ -266,6 +337,11 @@ function PianoRollEditor({
 
   async function moveNotes(ids: string[], ticks: number, pitch: number) {
     const delta = boundedNoteMove(clip, ids, ticks, pitch);
+    if (delta.pitch) {
+      // Transposing: let the user hear where the (first) note landed.
+      const moved = clip.notes.find((note) => note.id === ids[0]);
+      if (moved) preview.audition(moved.pitch + delta.pitch, moved.velocity);
+    }
     if (delta.ticks || delta.pitch)
       await onExecute(new MoveMidiNotesCommand(trackId, clip.id, ids, delta.ticks, delta.pitch));
   }
@@ -298,6 +374,16 @@ function PianoRollEditor({
       buttons[
         Math.max(0, Math.min(buttons.length - 1, index + (event.key === "ArrowLeft" ? -1 : 1)))
       ]?.focus();
+      return;
+    }
+    if (modifier && ["c", "x", "v"].includes(event.key.toLowerCase())) {
+      const key = event.key.toLowerCase();
+      if (key !== "v" && !ids.length) return;
+      event.preventDefault();
+      if (event.repeat || busy.current) return;
+      if (key === "c") copySelection(ids);
+      else if (key === "x") void cutSelection(ids);
+      else void paste();
       return;
     }
     if (!ids.length || (modifier && event.key.toLowerCase() !== "d")) return;
@@ -344,6 +430,14 @@ function PianoRollEditor({
       <Toolbar>
         <strong>{clip.name}</strong>
         <Button onClick={onClose}>Arrangement</Button>
+        <label title="Play notes as you add, select, move, or press piano keys">
+          <input
+            type="checkbox"
+            checked={preview.enabled}
+            onChange={(event) => preview.setEnabled(event.target.checked)}
+          />{" "}
+          Preview
+        </label>
         <label>
           Grid{" "}
           <select value={gridRatio} onChange={(event) => setGridRatio(Number(event.target.value))}>
@@ -389,6 +483,18 @@ function PianoRollEditor({
           onClick={() => void moveNotes(selectedIds, 0, 1)}
         >
           +1
+        </Button>
+        <Button disabled={!selectedIds.length} onClick={() => copySelection(selectedIds)}>
+          Copy
+        </Button>
+        <Button disabled={!selectedIds.length || pending} onClick={() => void cutSelection(selectedIds)}>
+          Cut
+        </Button>
+        <Button disabled={!clipboardReady || pending} onClick={() => void paste()}>
+          Paste
+        </Button>
+        <Button title="Silence every sounding note" onClick={() => engine.allNotesOff()}>
+          Stop sound
         </Button>
         <Button disabled={!selectedIds.length || pending} onClick={() => void removeSelected()}>
           Delete
@@ -462,6 +568,7 @@ function PianoRollEditor({
               velocity,
               durationTicks: Math.min(gridTicks, clip.range.durationTicks - startTick)
             };
+            preview.audition(newPitch, velocity);
             void onExecute(new AddMidiNoteCommand(trackId, clip.id, note)).then(() =>
               setSelected(new Set([note.id]))
             );
@@ -473,7 +580,7 @@ function PianoRollEditor({
       <p className={styles.hint} id="note-keyboard-help">
         Space selects · Shift-click adds to selection · Arrows move · Shift + left/right resizes ·
         Shift + up/down moves an octave · Alt + left/right focuses notes · Ctrl/Cmd+A selects all ·
-        Ctrl/Cmd+D duplicates · Delete removes · Escape clears
+        Ctrl/Cmd+D duplicates · Ctrl/Cmd+C, X, V copy, cut and paste · Delete removes · Escape clears
       </p>
       {error && (
         <p role="alert" className={styles.error}>
@@ -517,6 +624,7 @@ function PianoRollEditor({
                     className={styles.pianoKey}
                     data-black={[1, 3, 6, 8, 10].includes(pitch % 12)}
                     style={{ height: rowHeight }}
+                    onPointerDown={() => preview.audition(pitch, velocity)}
                   >
                     {noteName(pitch)}
                   </div>
@@ -614,6 +722,85 @@ function PianoRollEditor({
                   }}
                 />
               )}
+            </div>
+          </div>
+          <div
+            className={styles.velocityLane}
+            style={{ gridTemplateColumns: `64px ${editorWidth}px` }}
+          >
+            <div className={styles.velocityLaneLabel} aria-hidden="true">
+              Velocity
+            </div>
+            <div
+              ref={velocityLaneRef}
+              className={styles.velocityLaneBody}
+              role="group"
+              aria-label="Note velocities"
+              aria-description="Drag a bar or use up and down arrows to change velocity; left and right move between notes"
+            >
+              {clip.notes.map((note, index) => {
+                const value =
+                  velocityDrag?.ids.includes(note.id) ? velocityDrag.value : note.velocity;
+                const focusable =
+                  selectedIds[0] === note.id || (!selectedIds.length && index === 0);
+                return (
+                  <button
+                    key={note.id}
+                    type="button"
+                    className={styles.velocityBar}
+                    data-velocity-note-id={note.id}
+                    data-selected={selected.has(note.id)}
+                    aria-label={`${noteName(note.pitch)} at tick ${note.startTick}, velocity ${value}`}
+                    tabIndex={focusable ? 0 : -1}
+                    style={{
+                      left: `${(note.startTick / clip.range.durationTicks) * 100}%`,
+                      height: `${(value / 127) * 100}%`
+                    }}
+                    onPointerDown={(event) => {
+                      if (event.button !== 0 || pending) return;
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      if (!selected.has(note.id)) setSelected(new Set([note.id]));
+                      setVelocityDrag({
+                        ids: velocityTargets(note.id),
+                        value: velocityFromPointer(event.clientY)
+                      });
+                    }}
+                    onPointerMove={(event) => {
+                      if (!velocityDrag) return;
+                      setVelocityDrag({ ...velocityDrag, value: velocityFromPointer(event.clientY) });
+                    }}
+                    onPointerUp={() => {
+                      const drag = velocityDrag;
+                      setVelocityDrag(null);
+                      if (drag) void commitVelocity(drag.ids, drag.value);
+                    }}
+                    onPointerCancel={() => setVelocityDrag(null)}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                        event.preventDefault();
+                        const bars = Array.from(
+                          velocityLaneRef.current?.querySelectorAll<HTMLButtonElement>(
+                            "[data-velocity-note-id]"
+                          ) ?? []
+                        );
+                        bars[
+                          Math.max(0, Math.min(bars.length - 1, index + (event.key === "ArrowLeft" ? -1 : 1)))
+                        ]?.focus();
+                        return;
+                      }
+                      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                      event.preventDefault();
+                      if (pending) return;
+                      const step = (event.shiftKey ? 10 : 1) * (event.key === "ArrowUp" ? 1 : -1);
+                      void commitVelocity(
+                        velocityTargets(note.id),
+                        Math.min(127, Math.max(1, note.velocity + step))
+                      );
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>

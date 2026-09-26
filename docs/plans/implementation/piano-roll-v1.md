@@ -25,6 +25,8 @@ Transient selection, grid, and pointer-drag state remain editor-only and are not
 
 ## Deferred
 
+> **Update (2026-09-25):** marquee selection, zoom controls, note audition, the drum step sequencer, clipboard (copy/cut/paste as one undo step) and panic ("Stop sound") are now implemented. A velocity lane (drag or arrow keys, one undo step per change) is implemented. Per-note resize previews remain open.
+
 - Marquee selection
 - Clipboard operations
 - Note audition and panic

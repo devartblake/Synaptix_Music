@@ -1,6 +1,6 @@
 # Synaptix Music Roadmap and Current Status
 
-**Revision date:** 2026-09-20
+**Revision date:** 2026-09-23
 
 ## Executive Summary
 
@@ -10,7 +10,7 @@ Current estimated completion:
 
 - Foundational stages 1–11: complete
 - Stage 12: 100% implementation-complete; preview/artifact manifests, deterministic MP3/OGG packaging, the production worker image, least-privilege MinIO policy, and certification harness now join the existing render stack. Operational closure remains pending live secret provisioning and staging certification evidence.
-- Stage 13: approximately 25% complete (contracts, package builder, transition planning, and platform persistence/BFF routes); the ordered execution plan is now publication hardening, Flutter loader/cache, runtime scheduler, stem mixer, stingers/ducking, telemetry, and cross-device rollout certification
+- Stage 13: approximately 75% implementation-complete (audited 2026-09-23; previously reported as ~25%). Publication hardening, the Flutter loader/offline cache, runtime scheduler, stem/intensity mixer and stingers/ducking are implemented. Telemetry dashboards and cross-device rollout certification remain, and publication stays gated on Stage 12 staging evidence.
 - Full planned DAW roadmap: 48–52% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
@@ -97,7 +97,7 @@ Implementation is complete. The control plane, deterministic renderer/master eff
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
 
-Contract, package-builder, transition-planning, and platform/BFF work is implemented. The ordered plan is documented in `stage-13-execution-plan-v1.md`. Package publication remains disabled until Stage 12 staging evidence is accepted.
+Contracts, package builder, transition planning, platform/BFF routes, backend retention/revocation, the Flutter loader/offline cache, the runtime clock and scheduler, stem/intensity mixing, and stingers/ducking are implemented. The remaining work is telemetry dashboards and on-device certification. The per-slice audit is in `stage-13-execution-plan-v1.md`. Package publication remains disabled until Stage 12 staging evidence is accepted.
 
 ## Remaining Ordered Work
 

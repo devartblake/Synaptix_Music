@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildGenerationJobRequest, formForPreset, interpretCreativeBrief, proposalSummary } from "./generation-workspace-model.ts";
+import { buildGenerationJobRequest, composerLabel, formForPreset, interpretCreativeBrief, proposalSummary } from "./generation-workspace-model.ts";
 
 test("presets build a valid idempotent platform request", () => {
   const request = buildGenerationJobRequest(
@@ -37,4 +37,25 @@ test("proposal summaries count tracks notes sections and duration", () => {
     provenance: { generatorId: "synaptix-procedural-composer", generatorVersion: "0.1.0", seed: 1 }, warnings: []
   });
   assert.deepEqual(summary, { sectionCount: 3, trackCount: 4, noteCount: 4, durationBars: 16 });
+});
+
+test("the creative brief is sent trimmed and only when present", () => {
+  const form = formForPreset("pressure-rise", 1);
+  const withBrief = buildGenerationJobRequest("p", "r", form, "i", "c", "2026-09-25T00:00:00.000Z", "  boss fight  ");
+  assert.equal(withBrief.generation.brief, "boss fight");
+  const blank = buildGenerationJobRequest("p", "r", form, "i", "c", "2026-09-25T00:00:00.000Z", "   ");
+  assert.equal("brief" in blank.generation, false);
+  const long = buildGenerationJobRequest("p", "r", form, "i", "c", "2026-09-25T00:00:00.000Z", "x".repeat(2500));
+  assert.equal(long.generation.brief?.length, 2000);
+});
+
+test("previews say which composer wrote the arrangement", () => {
+  assert.equal(
+    composerLabel({ generatorId: "synaptix-claude-composer", generatorVersion: "1.0.0", seed: 1, model: "claude-opus-5" }),
+    "Composed by Claude (claude-opus-5)"
+  );
+  assert.equal(
+    composerLabel({ generatorId: "synaptix-procedural-composer", generatorVersion: "0.1.0", seed: 7 }),
+    "Procedural composer · seed 7"
+  );
 });

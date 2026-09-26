@@ -29,6 +29,7 @@ export interface AdaptivePackageBuildRequest {
   defaultStateId: string;
   artifacts: CertifiedAdaptiveArtifact[];
   transitions?: AdaptiveTransition[];
+  clock?: TransitionClock;
   createdAt: string;
 }
 
@@ -95,6 +96,7 @@ export function buildAdaptiveGameAudioManifest(
     states,
     transitions: request.transitions ?? [],
     cuePoints: [],
+    ...(request.clock ? { clock: { ...request.clock } } : {}),
     createdAt: request.createdAt
   });
 }

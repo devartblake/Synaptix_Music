@@ -83,7 +83,7 @@ test("competing project tab puts the current editor into read-only mode", () => 
   );
   const stop = lease.start();
 
-  channel.receive({ type: "claim", projectId: "project-1", tabId: "other-tab", sentAt: now });
+  channel.receive({ type: "claim", projectId: "project-1", tabId: "other-tab", sentAt: now, claimedAt: now - 1_000 });
   assert.equal(coordinator.snapshot.readOnly, true);
   assert.equal(coordinator.snapshot.competingTabId, "other-tab");
 
@@ -91,5 +91,38 @@ test("competing project tab puts the current editor into read-only mode", () => 
   assert.equal(coordinator.snapshot.readOnly, false);
 
   now += 7_000;
+  stop();
+});
+
+test("a tab opened later never locks the tab that was editing first", () => {
+  const channel = new FakeChannel();
+  const coordinator = new EditorSessionCoordinator();
+  const now = 10_000;
+  const lease = new ProjectTabLease("project-1", channel, (tabId) => coordinator.setCompetingTab(tabId), () => now, 60_000, 6_000);
+  const stop = lease.start();
+
+  channel.messages = [];
+  channel.receive({ type: "claim", projectId: "project-1", tabId: "newer-tab", sentAt: now + 500, claimedAt: now + 500 });
+
+  assert.equal(coordinator.snapshot.readOnly, false, "the first tab keeps editing");
+  assert.equal(channel.messages.at(-1)?.type, "heartbeat", "the first tab answers the newcomer");
+  assert.equal(channel.messages.at(-1)?.claimedAt, now);
+  stop();
+});
+
+test("the later of two tabs becomes read-only and is released when the owner leaves", () => {
+  const channel = new FakeChannel();
+  const coordinator = new EditorSessionCoordinator();
+  let now = 20_000;
+  const lease = new ProjectTabLease("project-1", channel, (tabId) => coordinator.setCompetingTab(tabId), () => now, 60_000, 6_000);
+  const stop = lease.start();
+
+  channel.receive({ type: "heartbeat", projectId: "project-1", tabId: "owner-tab", sentAt: now, claimedAt: 15_000 });
+  assert.equal(coordinator.snapshot.competingTabId, "owner-tab");
+
+  // The owner closes without a release message: its lease expires.
+  now += 7_000;
+  channel.receive({ type: "heartbeat", projectId: "project-1", tabId: "newer-tab", sentAt: now, claimedAt: now });
+  assert.equal(coordinator.snapshot.readOnly, false);
   stop();
 });

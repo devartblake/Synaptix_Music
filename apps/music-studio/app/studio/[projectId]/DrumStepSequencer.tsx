@@ -25,6 +25,7 @@ import {
   ticksPerBar,
   ticksPerStep
 } from "../../../lib/editor/drum-step-sequencer-model";
+import { useAudition } from "../../../lib/editor/use-audition";
 
 type Track = MusicProject["tracks"][number];
 type MidiClip = Extract<Track["clips"][number], { kind: "midi" }>;
@@ -72,6 +73,8 @@ export function DrumStepSequencer({
   );
   const activeStep = localTick === null ? -1 : Math.floor(localTick / stepTicks);
   const rowStyle = { gridTemplateColumns: `130px repeat(${totalSteps}, 34px)` };
+  const preview = useAudition(engine, track.id);
+
   async function onExecute(command: EditorCommand) {
     if (busy.current) return;
     busy.current = true;
@@ -88,6 +91,9 @@ export function DrumStepSequencer({
   }
 
   async function toggleStep(pitch: number, absoluteStep: number): Promise<void> {
+    // Only turning a step on makes a sound; clearing one stays silent.
+    if (!noteAtStep(clip.notes, pitch, absoluteStep, stepTicks))
+      preview.audition(pitch, defaultVelocity);
     await onExecute(
       new ToggleDrumStepCommand(
         track.id,
@@ -183,6 +189,17 @@ export function DrumStepSequencer({
           />{" "}
           Follow playback
         </label>
+        <Button title="Silence every sounding note" onClick={() => engine.allNotesOff()}>
+          Stop sound
+        </Button>
+        <label title="Play a hit when you turn a step on or press a lane name">
+          <input
+            type="checkbox"
+            checked={preview.enabled}
+            onChange={(event) => preview.setEnabled(event.target.checked)}
+          />{" "}
+          Preview
+        </label>
         <label>
           New-step velocity{" "}
           <input
@@ -242,7 +259,7 @@ export function DrumStepSequencer({
           </div>
           {lanes.map((lane, laneIndex) => (
             <div key={lane.id} className={styles.stepRow} style={rowStyle}>
-              <div className={styles.laneName}>
+              <div className={styles.laneName} onPointerDown={() => preview.audition(lane.pitch, defaultVelocity)}>
                 <strong>{lane.label}</strong>
                 <small>MIDI {lane.pitch}</small>
               </div>

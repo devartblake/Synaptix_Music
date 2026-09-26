@@ -5,6 +5,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+# The base image bundles npm 10; the repository's lockfile and engines require npm 11.
+RUN npm install --global npm@11.4.2
 
 COPY package.json package-lock.json turbo.json tsconfig.base.json ./
 COPY apps ./apps

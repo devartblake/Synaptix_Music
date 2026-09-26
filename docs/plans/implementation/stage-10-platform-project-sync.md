@@ -1,5 +1,7 @@
 # Stage 10 — Platform Project Synchronization
 
+> **Historical plan.** Completed. The persistent IndexedDB queue, reconnect drain and conflict banner listed as deferred below were delivered later; see `platform-project-synchronization-completion.md` and `docs/architecture/flows.md`.
+
 ## Objective
 
 Synchronize canonical Synaptix Music projects and immutable revisions between IndexedDB and the SynaptixPlay platform without weakening local-first editing.

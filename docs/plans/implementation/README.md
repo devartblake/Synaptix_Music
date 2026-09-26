@@ -82,19 +82,21 @@ Groundwork is implemented (#29–#31): adaptive package contracts and validation
 
 1. ~~Adaptive package contracts and validation.~~ Done (#29).
 2. ~~Export builder from certified render artifacts.~~ Done (#30).
-3. SynaptixPlay backend authorization, versioning, retention, and signed delivery (persistence contracts and BFF routes started in #31).
-4. Flutter runtime package loader, checksum verification, and offline caching.
-5. Beat/bar/phrase-aware transition scheduler (planning logic exists; runtime playback scheduling does not).
-6. Layer and stem mixing with intensity interpolation.
-7. Stingers, ducking, and gameplay-event mappings.
-8. Telemetry for state changes, transition latency, underruns, and asset failures.
-9. Cross-device certification and offline fallback.
+3. ~~SynaptixPlay backend authorization, versioning, retention, and signed delivery.~~ Implemented; server-side render-ID verification waits on Stage 12 staging evidence.
+4. ~~Flutter runtime package loader, checksum verification, and offline caching.~~ Implemented.
+5. ~~Beat/bar/phrase-aware transition scheduler.~~ Implemented (clock, boundary preload, cancellation, drift correction, per-package tempo from the manifest `clock`).
+6. ~~Layer and stem mixing with intensity interpolation.~~ Implemented; needs on-device listening tests.
+7. ~~Stingers, ducking, and gameplay-event mappings.~~ Implemented.
+8. Telemetry for state changes, transition latency, underruns, and asset failures. Client events (including underrun detection) and redaction are implemented; dashboards and alerts wait on staging.
+9. Cross-device certification and offline fallback. The kill switch, master-only fallback and runtime bootstrap are implemented; the device matrix waits on hardware and staging.
+
+See the per-slice status audit in `stage-13-execution-plan-v1.md`.
 
 ## Completion Estimate
 
 - Stages 1–11: complete
 - Stage 12: 100% implementation-complete; live credential provisioning and staging certification remain before operational closure
-- Stage 13: approximately 25% complete (contracts, builder, transition planning, platform/BFF routes); publication remains gated on Stage 12 staging evidence
+- Stage 13: approximately 75% implementation-complete (2026-09-23 audit); no slice has formally exited, because publication is gated on Stage 12 staging evidence and rollout needs on-device certification
 - Full planned DAW roadmap: approximately 48–52% complete
 
 These estimates describe feature-scope completion, not production-readiness certification.

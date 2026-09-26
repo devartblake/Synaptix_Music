@@ -17,6 +17,8 @@ This slice strengthens the command-backed editor history before broader integrat
 
 ## Remaining integration work
 
+> **Complete (2026-09-25).** The studio now uses `EditorSessionCoordinator`: a Saved/Saving/Not saved indicator, a failed-save banner with Retry (re-saves the same revision without replaying the command), a leave-page warning, and first-tab-wins read-only tabs. History resets on project and cloud-revision loads. Covered by `tests/ui/save-safety.spec.ts`.
+
 The studio client still needs to consume the hardened state by:
 
 1. Disabling mutation controls during active commits.

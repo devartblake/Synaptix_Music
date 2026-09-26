@@ -1,7 +1,7 @@
 # Documentation Synchronization Milestone v1
 
-**Status:** In progress  
-**Revision date:** 2026-08-05
+**Status:** Complete  
+**Revision date:** 2026-09-25
 
 ## Purpose
 
@@ -20,13 +20,15 @@ Bring the repository's authoritative documentation into alignment with all merge
 
 ## Remaining documentation work
 
-1. Update the local-development guide for production audio, platform synchronization, and current environment variables.
-2. Add package-level developer guides for command-system, project-storage, DAW engine, and render contracts.
-3. Add render-job operational documentation when the durable worker state machine is implemented.
-4. Add device-parameter registry documentation when PR #26 finalizes runtime mappings.
-5. Add diagrams for project synchronization, generation jobs, and render jobs.
-6. Archive or annotate superseded Stage 9 plans whose implementation is complete.
-7. Add contributor guidance requiring documentation and changelog updates in each feature PR.
+All items are complete (2026-09-25):
+
+1. ~~Update the local-development guide.~~ Platform port corrected to 5100, backend binding, service token setup, and local Stage 12 certification rehearsal added.
+2. ~~Add package-level developer guides.~~ `packages/{command-system,project-storage,daw-engine,render-contracts}/README.md`.
+3. ~~Add render-job operational documentation.~~ `docs/operations/stage-12-deployment-certification.md` and the render flow in `docs/architecture/flows.md`.
+4. ~~Add device-parameter registry documentation.~~ Covered in `packages/daw-engine/README.md` (canonical IDs, ranges, clamping).
+5. ~~Add diagrams.~~ `docs/architecture/flows.md` covers project sync, generation jobs, and render jobs.
+6. ~~Archive or annotate superseded Stage 9 plans.~~ Stage 9 and Stage 10 plans are marked historical.
+7. ~~Add contributor guidance.~~ `CONTRIBUTING.md` requires documentation and changelog updates in each feature PR.
 
 ## Acceptance Criteria
 

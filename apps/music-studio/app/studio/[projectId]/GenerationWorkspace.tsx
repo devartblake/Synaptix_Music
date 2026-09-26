@@ -13,6 +13,7 @@ import {
 import type { MusicProject } from "@synaptix/project-model";
 
 import {
+  composerLabel,
   GENERATION_PRESETS,
   buildGenerationJobRequest,
   formForPreset,
@@ -151,7 +152,9 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
         project.revisionId,
         form,
         idempotencyKey.current,
-        correlationId
+        correlationId,
+        undefined,
+        brief
       );
       setStatusMessage("Submitting generation job…");
       const created = await submitGenerationJob(request);
@@ -221,7 +224,7 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
         <div className="job-status" role="status" aria-live="polite" aria-atomic="true"><span aria-hidden="true" className={`status-dot ${job?.status === "failed" || job?.status === "deadLetter" ? "danger" : ""}`} /><div><strong>{job ? job.status : "Not started"}</strong><p>{statusMessage}</p><p className="realtime-status">Live updates: {realtimeState === "polling" ? "durable polling" : realtimeState}</p></div></div>
         {error && <p className="generation-error" role="alert">{error}</p>}
         {job?.result && summary ? <>
-          <div className="preview-hero"><span>{job.result.mood}</span><strong>{job.result.key}</strong><small>{job.result.tempo} BPM · seed {job.result.provenance.seed}</small></div>
+          <div className="preview-hero"><span>{job.result.mood}</span><strong>{job.result.key}</strong><small>{job.result.tempo} BPM · {composerLabel(job.result.provenance)}</small></div>
           <div className="preview-stats"><div><strong>{summary.trackCount}</strong><span>Tracks</span></div><div><strong>{summary.sectionCount}</strong><span>Sections</span></div><div><strong>{summary.noteCount}</strong><span>Notes</span></div><div><strong>{summary.durationBars}</strong><span>Bars</span></div></div>
           <div className="section-map">{job.result.sections.map((section) => <div key={section.id} style={{ flex: section.bars }}><span>{section.name}</span><small>{section.bars} bars</small></div>)}</div>
           {job.result.warnings.length > 0 && <ul className="generation-warnings">{job.result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}

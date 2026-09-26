@@ -7,11 +7,15 @@ This directory contains the durable architecture, implementation, development, o
 - [Root project README](../README.md)
 - [Current roadmap and status](roadmap.md)
 - [Current system architecture](architecture/system-architecture.md)
+- [Core flows: sync, generation, render (diagrams)](architecture/flows.md)
+- [Contributing](../CONTRIBUTING.md)
+- Package guides: [command-system](../packages/command-system/README.md), [project-storage](../packages/project-storage/README.md), [daw-engine](../packages/daw-engine/README.md), [render-contracts](../packages/render-contracts/README.md)
 - [VST and extensible audio plug-in integration decision](plans/architecture/vst-plugin-integration-options-v1.md)
 - [Architecture decision records](architecture/decisions/README.md)
 - [Local development guide](development/local-development.md)
 - [Implementation-stage index](plans/implementation/README.md)
 - [Stage 12 deployment certification](operations/stage-12-deployment-certification.md)
+- [Stage 13 adaptive audio certification and rollout](operations/stage-13-adaptive-audio-certification.md)
 - [Stage 13 execution plan](plans/implementation/stage-13-execution-plan-v1.md)
 - [Alpha foundation release notes](releases/alpha-foundation.md)
 - [Project changelog](../CHANGELOG.md)
@@ -36,7 +40,7 @@ docs/
 
 ## Current Status
 
-Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is implementation-complete and awaiting live staging certification. Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — has an ordered execution plan and completed contract/package-planning groundwork.
+Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is implementation-complete and awaiting live staging certification. Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — is about 75% implementation-complete, with telemetry dashboards and on-device certification remaining.
 
 Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, deterministic render contracts, a production audio graph integrated into the live browser engine with reversible device/parameter commands, a mounted studio master meter, and canonical filter/envelope/reverb-send device-parameter binding.
 

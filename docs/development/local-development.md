@@ -76,16 +76,33 @@ API starts and applies its database migrations; polling remains disabled until
 you configure a platform URL and service token.
 
 To connect a platform running on your computer, set these in `.env.docker` and
-run the launcher again:
+run the launcher again. The SynaptixPlay backend's development profile listens on
+port **5100**:
 
 ```env
-SYNAPTIX_PLATFORM_API_URL=http://host.docker.internal:5080
+SYNAPTIX_PLATFORM_API_URL=http://host.docker.internal:5100
 RENDER_WORKER_SERVICE_TOKEN=your-platform-service-token
-NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL=http://localhost:5080/ws/notify
+NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL=http://localhost:5100/ws/notify
 ```
 
-The platform must accept connections from Docker Desktop and use the corresponding
-service token. If the platform is containerized on the same network, it can reach
+The platform must accept connections from Docker Desktop. The backend's launch
+profile binds to `localhost` only, which containers may not reach, so start it on
+all interfaces from `Synaptix.Backend.Api`:
+
+```bash
+dotnet run --urls http://0.0.0.0:5100
+```
+
+`RENDER_WORKER_SERVICE_TOKEN` must equal the backend's `ServiceTokens:RenderWorker`
+value. Generate one high-entropy value (for example `openssl rand -hex 32`), put it in
+`.env.docker`, and store the same value in the backend's development user secrets:
+
+```bash
+dotnet user-secrets set "ServiceTokens:RenderWorker" "<the same token>" --project Synaptix.Backend.Api
+```
+
+Restart both after changing it. A missing token disables worker polling; a mismatch
+makes the backend answer `401`. If the platform is containerized on the same network, it can reach
 the generator at `http://generation-api:8100` and worker at `http://render-worker:8200`;
 a platform running on the host uses the published localhost ports.
 
@@ -315,6 +332,109 @@ v22.14.0
 - Inspect the `synaptix-music` IndexedDB database in browser developer tools.
 - Corrupted records are rejected by schema and SHA-256 integrity checks.
 
+## Mixer routing and export
+
+Open **Mixer** to edit track output, reverb send, Music/Drums bus levels, Reverb return,
+and Master level/mute. The meters measure browser audio; use **Play** to see signal.
+The reverb send is post-track-fader and independent of the dry bus mute.
+
+Open **Render / export** from the workspace selector, navigation, or Master strip.
+Save/sync an edit before submitting a fresh local project. Export checks that the cloud
+holds the same revision and checksum, then submits a durable render job. The worker
+still needs `SYNAPTIX_PLATFORM_API_URL` and `RENDER_WORKER_SERVICE_TOKEN` to fetch that
+revision; a platform session is required by the studio proxy. Authentication/service
+errors are shown in the workspace. The local Docker stack does not supply that platform.
+
+Master exports include bus/return/master settings. Stems isolate selected instrument
+tracks before bus and master processing. Completed artifacts expose **Get download link**
+and **Download** actions; use **Refresh link** if a signed URL expires. A submission that
+loses its response can be retried with the same stored request, including after reload.
+
+### Rehearse Stage 12 certification locally
+
+`npm run certify:stage12` reads only the process environment; npm does not load
+`.env` files. Put the certification inputs in `.env.local` and let Node load them:
+
+```bash
+node --env-file=.env.local scripts/certify-stage12-render-pipeline.mjs
+```
+
+```env
+RENDER_WORKER_API_URL=http://localhost:8200
+STAGE12_CERT_PROJECT_ID=<a project saved to the platform>
+STAGE12_CERT_REVISION_ID=<its revision id>
+STAGE12_CERT_PROJECT_CHECKSUM_SHA256=<that revision's checksum>
+STAGE12_CERT_OUTPUT_FORMAT=ogg
+```
+
+The script also checks the **host** FFmpeg for `libmp3lame` and `libvorbis`, even though
+the worker container already has both. Install a full build (for example
+`winget install Gyan.FFmpeg`) or set `RENDER_WORKER_FFMPEG_PATH`. A local run is a
+rehearsal only; Stage 12 closes on the staging run described in
+`docs/operations/stage-12-deployment-certification.md`.
+
 ## Revision Date
 
-2026-08-03
+2026-09-25
+
+## Project management, devices, and adaptive packages
+
+The home page can create a named local project, search local/cloud project names, and
+load cloud projects using the platform session. **Delete local copy** asks for confirmation
+before removing that browser's project, revision history, and pending sync operations.
+It does not delete the cloud copy. Avoid editing the same project in another tab during deletion.
+
+**Devices & effects** exposes the supported synth/drone, filter, envelope, and reverb-send
+controls. Tab and arrow keys work with project undo/redo. Bypassed devices remain visible.
+
+The minimum editing viewport is **320 × 480 CSS pixels**; **1024 × 768** or larger is
+recommended. Below the minimum, editing is hidden, audio stops, and guidance links back
+to Projects. Editor grids scroll inside their panels on small screens.
+
+In **Adaptive states**, add completed master renders of the same immutable revision.
+Configure state intensity, loop start/end, entry/exit, named cues, and transition triggers.
+The first state is the default. Drafts are saved in this browser separately from the canonical
+project. Renaming and removing states updates their transition and cue references.
+
+**Load preview audio** obtains signed URLs, checks audio byte lengths and SHA-256,
+and decodes the full masters. The storage server must allow browser CORS downloads.
+**Play preview** uses real audio, loop/entry timing, and scheduled crossfades. Send state
+or intensity events, or audition a selected master as a one-shot stinger. Stop or leave the
+workspace to dispose playback. Editing a draft also invalidates its loaded preview.
+Preview currently supports up to 100 MB per artifact and uses the project's first tempo
+and time signature. Device mappings remain draft annotations, outside the audio manifest.
+
+For each selected render, load its Stage 12 certification report and the exact original
+`artifact-manifest.json` bytes. **Verify evidence** checks identity, revision, checksum,
+artifact metadata, and the required certified preview. These are operator-supplied reports;
+matching them establishes consistency, not issuer authenticity. Reopening requires revalidation.
+
+Publication also needs an operator-supplied JSON array of platform artifact locations:
+
+```json
+[
+  {
+    "artifactId": "<UUID from the render job>",
+    "storageKey": "<platform-owned object key>",
+    "mediaType": "audio/wav",
+    "checksumSha256": "<64 lowercase hex characters>",
+    "byteLength": 123456
+  }
+]
+```
+
+Include every master/stem referenced by the draft. Storage keys cannot be inferred from
+signed download URLs. The platform validates authorization and creates immutable versions.
+Retries use the same content-derived idempotency key; inspect immutable snapshots in version
+history. A UUID cloud project and configured authenticated platform are required. Local-demo
+projects can author drafts, but are not valid platform publication targets.
+
+## Visual and accessibility regression checks
+
+Run `npm run test:ui --workspace=@synaptix/music-studio` for behavior, keyboard, axe, and
+screenshot assertions. Checked-in baselines use Windows Chromium at desktop/tablet sizes.
+To intentionally revise them from `apps/music-studio`, run
+`node ../../node_modules/@playwright/test/cli.js test tests/ui/visual.spec.ts tests/ui/remaining.spec.ts --update-snapshots`,
+review each changed image, and rerun without the update flag. Other operating systems need
+their own reviewed baseline set. Automated role/name/contrast checks supplement manual
+screen-reader usability review; they do not substitute for it.

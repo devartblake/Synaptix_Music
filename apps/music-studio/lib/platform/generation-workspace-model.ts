@@ -61,8 +61,10 @@ export function buildGenerationJobRequest(
   form: GenerationForm,
   idempotencyKey: string,
   correlationId: string,
-  requestedAt = new Date().toISOString()
+  requestedAt = new Date().toISOString(),
+  brief?: string
 ): GenerationJobRequest {
+  const trimmedBrief = brief?.trim().slice(0, 2000);
   return {
     idempotencyKey,
     correlationId,
@@ -78,9 +80,22 @@ export function buildGenerationJobRequest(
       durationBars: form.durationBars,
       energy: form.energy,
       complexity: form.complexity,
-      seed: form.seed
+      seed: form.seed,
+      ...(trimmedBrief ? { brief: trimmedBrief } : {})
     }
   };
+}
+
+/** Who wrote a proposal, in words for the generation preview. */
+export function composerLabel(provenance: GenerationProposal["provenance"]): string {
+  switch (provenance.generatorId) {
+    case "synaptix-claude-composer":
+      return `Composed by Claude${provenance.model ? ` (${provenance.model})` : ""}`;
+    case "synaptix-local-composer":
+      return `Composed by a local model${provenance.model ? ` (${provenance.model})` : ""}`;
+    default:
+      return `Procedural composer · seed ${provenance.seed}`;
+  }
 }
 
 export function proposalSummary(proposal: GenerationProposal) {

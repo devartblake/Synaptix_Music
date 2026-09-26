@@ -1,0 +1,114 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 24px;
+  border-bottom: 1px solid var(--sx-line);
+}
+.header h2 {
+  margin: 8px 0;
+}
+.header p,
+.settings p,
+.history p {
+  color: var(--sx-text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(320px, 1.2fr);
+}
+.settings,
+.history {
+  padding: 20px;
+  min-width: 0;
+}
+.settings {
+  border-right: 1px solid var(--sx-line);
+}
+.settings fieldset {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--sx-line);
+  padding: 14px;
+  margin: 0 0 16px;
+}
+.settings legend {
+  font-size: 12px;
+  color: var(--sx-text-muted);
+}
+.settings label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.settings select,
+.settings input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+}
+.settings .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings small {
+  display: block;
+  margin-top: 10px;
+  color: var(--sx-text-muted);
+  font-size: 11px;
+}
+.historyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.job {
+  padding: 16px;
+  border: 1px solid var(--sx-line);
+  background: var(--sx-surface-raised);
+  border-radius: var(--sx-radius-md);
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
+.job strong {
+  font-size: 13px;
+}
+.artifact {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sx-line);
+}
+.artifact small {
+  display: block;
+  color: var(--sx-text-muted);
+  margin-top: 4px;
+}
+.artifact a {
+  color: #b9c2ff;
+  font-size: 12px;
+}
+.settings .error,
+.history .error {
+  color: #ff9daa;
+}
+@container (max-width: 700px) {
+  .layout {
+    display: block;
+  }
+  .header {
+    flex-wrap: wrap;
+  }
+  .settings {
+    border-right: 0;
+    border-bottom: 1px solid var(--sx-line);
+  }
+}

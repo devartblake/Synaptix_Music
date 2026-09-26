@@ -14,12 +14,17 @@ import {
   SetLoopEnabledEditorCommand,
   SetTempoEditorCommand,
   SetTrackPanEditorCommand,
+  SetTrackSendEditorCommand,
   SetTrackVolumeEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
 import {
   BrowserAudioEngine,
   createFrequencyDroneTrack,
+  createInstrumentTrack,
+  INSTRUMENT_CATALOG,
+  instrumentDefinition,
+  resolveInstrumentDefinition,
   DEVICE_PARAMETER_DEFINITIONS,
   FREQUENCY_DRONE_DEVICE_TYPE,
   resolveFrequencyDroneDevice,
@@ -53,13 +58,30 @@ import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-pr
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
 import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
+import { InstrumentIcon, INSTRUMENT_ACCENTS } from "./InstrumentIcon";
 import { MasterMeter } from "./MasterMeter";
 import { MixerDrawer } from "./MixerDrawer";
+import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { ArrangementTimeline } from "./ArrangementTimeline";
 import { TransportPosition } from "./TransportPosition";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
 import { arrangementBars } from "../../../lib/editor/timeline-model";
+import { describeSaveError } from "../../../lib/editor/storage-health";
+import { useStorageHealth } from "../../../lib/editor/use-storage-health";
+import {
+  clearRecovery,
+  journalRevision,
+  readRecovery,
+  type RecoveryEntry
+} from "../../../lib/editor/recovery-journal";
+import { editorKindForTrack, findEditorClip, type EditorKind } from "../../../lib/editor/editor-clip-target";
+import {
+  bindBeforeUnload,
+  EditorSessionCoordinator,
+  ProjectTabLease,
+  type BroadcastChannelLike
+} from "../../../lib/editor/editor-session-coordinator";
 
 const TRACK_NAMES = ["Drums", "Bass", "Harmony", "Lead Melody"] as const;
 const TOTAL_BARS = 16;
@@ -131,7 +153,7 @@ const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
 
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
 type ActiveClip = { trackId: string; clipId: string };
-type Workspace = "arrangement" | "generation" | "adaptive";
+type Workspace = "arrangement" | "generation" | "adaptive" | "render" | "devices";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState(() => createStarterProject(projectId, seedOptions(projectId)));
@@ -143,6 +165,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
   const [workspace, setWorkspace] = useState<Workspace>("arrangement");
   const [mixerOpen, setMixerOpen] = useState(false);
+  const [newInstrument, setNewInstrument] = useState("synaptix-pad");
   const mixerToggleRef = useRef<HTMLButtonElement>(null);
   const panelLayout = useStudioLayout();
 
@@ -162,6 +185,15 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const hybridRef = useRef<HybridProjectRepository | null>(null);
   const coordinatorRef = useRef<ProjectSyncCoordinator | null>(null);
   const latestEnvelopeRef = useRef<PlatformRevisionEnvelope | null>(null);
+  // Save state, unload protection, and single-writer tabs for this project.
+  const sessionRef = useRef(new EditorSessionCoordinator());
+  const [session, setSession] = useState(() => sessionRef.current.snapshot);
+  // Parent for the next queued upload: the last revision that actually saved,
+  // so a failed save never leaves the cloud queue pointing at a missing parent.
+  const persistedRevisionRef = useRef<string | null>(null);
+  const { health: storageHealth, refresh: refreshStorage } = useStorageHealth();
+  // An unsaved edit left behind by a crash or a closed tab, offered back on load.
+  const [recovery, setRecovery] = useState<RecoveryEntry | null>(null);
   const historyRef = useRef(new EditorCommandHistory());
 
   useEffect(() => {
@@ -177,17 +209,22 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       if (cancelled) return;
       if (stored) {
         setProject(stored);
+        persistedRevisionRef.current = stored.revisionId;
         setStorageStatus("Loaded local/cloud project");
       } else {
         setProject(createStarterProject(projectId));
+        persistedRevisionRef.current = null;
         setStorageStatus("New local project");
       }
+      setRecovery(readRecovery(projectId, stored?.revisionId ?? null));
       historyRef.current.clear();
       setHistoryVersion((value) => value + 1);
       setHydrated(true);
     }).catch((error: unknown) => {
       if (!cancelled) {
         setStorageStatus(error instanceof Error ? error.message : "Project storage unavailable");
+        // Nothing loaded (e.g. offline with no saved copy): an unsaved edit may still be recoverable.
+        setRecovery(readRecovery(projectId, null));
         setHydrated(true);
       }
     });
@@ -196,7 +233,27 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return () => { cancelled = true; stopCoordinator(); };
   }, [projectId]);
 
+  useEffect(() => {
+    const unsubscribe = sessionRef.current.subscribe(setSession);
+    const unbind = bindBeforeUnload(sessionRef.current, window);
+    return () => { unsubscribe(); unbind(); };
+  }, []);
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const lease = new ProjectTabLease(
+      projectId,
+      new BroadcastChannel("synaptix-music:project-tabs") as unknown as BroadcastChannelLike,
+      (tabId) => sessionRef.current.setCompetingTab(tabId)
+    );
+    return lease.start();
+  }, [projectId]);
+
   useEffect(() => engine.loadProject(project), [engine, project]);
+  useEffect(() => {
+    // Close the piano roll if its track was deleted (or undone/redone away).
+    if (activeClip && !project.tracks.some((track) => track.id === activeClip.trackId)) setActiveClip(null);
+  }, [project, activeClip]);
   useEffect(() => () => engine.dispose(), [engine]);
 
   useEffect(() => {
@@ -217,29 +274,103 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  async function queueRevision(nextProject: MusicProject, revision: ProjectRevision, expected: string): Promise<void> {
+  async function persistRevision(envelope: PlatformRevisionEnvelope): Promise<void> {
+    const hybrid = hybridRef.current;
+    if (!hybrid) throw new Error("Project storage is not ready.");
+    try {
+      await hybrid.saveAndQueue(
+        envelope,
+        persistedRevisionRef.current,
+        `project-revision:${envelope.projectId}:${envelope.revision.revisionId}`,
+        crypto.randomUUID()
+      );
+    } catch (error) {
+      throw new Error(describeSaveError(error));
+    } finally {
+      refreshStorage();
+    }
+    persistedRevisionRef.current = envelope.revision.revisionId;
+  }
+
+  async function drainSync(): Promise<void> {
+    try {
+      await coordinatorRef.current?.drain();
+    } catch {
+      // Cloud sync reports its own state; it never marks the local save failed.
+    }
+  }
+
+  async function queueRevision(nextProject: MusicProject, revision: ProjectRevision): Promise<void> {
     const envelope: PlatformRevisionEnvelope = { projectId: nextProject.projectId, project: nextProject, revision };
     latestEnvelopeRef.current = envelope;
-    await hybridRef.current?.saveAndQueue(
-      envelope,
-      expected,
-      `project-revision:${nextProject.projectId}:${revision.revisionId}`,
-      crypto.randomUUID()
-    );
+    sessionRef.current.markSaving(envelope);
+    // Write-ahead: if the tab dies before the save lands, the edit survives.
+    journalRevision(envelope);
+    try {
+      await persistRevision(envelope);
+    } catch (error) {
+      sessionRef.current.markFailed(error);
+      setStorageStatus("Changes not saved");
+      return;
+    }
+    clearRecovery(envelope.projectId);
+    sessionRef.current.markSaved(revision.revisionId);
     setStorageStatus("Revision saved and queued");
-    await coordinatorRef.current?.drain();
+    await drainSync();
+  }
+
+  async function restoreRecovery(entry: RecoveryEntry): Promise<void> {
+    setRecovery(null);
+    setProject(entry.envelope.project);
+    historyRef.current.clear();
+    setHistoryVersion((value) => value + 1);
+    latestEnvelopeRef.current = entry.envelope;
+    sessionRef.current.markSaving(entry.envelope);
+    try {
+      await persistRevision(entry.envelope);
+    } catch (error) {
+      sessionRef.current.markFailed(error);
+      setStorageStatus("Changes not saved");
+      return;
+    }
+    clearRecovery(projectId);
+    sessionRef.current.markSaved(entry.envelope.revision.revisionId);
+    setStorageStatus("Recovered changes saved");
+    await drainSync();
+  }
+
+  function discardRecovery(): void {
+    clearRecovery(projectId);
+    setRecovery(null);
+  }
+
+  async function retrySave(): Promise<void> {
+    if (await sessionRef.current.retry(persistRevision)) {
+      clearRecovery(projectId);
+      setStorageStatus("Revision saved and queued");
+      await drainSync();
+    }
   }
 
   async function execute(command: EditorCommand): Promise<void> {
-    const expected = project.revisionId;
+    if (session.readOnly) return;
     const result = await historyRef.current.execute(project, command);
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
-    await queueRevision(result.project, result.revision, expected);
+    await queueRevision(result.project, result.revision);
   }
 
   async function addFrequencyDrone(frequencyHz: number): Promise<void> {
     await execute(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));
+    setWorkspace("arrangement");
+  }
+
+  async function addInstrument(deviceType: string): Promise<void> {
+    await execute(new AddTrackEditorCommand(createInstrumentTrack(deviceType, {
+      bars: TOTAL_BARS,
+      beatsPerBar: project.timeSignatureMap[0]?.numerator ?? 4,
+      ticksPerQuarterNote: project.transport.ticksPerQuarterNote
+    })));
     setWorkspace("arrangement");
   }
 
@@ -249,26 +380,27 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
 
   async function undo(): Promise<void> {
-    const expected = project.revisionId;
+    if (session.readOnly) return;
     const result = await historyRef.current.undo(project);
     if (!result) return;
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
-    await queueRevision(result.project, result.revision, expected);
+    await queueRevision(result.project, result.revision);
   }
 
   async function redo(): Promise<void> {
-    const expected = project.revisionId;
+    if (session.readOnly) return;
     const result = await historyRef.current.redo(project);
     if (!result) return;
     setProject(result.project);
     setHistoryVersion((value) => value + 1);
-    await queueRevision(result.project, result.revision, expected);
+    await queueRevision(result.project, result.revision);
   }
 
   async function useCloud(conflict: RevisionUploadResult): Promise<void> {
     if (conflict.outcome !== "conflict") return;
     await localRef.current?.save(conflict.remote.project, conflict.remote.revision);
+    persistedRevisionRef.current = conflict.remote.project.revisionId;
     setProject(conflict.remote.project);
     historyRef.current.clear();
     setHistoryVersion((value) => value + 1);
@@ -295,14 +427,14 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
 
   function renderDeviceControls(track: Track): React.ReactNode {
-    const device = primaryDevice(track);
+    const device = primaryDevice(track) ?? track.devices[0];
     if (!device) return null;
     const isDrone = device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE;
-    const settings = isDrone ? resolveFrequencyDroneDevice(device) : resolveEffectiveInstrumentSettings(track);
+    const settings = isDrone ? resolveFrequencyDroneDevice(device) : resolveEffectiveInstrumentSettings({ ...track, devices: [{ ...device, enabled: true }] });
 
     return (
       <div style={{ display: "grid", gap: 6, borderTop: "1px solid #2a2f38", paddingTop: 8, marginTop: 4 }}>
-        <Button onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
+        <Button aria-label={`${track.name} device enabled`} aria-pressed={device.enabled} onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
           Device {device.enabled ? "On" : "Off"}
         </Button>
         {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone")).map((definition) => {
@@ -313,7 +445,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             <CommitSlider key={definition.id} label={definition.label} value={value}
               min={definition.minimum} max={definition.maximum} step={step} disabled={!hydrated}
               format={(next) => formatParameterValue(definition.unit, next)}
-              onCommit={(next) => execute(new SetDeviceParameterEditorCommand(track.id, device.id, definition.id, value, next))} />
+              onCommit={(next) => execute(definition.id === REVERB_SEND_PARAMETER
+                ? new SetTrackSendEditorCommand(track.id, track.reverbSend, next)
+                : new SetDeviceParameterEditorCommand(track.id, device.id, definition.id, value, next))} />
           );
         })}
       </div>
@@ -323,6 +457,22 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   async function play(): Promise<void> { await engine.play(); setPlaying(true); }
   function pause(): void { engine.pause(); setPlaying(false); }
   function stop(): void { engine.stop(); setPlaying(false); }
+
+  useEffect(() => {
+    if (workspace === "arrangement") return;
+    const heading = document.querySelector<HTMLElement>(".studio-workspace h2");
+    heading?.setAttribute("tabindex", "-1");
+    heading?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+    if (workspace === "adaptive") { engine.stop(); setPlaying(false); }
+  }, [workspace, engine]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 319px), (max-height: 479px)");
+    const enforce = () => { if (media.matches) { engine.stop(); setPlaying(false); window.dispatchEvent(new Event("synaptix-stop-audio")); } };
+    media.addEventListener("change", enforce); enforce();
+    return () => media.removeEventListener("change", enforce);
+  }, [engine]);
 
   const syncLabel = sync.state === "syncing" ? "Syncing…"
     : sync.state === "offline" ? "Offline"
@@ -364,16 +514,63 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <Button onClick={() => void coordinatorRef.current?.drain()}>Sync now</Button>
         </div>
         <div className="studio-status">
+          <span className="status-pill" role="status" aria-label="Save state">
+            <span className={`status-dot ${session.state === "failed" ? "danger" : session.state === "saving" ? "warning" : ""}`} />
+            {session.readOnly ? "Read-only" : session.state === "saving" ? "Saving…" : session.state === "failed" ? "Not saved" : session.state === "unsaved" ? "Unsaved" : "Saved"}
+          </span>
           <span className="status-pill"><span className={`status-dot ${syncTone}`} />{syncLabel}</span>
           <MasterMeter engine={engine} />
         </div>
       </header>
+
+      {recovery && !session.readOnly && (
+        <section className="conflict-banner" role="status">
+          <strong>Unsaved changes were recovered</strong>
+          <p style={{ margin: "6px 0" }}>
+            Edits from {new Date(recovery.journaledAt).toLocaleString()} didn’t finish saving before
+            the studio closed. Restore them to continue from there, or discard them to keep the
+            project as it was last saved.
+          </p>
+          <Button onClick={() => void restoreRecovery(recovery)}>Restore changes</Button>{" "}
+          <Button onClick={discardRecovery}>Discard</Button>
+        </section>
+      )}
+      {session.state === "failed" && (
+        <section className="conflict-banner" role="alert">
+          <strong>Your latest changes aren’t saved</strong>
+          <p style={{ margin: "6px 0" }}>
+            {session.error ?? "Browser storage refused the save."} Keep this tab open, then retry.
+            Your edits are still here.
+          </p>
+          <Button onClick={() => void retrySave()}>Retry save</Button>
+        </section>
+      )}
+      {(storageHealth.level === "warning" || storageHealth.level === "critical") && session.state !== "failed" && (
+        <section className="conflict-banner" role="status">
+          <strong>{storageHealth.level === "critical" ? "Browser storage is almost full" : "Browser storage is getting full"}</strong>
+          <p style={{ margin: "6px 0" }}>
+            New edits may stop saving. From the project list, export projects you want to keep and
+            delete ones you no longer need.
+          </p>
+        </section>
+      )}
+      {session.readOnly && (
+        <section className="conflict-banner" role="status">
+          <strong>This project is open in another tab</strong>
+          <p style={{ margin: "6px 0" }}>
+            Editing is paused here so the two tabs can’t overwrite each other. Close the other
+            tab to keep editing in this one.
+          </p>
+        </section>
+      )}
 
       <div className="studio-viewbar" aria-label="Workspace and panels">
         <label>Workspace <select value={workspace} onChange={(event) => setWorkspace(event.target.value as Workspace)}>
           <option value="arrangement">Arrangement</option>
           <option value="generation">Generate</option>
           <option value="adaptive">Adaptive states</option>
+          <option value="render">Render / export</option>
+          <option value="devices">Devices & effects</option>
         </select></label>
         <div className="studio-view-actions">
         <DisclosureMenu label="Layout">
@@ -397,25 +594,56 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         <aside id="studio-navigation" className="studio-sidebar" aria-label="Studio navigation" hidden={!panelLayout.navigationVisible}>
           <ResizeHandle label="Navigation panel size" controls="studio-navigation" orientation="vertical"
             value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />
+          <div className="studio-sidebar-scroll">
           <p className="panel-label">Workspace</p>
           <nav className="studio-nav">
-            <Button aria-current={workspace === "arrangement" ? "page" : undefined} onClick={() => setWorkspace("arrangement")}><span><span className="nav-glyph">A</span>Arrangement</span></Button>
-            <Button disabled title="Open a MIDI clip from the arrangement"><span><span className="nav-glyph">P</span>Piano roll</span></Button>
-            <Button disabled title="Open a drum clip from the arrangement"><span><span className="nav-glyph">D</span>Drum sequencer</span></Button>
+            <Button aria-current={workspace === "arrangement" && !activeClip ? "page" : undefined} onClick={() => { setWorkspace("arrangement"); setActiveClip(null); }}><span><span className="nav-glyph">A</span>Arrangement</span></Button>
+            {([
+              ["piano-roll", "P", "Piano roll", "Add a melodic instrument track with a clip to use the piano roll"],
+              ["drum-sequencer", "D", "Drum sequencer", "Add a drum track with a clip to use the drum sequencer"]
+            ] as const).map(([kind, glyph, label, unavailable]) => {
+              const target = findEditorClip(project, kind as EditorKind, activeClip);
+              const open = workspace === "arrangement" && activeClip !== null
+                && editorKindForTrack(project, activeClip.trackId) === kind;
+              return (
+                <Button key={kind} disabled={!target} title={target ? undefined : unavailable}
+                  aria-current={open ? "page" : undefined}
+                  onClick={() => { if (target) { setWorkspace("arrangement"); setActiveClip(target); } }}>
+                  <span><span className="nav-glyph">{glyph}</span>{label}</span>
+                </Button>
+              );
+            })}
             <Button aria-expanded={mixerOpen} aria-controls="studio-mixer" onClick={() => changeMixerOpen(!mixerOpen)}><span><span className="nav-glyph">M</span>Mixer</span></Button>
           </nav>
           <p className="panel-label" style={{ marginTop: 22 }}>SynaptixPlay</p>
           <nav className="studio-nav">
             <Button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></Button>
             <Button aria-current={workspace === "adaptive" ? "page" : undefined} onClick={() => setWorkspace("adaptive")}><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></Button>
-            <Button disabled title="Publication remains gated by certification"><span><span className="nav-glyph">R</span>Render & publish</span></Button>
+            <Button aria-current={workspace === "render" ? "page" : undefined} onClick={() => setWorkspace("render")}><span><span className="nav-glyph" aria-hidden="true">R</span>Render / export</span></Button>
+            <Button aria-current={workspace === "devices" ? "page" : undefined} onClick={() => setWorkspace("devices")}>Devices & effects</Button>
           </nav>
+          <section className="sidebar-card" aria-label="Add instrument">
+            <strong>Instruments</strong>
+            <fieldset className="instrument-picker" aria-label="Choose an instrument">
+              {INSTRUMENT_CATALOG.map((entry) => (
+                <label key={entry.deviceType} className="instrument-tile" title={entry.description}
+                  style={{ "--instrument-accent": INSTRUMENT_ACCENTS[entry.profile.kind] } as React.CSSProperties}>
+                  <input type="radio" name="new-instrument" value={entry.deviceType}
+                    checked={newInstrument === entry.deviceType} onChange={() => setNewInstrument(entry.deviceType)} />
+                  <InstrumentIcon kind={entry.profile.kind} size={32} />
+                  <span>{entry.label}</span>
+                </label>
+              ))}
+            </fieldset>
+            <p>{instrumentDefinition(newInstrument)?.description}</p>
+            <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add instrument track</Button>
+          </section>
           <section className="sidebar-card" aria-label="Adaptive audio preview">
             <strong>Runtime preview</strong>
-            <div className="adaptive-row"><span className="adaptive-orb" />Exploration · active</div>
-            <div className="intensity-track" role="progressbar" aria-label="Adaptive intensity" aria-valuemin={0} aria-valuemax={100} aria-valuenow={64}><span /></div>
-            <p>Adaptive authoring becomes interactive in the Stage 13 workspace slice.</p>
+            <p>Audition rendered states, loops, and transitions with runtime events.</p>
+            <Button onClick={() => { stop(); setWorkspace("adaptive"); }}>Open package preview</Button>
           </section>
+          </div>
         </aside>
 
         <section className="studio-workspace" aria-label="Project workspace">
@@ -467,7 +695,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onApply={applyGeneratedVariation}
         onClose={() => setWorkspace("arrangement")}
       />}
-      {workspace === "adaptive" && <AdaptiveStatesWorkspace project={project} onClose={() => setWorkspace("arrangement")} />}
+      {workspace === "render" && <RenderWorkspace key={project.projectId} project={project} onClose={() => setWorkspace("arrangement")} onSync={async () => coordinatorRef.current?.drain()} />}
+      {workspace === "devices" && <section aria-label="Devices and effects" className="device-workspace"><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p>{project.tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} size={28} />{definition.label}</p>; })()}{renderDeviceControls(track)}</fieldset>)}<Button onClick={() => setWorkspace("arrangement")}>Back to arrangement</Button></section>}
+      {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={project} onClose={() => setWorkspace("arrangement")} />}
         </section>
 
         <aside id="studio-inspector" className="studio-inspector" aria-label="Project inspector" hidden={!panelLayout.inspectorVisible}>
@@ -496,7 +726,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       </div>
       {mixerOpen && <MixerDrawer project={project} engine={engine} storageStatus={storageStatus}
         height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
-        syncLabel={syncLabel} onExecute={execute} onClose={() => changeMixerOpen(false)} />}
+        syncLabel={syncLabel} onExecute={execute} onExport={() => { changeMixerOpen(false); setWorkspace("render"); }} onClose={() => changeMixerOpen(false)} />}
     </main>
   );
 }

@@ -106,3 +106,26 @@ test("rejects invalid certified artifact duration", () => {
     /must be positive/
   );
 });
+
+test("published manifests carry the authored musical clock when provided", async () => {
+  const { AdaptiveGameAudioManifestSchema } = await import("./adaptive-game.ts");
+  const base = manifest();
+  assert.equal(base.clock, undefined, "clock stays optional for v1 manifests");
+
+  const clocked = buildAdaptiveGameAudioManifest({
+    packageId: base.packageId,
+    projectId: base.projectId,
+    revisionId: base.revisionId,
+    projectChecksumSha256: base.projectChecksumSha256,
+    renderEngineVersion: base.renderEngineVersion,
+    defaultStateId: base.defaultStateId,
+    createdAt: base.createdAt,
+    artifacts: [{ artifactId: artifactId("2"), stateId: "calm", displayName: "Calm", intensity: 0.2, durationSeconds: 16 }],
+    clock: { beatsPerMinute: 96, beatsPerBar: 3, barsPerPhrase: 8 }
+  });
+  assert.deepEqual(clocked.clock, { beatsPerMinute: 96, beatsPerBar: 3, barsPerPhrase: 8 });
+  assert.equal(
+    AdaptiveGameAudioManifestSchema.safeParse({ ...clocked, clock: { beatsPerMinute: 0, beatsPerBar: 4, barsPerPhrase: 4 } }).success,
+    false
+  );
+});

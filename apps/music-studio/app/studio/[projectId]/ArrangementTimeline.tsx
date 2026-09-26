@@ -8,8 +8,10 @@ import {
   SetTrackSoloEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
+import { AddClipEditorCommand, RemoveTrackEditorCommand } from "@synaptix/command-system/track";
 import { Badge, Button } from "../../../components/ui/StudioControls";
 import { arrangementBars, barTicks, positionTicks } from "../../../lib/editor/timeline-model";
+import { canAddMidiClip, createEmptyMidiClip } from "../../../lib/editor/new-clip";
 import { Playhead } from "./TransportPosition";
 import styles from "./editing.module.css";
 
@@ -91,6 +93,35 @@ export function ArrangementTimeline({
                       ? "Center"
                       : `${Math.round(Math.abs(track.pan) * 100)}${track.pan < 0 ? "L" : "R"}`}
                   </small>
+                  {canAddMidiClip(track) && (
+                    <Button
+                      className={styles.newClip}
+                      aria-label={`New clip on ${track.name}`}
+                      title="Add an empty 4-bar clip after the last one and open it"
+                      onClick={() => {
+                        const clip = createEmptyMidiClip(project, track);
+                        void onExecute(new AddClipEditorCommand(track.id, clip)).then(() =>
+                          onEdit({ trackId: track.id, clipId: clip.id })
+                        );
+                      }}
+                    >
+                      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"
+                        fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                        <path d="M8 3v10M3 8h10" />
+                      </svg>
+                    </Button>
+                  )}
+                  <Button
+                    className={styles.deleteTrack}
+                    aria-label={`Delete ${track.name}`}
+                    title={`Delete ${track.name} (undo restores it)`}
+                    onClick={() => void onExecute(new RemoveTrackEditorCommand(track.id))}
+                  >
+                    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"
+                      fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.8 6.5v4.5M9.2 6.5v4.5" />
+                    </svg>
+                  </Button>
                 </div>
                 <details className={styles.trackControls}>
                   <summary>{track.name} controls</summary>

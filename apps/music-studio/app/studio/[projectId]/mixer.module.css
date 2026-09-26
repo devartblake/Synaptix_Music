@@ -46,6 +46,10 @@
   padding: 12px;
   border-right: 1px solid var(--sx-line);
 }
+.levels { margin-bottom: 12px; }
+.levels small, .routePath { display: block; color: var(--sx-text-muted); font-size: 10px; line-height: 1.5; margin-top: 6px; }
+.routing { display: grid; gap: 6px; font-size: 11px; margin-top: 14px; color: var(--sx-text-muted); }
+.routing select { width: 100%; padding: 5px; }
 .channel h3 {
   display: flex;
   gap: 8px;
