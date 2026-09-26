@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
+from app.generation.theory import KEY_PATTERN
 from app.models.project import MidiNote, MusicalPosition, MusicalRange, StrictModel
 
 
@@ -9,8 +10,10 @@ class GenerationRequest(StrictModel):
     projectId: str = Field(min_length=1)
     genre: Literal["electronic-trivia"] = "electronic-trivia"
     mood: Literal["upbeat", "tense", "triumphant"] = "upbeat"
-    tempo: int = Field(default=120, ge=90, le=140)
-    key: Literal["C minor", "D minor", "E minor", "F minor", "G minor", "A minor"] = "D minor"
+    tempo: int = Field(default=120, ge=60, le=200)
+    # "<tonic> <mode>": 12 tonics x major, minor, dorian, phrygian, lydian, mixolydian,
+    # harmonic minor (see app.generation.theory).
+    key: str = Field(default="D minor", pattern=KEY_PATTERN)
     durationBars: int = Field(default=16, ge=8, le=64)
     energy: float = Field(default=0.6, ge=0, le=1)
     complexity: float = Field(default=0.5, ge=0, le=1)
@@ -35,12 +38,31 @@ class GeneratedMidiClip(StrictModel):
     notes: list[MidiNote]
 
 
+TrackRole = Literal[
+    "drums",
+    "bass",
+    "sub-bass",
+    "harmony",
+    "pad",
+    "arpeggio",
+    "melody",
+    "countermelody",
+    "stabs",
+    "sparkle",
+]
+
+
 class GeneratedTrack(StrictModel):
     id: str = Field(min_length=1)
-    role: Literal["drums", "bass", "harmony", "melody"]
+    role: TrackRole
     name: str = Field(min_length=1)
+    # A studio instrument catalog device type (see app.generation.orchestration).
     instrumentId: str = Field(min_length=1)
     clips: list[GeneratedMidiClip]
+    # Suggested mix; the studio uses 0 dB, centre and no send when absent.
+    volumeDb: float | None = Field(default=None, ge=-60, le=6)
+    pan: float | None = Field(default=None, ge=-1, le=1)
+    reverbSend: float | None = Field(default=None, ge=0, le=1)
 
 
 GeneratorId = Literal[

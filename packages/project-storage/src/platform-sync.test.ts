@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { MusicProject } from "@synaptix/project-model";
+import { createEmptyProject, type MusicProject } from "@synaptix/project-model";
 import {
   HybridProjectRepository,
   InMemoryProjectSyncQueue,
@@ -44,7 +44,7 @@ test("accepted uploads leave the persistent queue", async () => {
   };
   const local = { save: async () => undefined, load: async () => null };
   const repository = new HybridProjectRepository(local, platform, queue);
-  await repository.saveAndQueue(envelope("project-1", "revision-1"), null, "key-1", OPERATION_ID);
+  await repository.saveAndQueue(envelope("7f1c2a4e-8d3b-4f6a-9e21-5b0c7d8e9f10", "revision-1"), null, "key-1", OPERATION_ID);
 
   const results = await repository.drain();
 
@@ -54,7 +54,7 @@ test("accepted uploads leave the persistent queue", async () => {
 
 test("conflicting uploads remain queued for explicit resolution", async () => {
   const queue = new InMemoryProjectSyncQueue();
-  const remote = envelope("project-1", "revision-remote");
+  const remote = envelope("7f1c2a4e-8d3b-4f6a-9e21-5b0c7d8e9f10", "revision-remote");
   const platform: PlatformProjectRepository = {
     listProjects: async () => [],
     getProject: async () => remote,
@@ -68,7 +68,7 @@ test("conflicting uploads remain queued for explicit resolution", async () => {
   const local = { save: async () => undefined, load: async () => null };
   const repository = new HybridProjectRepository(local, platform, queue);
   await repository.saveAndQueue(
-    envelope("project-1", "revision-local"),
+    envelope("7f1c2a4e-8d3b-4f6a-9e21-5b0c7d8e9f10", "revision-local"),
     "revision-0",
     "key-1",
     OPERATION_ID
@@ -78,4 +78,35 @@ test("conflicting uploads remain queued for explicit resolution", async () => {
 
   assert.equal(results[0]?.outcome, "conflict");
   assert.equal((await queue.list()).length, 1);
+});
+
+test("uploads queued for browser-only projects are dropped instead of blocking the queue", async () => {
+  const queue = new InMemoryProjectSyncQueue();
+  const uploaded: string[] = [];
+  const platform = {
+    listProjects: async () => [],
+    getProject: async () => null,
+    uploadRevision: async (envelope: { projectId: string; revision: { revisionId: string } }) => {
+      uploaded.push(envelope.projectId);
+      return { outcome: "accepted" as const, currentRevisionId: envelope.revision.revisionId };
+    }
+  };
+  const local = { save: async () => undefined, load: async () => null };
+  const hybrid = new HybridProjectRepository(local, platform as never, queue);
+  const demo = createEmptyProject("local-demo");
+  const real = createEmptyProject("7f1c2a4e-8d3b-4f6a-9e21-5b0c7d8e9f11");
+  for (const project of [demo, real]) {
+    await queue.enqueue({
+      operationId: `op-${project.projectId}`, projectId: project.projectId, expectedRevisionId: null,
+      idempotencyKey: `key-${project.projectId}`, queuedAt: "2026-09-26T00:00:00.000Z", attemptCount: 0,
+      envelope: { projectId: project.projectId, project, revision: {
+        revisionId: project.revisionId, parentRevisionId: null, transactionId: "t", commandIds: [],
+        createdAt: "2026-09-26T00:00:00.000Z", checksumSha256: "a".repeat(64) } }
+    });
+  }
+
+  await hybrid.drain();
+  assert.deepEqual(uploaded, [real.projectId]);
+  assert.deepEqual(await queue.list(), []);
+  assert.equal(await hybrid.queueUnsyncedHead("local-demo"), "blocked");
 });

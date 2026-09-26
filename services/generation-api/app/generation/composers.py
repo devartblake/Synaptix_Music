@@ -13,8 +13,10 @@ import os
 from collections.abc import Mapping
 from typing import Any, Protocol
 
+from app.generation.orchestration import INSTRUMENTS, LAYER_ROLES, ROLE_INSTRUMENTS, ROLES
 from app.generation.plan import ArrangementPlan, render_plan
 from app.generation.procedural import generate_arrangement
+from app.generation.theory import parse_key
 from app.models.generation import GenerationProposal, GenerationRequest
 
 logger = logging.getLogger(__name__)
@@ -48,9 +50,10 @@ loopable electronic game-music arrangements as structured plans; software render
 into MIDI for four instruments: drums, bass, harmony (chords) and a lead melody.
 
 How the plan becomes music:
-- All pitches are natural-minor scale degrees of the requested key (0 = tonic, 1-6 up the \
-scale, 7 = the octave, negative numbers go below). Chords are triads built on the degree you \
-give, so choose degrees for good voice leading and cadences (e.g. 0, 5, 3, 6 or 0, 3, 4, 0).
+- All pitches are scale degrees of the requested key and mode (0 = tonic, 1-6 up the scale, \
+7 = the octave, negative numbers go below). Chords are the scale's own triads built on the \
+degree you give, so choose degrees for good voice leading and cadences, and lean on the \
+degrees that give the mode its colour.
 - Each bar has 16 steps of a 16th note. Drum and bass patterns are 16-character strings.
 - The melody is a phrase of one or more bars that repeats across its section, so write \
 memorable, singable motifs with rests, a clear rhythm and a sense of question and answer.
@@ -61,14 +64,28 @@ to shape the game moment: intro (establish), main (the loop players hear most), 
 (clocks running low, higher energy and denser rhythm), victory (a bright resolving payoff).
 - Match the mood, energy and complexity you are given, and follow the creative brief when \
 there is one. Vary sections so the arrangement builds, but keep the main loop steady.
-- Keep the kick and snare readable under gameplay; reserve accents for downbeats and fills."""
+- Keep the kick and snare readable under gameplay; reserve accents for downbeats and fills.
+
+Orchestration:
+- Choose an ensemble: one instrument per role. Drums, bass, harmony and melody always play. \
+Supporting roles are optional and are written from your chords: sub-bass (held low roots), \
+pad (sustained chords), arpeggio (broken chords), countermelody (a line under the lead), \
+stabs (short chord hits; a fanfare when a section starts) and sparkle (high flourishes).
+- Pick 1 to 4 supporting roles that suit the mood and mode, and bring them in and out with \
+each section's layers so the arrangement builds (e.g. an intro with pad and sparkle, a \
+victory adding stabs). Use a different instrument for each role where you can.
+- Instruments that suit each role (use these exact ids):
+""" + "\n".join(f"  - {role}: {', '.join(ROLE_INSTRUMENTS[role])}" for role in ROLES)
 
 
 def _user_prompt(request: GenerationRequest) -> str:
     brief = request.brief.strip() if request.brief else "(none)"
+    key = parse_key(request.key)
+    loop = ", ".join(str(degree) for degree in key.progression)
     return (
         f"Compose an arrangement plan.\n"
-        f"Key: {request.key}\n"
+        f"Key: {key.name} (notes {key.note_names()}; {key.character})\n"
+        f"A chord loop that suits this mode, in scale degrees: {loop}\n"
         f"Tempo: {request.tempo} BPM\n"
         f"Length: {request.durationBars} bars in 4/4\n"
         f"Mood: {request.mood}\n"
@@ -175,6 +192,19 @@ def local_plan_schema() -> dict[str, Any]:
     )
     section["melody"]["items"].update(minItems=1, maxItems=8)
     schema["properties"]["sections"].update(minItems=3, maxItems=6)
+    entry = defs["PlanEnsembleEntry"]["properties"]
+    entry["role"] = {"type": "string", "enum": list(ROLES)}
+    entry["instrument"] = {"type": "string", "enum": list(INSTRUMENTS)}
+    # Four core roles plus at least one supporting layer.
+    schema["properties"]["ensemble"].update(minItems=5, maxItems=len(ROLES))
+    # Optional fields are easy for a small model to skip; without an ensemble, section layers
+    # have no instruments and nothing beyond the four core parts is written.
+    schema["required"] = sorted({*schema.get("required", []), "ensemble"})
+    section["layers"] = {
+        "type": "array",
+        "items": {"type": "string", "enum": list(LAYER_ROLES)},
+        "maxItems": len(LAYER_ROLES),
+    }
     return schema
 
 
@@ -211,7 +241,15 @@ class LocalComposer:
                     "stream": False,
                     "format": local_plan_schema(),
                     # Ollama's default 4K context can cut a full plan off mid-way.
-                    "options": {"temperature": 0.7, "seed": request.seed, "num_ctx": 8192},
+                    "options": {
+                        "temperature": 0.7,
+                        "seed": request.seed,
+                        "num_ctx": 8192,
+                        # A plan is ~1,000 tokens. The cap ends any runaway generation,
+                        # which Ollama would otherwise finish after we time out, delaying
+                        # every request queued behind it.
+                        "num_predict": 4096,
+                    },
                     "messages": [
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": _user_prompt(request)},

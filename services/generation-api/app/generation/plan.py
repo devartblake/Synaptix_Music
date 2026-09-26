@@ -11,22 +11,25 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.generation.procedural import (
-    MINOR_SCALE,
-    ROOT_MIDI_BY_KEY,
-    TICKS_PER_BAR,
-    TICKS_PER_QUARTER_NOTE,
+from app.generation.orchestration import (
+    CORE_ROLES,
+    LAYER_ROLES,
+    ROLE_INSTRUMENTS,
+    PlannedBar,
+    assemble_tracks,
+    default_layers,
+    instrument_for,
 )
+from app.generation.procedural import TICKS_PER_BAR, TICKS_PER_QUARTER_NOTE
+from app.generation.theory import Key, parse_key
 from app.models.generation import (
-    GeneratedMidiClip,
     GeneratedSection,
-    GeneratedTrack,
     GenerationProposal,
     GenerationProvenance,
     GenerationRequest,
     GeneratorId,
 )
-from app.models.project import MidiNote, MusicalPosition, MusicalRange
+from app.models.project import MidiNote
 
 STEPS_PER_BAR = 16
 STEP_TICKS = TICKS_PER_BAR // STEPS_PER_BAR
@@ -43,7 +46,7 @@ class PlanDrums(BaseModel):
 class PlanMelodyNote(BaseModel):
     step: int = Field(description="Start step within the bar, 0-15")
     degree: int = Field(
-        description="Natural-minor scale degree: 0 = tonic, 1-6 up the scale, 7 = octave, "
+        description="Scale degree of the requested key: 0 = tonic, 1-6 up the scale, 7 = octave, "
         "negative values go below the tonic (range -7 to 14)"
     )
     length: int = Field(description="Duration in 16th-note steps, 1-16")
@@ -56,7 +59,7 @@ class PlanSection(BaseModel):
     bars: int = Field(description="Length in bars, at least 1")
     energy: float = Field(description="0 (sparse, soft) to 1 (full, loud)")
     chords: list[int] = Field(
-        description="One natural-minor scale degree (0-6) per bar for the chord root; "
+        description="One scale degree (0-6) of the requested key per bar for the chord root; "
         "repeats if shorter than the section"
     )
     harmony: Literal["sustained", "stabs", "arpeggio"]
@@ -68,10 +71,26 @@ class PlanSection(BaseModel):
         description="A phrase as a list of bars (each a list of notes); it repeats across "
         "the section. Use an empty bar for rests."
     )
+    layers: list[str] | None = Field(
+        default=None,
+        description="Supporting roles from the ensemble that play in this section (e.g. "
+        "['pad', 'sparkle'] for an intro). Leave out to use sensible defaults.",
+    )
+
+
+class PlanEnsembleEntry(BaseModel):
+    role: str = Field(description="drums, bass, harmony, melody, or a supporting role")
+    instrument: str = Field(description="A studio instrument id suited to the role")
 
 
 class ArrangementPlan(BaseModel):
     title: str
+    ensemble: list[PlanEnsembleEntry] = Field(
+        default_factory=list,
+        description="The instrument for each role. Core roles (drums, bass, harmony, melody) "
+        "always play; add supporting roles (sub-bass, pad, arpeggio, countermelody, stabs, "
+        "sparkle) to widen the arrangement.",
+    )
     sections: list[PlanSection]
 
 
@@ -84,10 +103,8 @@ def _steps(pattern: str) -> str:
     return (pattern.strip() + "." * STEPS_PER_BAR)[:STEPS_PER_BAR]
 
 
-def _pitch(root: int, degree: int) -> int:
-    degree = max(-7, min(14, degree))
-    octave, index = divmod(degree, len(MINOR_SCALE))
-    return max(0, min(127, root + 12 * octave + MINOR_SCALE[index]))
+def _pitch(key: Key, degree: int, octave: int = 0) -> int:
+    return key.pitch(max(-7, min(14, degree)), octave)
 
 
 def _fit_sections(sections: list[PlanSection], total_bars: int) -> list[tuple[PlanSection, int]]:
@@ -139,7 +156,9 @@ def render_plan(
     generator_version: str,
     model: str | None = None,
 ) -> GenerationProposal:
-    root = ROOT_MIDI_BY_KEY[request.key]
+    key = parse_key(request.key)
+    ensemble = plan_ensemble(plan)
+    planned_bars: list[PlannedBar] = []
     fitted = _fit_sections(plan.sections, request.durationBars)
     clip_end = request.durationBars * TICKS_PER_BAR
     drums, bass, harmony, melody = (_Track(r) for r in ("drums", "bass", "harmony", "melody"))
@@ -160,6 +179,15 @@ def render_plan(
         base_velocity = 64 + round(energy * 40)
         chords = [max(0, min(6, degree)) for degree in section.chords] or [0]
         phrase = section.melody or [[]]
+        layers = (
+            frozenset(role for role in section.layers if role in ensemble and role in LAYER_ROLES)
+            if section.layers is not None
+            else default_layers(ensemble, section.kind)
+        )
+        planned_bars.extend(
+            PlannedBar(bar + offset, chords[offset % len(chords)], section.kind, energy, layers)
+            for offset in range(length)
+        )
         patterns = {
             KICK: _steps(section.drums.kick),
             SNARE: _steps(section.drums.snare),
@@ -180,7 +208,7 @@ def render_plan(
 
             for step, hit in enumerate(bass_steps):
                 if hit in "xo":
-                    pitch = _pitch(root - 12, chord) + (12 if hit == "o" else 0)
+                    pitch = _pitch(key, chord, octave=-1) + (12 if hit == "o" else 0)
                     length_steps = next(
                         (i for i in range(1, STEPS_PER_BAR - step) if bass_steps[step + i] != "."),
                         STEPS_PER_BAR - step,
@@ -193,7 +221,7 @@ def render_plan(
                         clip_end,
                     )
 
-            triad = [_pitch(root, chord + interval) for interval in (0, 2, 4)]
+            triad = list(key.triad(chord))
             if section.harmony == "sustained":
                 for pitch in triad:
                     harmony.add(pitch, start, TICKS_PER_BAR, base_velocity - 12, clip_end)
@@ -221,24 +249,13 @@ def render_plan(
                 step = max(0, min(STEPS_PER_BAR - 1, note.step))
                 length_steps = max(1, min(STEPS_PER_BAR, note.length))
                 melody.add(
-                    _pitch(root + 12, note.degree),
+                    _pitch(key, note.degree, octave=1),
                     start + step * STEP_TICKS,
                     length_steps * STEP_TICKS - 20,
                     base_velocity + (16 if note.accent else 4),
                     clip_end,
                 )
         bar += length
-
-    def clip(track: _Track) -> GeneratedMidiClip:
-        return GeneratedMidiClip(
-            id=f"clip-{track.role}-arrangement",
-            name=f"{track.role.title()} Arrangement",
-            range=MusicalRange(
-                start=MusicalPosition(bar=0, beat=0, tick=0), durationTicks=clip_end
-            ),
-            loop=False,
-            notes=track.notes,
-        )
 
     warnings: list[str] = []
     if not melody.notes:
@@ -253,36 +270,13 @@ def render_plan(
         key=request.key,
         ticksPerQuarterNote=TICKS_PER_QUARTER_NOTE,
         sections=sections,
-        tracks=[
-            GeneratedTrack(
-                id="track-drums",
-                role="drums",
-                name="Drums",
-                instrumentId="synaptix-drum-machine-01",
-                clips=[clip(drums)],
-            ),
-            GeneratedTrack(
-                id="track-bass",
-                role="bass",
-                name="Bass",
-                instrumentId="synaptix-bass-synth-01",
-                clips=[clip(bass)],
-            ),
-            GeneratedTrack(
-                id="track-harmony",
-                role="harmony",
-                name="Harmony",
-                instrumentId="synaptix-poly-synth-01",
-                clips=[clip(harmony)],
-            ),
-            GeneratedTrack(
-                id="track-melody",
-                role="melody",
-                name="Lead Melody",
-                instrumentId="synaptix-lead-synth-01",
-                clips=[clip(melody)],
-            ),
-        ],
+        tracks=assemble_tracks(
+            key,
+            request.durationBars,
+            ensemble,
+            {track.role: track.notes for track in (drums, bass, harmony, melody)},
+            planned_bars,
+        ),
         provenance=GenerationProvenance(
             generatorId=generator_id,
             generatorVersion=generator_version,
@@ -291,3 +285,12 @@ def render_plan(
         ),
         warnings=warnings,
     )
+
+
+def plan_ensemble(plan: ArrangementPlan) -> dict:
+    """The plan's instrument choices, keeping core roles and dropping unsuitable instruments."""
+    ensemble = {role: ROLE_INSTRUMENTS[role][0] for role in CORE_ROLES}
+    for entry in plan.ensemble:
+        if entry.role in ROLE_INSTRUMENTS:
+            ensemble[entry.role] = instrument_for(entry.role, entry.instrument)
+    return ensemble

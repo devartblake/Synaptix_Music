@@ -17,7 +17,7 @@ import {
   GenerationProposalSchema,
   type GenerationProposal,
   type GeneratedTrack
-} from "./index";
+} from "./index.ts";
 
 export interface GenerationTransactionOptions {
   transactionId?: string;

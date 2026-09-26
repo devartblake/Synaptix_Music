@@ -37,8 +37,9 @@ export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
       kind: "instrument",
       muted: false,
       solo: false,
-      volumeDb: 0,
-      pan: 0,
+      volumeDb: track.volumeDb ?? 0,
+      pan: track.pan ?? 0,
+      ...(track.reverbSend != null ? { reverbSend: track.reverbSend } : {}),
       devices: [{ id: `device-${track.id}`, deviceType: track.instrumentId, deviceVersion: "1.0.0", enabled: true, parameters: [] }],
       clips: track.clips.map((clip) => ({ ...structuredClone(clip), kind: "midi" as const }))
     }));

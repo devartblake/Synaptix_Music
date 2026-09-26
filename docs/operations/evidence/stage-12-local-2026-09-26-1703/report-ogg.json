@@ -1,0 +1,35 @@
+{
+  "certificationVersion": "1.0.0",
+  "passed": true,
+  "certifiedAt": "2026-09-26T17:03:11.992Z",
+  "renderWorkerApiUrl": "http://127.0.0.1:8200",
+  "jobId": "f6496cfe-548b-45b4-83cc-e88ed42342a7",
+  "renderId": "df099d0b-23df-4687-8ae4-f16be3f3fbe3",
+  "projectId": "04614e08-a4aa-4992-b40b-775d0b2d7916",
+  "revisionId": "04614e08-a4aa-4992-b40b-775d0b2d7916-cert-1",
+  "outputFormat": "ogg",
+  "artifacts": [
+    {
+      "artifactId": "11611e52-a111-452f-8815-22e4206d9232",
+      "fileName": "master.ogg",
+      "mediaType": "audio/ogg",
+      "byteLength": 142581,
+      "checksumSha256": "9209172b31ba305f09203e6d1c1d66804339022eb40dca16c55e87883fdb0e99"
+    },
+    {
+      "artifactId": "d698a204-3b1c-4bde-a475-92b334e1311c",
+      "fileName": "preview.mp3",
+      "mediaType": "audio/mpeg",
+      "byteLength": 120429,
+      "checksumSha256": "8ce4b663909c7ac3c99df1e971ee2378b76523e2faba15181b6f327be44d4afb"
+    },
+    {
+      "artifactId": "8a31445c-f324-4564-bf94-d955438604c7",
+      "fileName": "artifact-manifest.json",
+      "mediaType": "application/vnd.synaptix.render-manifest+json",
+      "byteLength": 1328,
+      "checksumSha256": "d568e316090f4a9906fc4ccee1efd5e779e5805659bf37aba6e4bd68671a4313"
+    }
+  ],
+  "artifactManifestChecksumSha256": "d568e316090f4a9906fc4ccee1efd5e779e5805659bf37aba6e4bd68671a4313"
+}

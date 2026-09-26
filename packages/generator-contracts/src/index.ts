@@ -19,14 +19,44 @@ const MidiNoteSchema = z.object({
   durationTicks: z.number().int().positive()
 });
 
+/** Key tonics, spelled as the generation service and studio display them. */
+export const KEY_TONICS = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"] as const;
+
+/** Scale modes, with how each tends to feel. Mirrors app/generation/theory.py. */
+export const KEY_MODES = [
+  { id: "major", label: "Major", character: "Bright, heroic, optimistic" },
+  { id: "minor", label: "Minor", character: "Serious, driven, a little melancholy" },
+  { id: "dorian", label: "Dorian", character: "Cool and adventurous" },
+  { id: "phrygian", label: "Phrygian", character: "Dark, exotic, menacing" },
+  { id: "lydian", label: "Lydian", character: "Dreamy, magical, floating" },
+  { id: "mixolydian", label: "Mixolydian", character: "Bluesy, playful, upbeat" },
+  { id: "harmonic minor", label: "Harmonic minor", character: "Dramatic, villainous" }
+] as const;
+
+export type KeyTonic = (typeof KEY_TONICS)[number];
+export type KeyMode = (typeof KEY_MODES)[number]["id"];
+export type GenerationKey = `${KeyTonic} ${KeyMode}`;
+
+export const GENERATION_KEYS = KEY_MODES.flatMap((mode) =>
+  KEY_TONICS.map((tonic) => `${tonic} ${mode.id}` as GenerationKey)
+) as [GenerationKey, ...GenerationKey[]];
+
+export function composeKey(tonic: KeyTonic, mode: KeyMode): GenerationKey {
+  return `${tonic} ${mode}`;
+}
+
+/** Splits "F# harmonic minor" into its tonic and mode. */
+export function splitKey(key: GenerationKey): { tonic: KeyTonic; mode: KeyMode } {
+  const space = key.indexOf(" ");
+  return { tonic: key.slice(0, space) as KeyTonic, mode: key.slice(space + 1) as KeyMode };
+}
+
 export const GenerationRequestSchema = z.object({
   projectId: z.string().min(1),
   genre: z.literal("electronic-trivia").default("electronic-trivia"),
   mood: z.enum(["upbeat", "tense", "triumphant"]).default("upbeat"),
-  tempo: z.number().int().min(90).max(140).default(120),
-  key: z
-    .enum(["C minor", "D minor", "E minor", "F minor", "G minor", "A minor"])
-    .default("D minor"),
+  tempo: z.number().int().min(60).max(200).default(120),
+  key: z.enum(GENERATION_KEYS).default("D minor"),
   durationBars: z.number().int().min(8).max(64).default(16),
   energy: z.number().min(0).max(1).default(0.6),
   complexity: z.number().min(0).max(1).default(0.5),
@@ -57,12 +87,31 @@ export const GeneratedMidiClipSchema = z.object({
   notes: z.array(MidiNoteSchema)
 });
 
+/** Track roles: the four core parts plus supporting layers written from the chords. */
+export const GeneratedTrackRoleSchema = z.enum([
+  "drums",
+  "bass",
+  "sub-bass",
+  "harmony",
+  "pad",
+  "arpeggio",
+  "melody",
+  "countermelody",
+  "stabs",
+  "sparkle"
+]);
+
 export const GeneratedTrackSchema = z.object({
   id: z.string().min(1),
-  role: z.enum(["drums", "bass", "harmony", "melody"]),
+  role: GeneratedTrackRoleSchema,
   name: z.string().min(1),
+  /** A studio instrument catalog device type. */
   instrumentId: z.string().min(1),
-  clips: z.array(GeneratedMidiClipSchema)
+  clips: z.array(GeneratedMidiClipSchema),
+  /** Suggested mix; the studio uses 0 dB, centre and no send when absent. */
+  volumeDb: z.number().min(-60).max(6).nullable().optional(),
+  pan: z.number().min(-1).max(1).nullable().optional(),
+  reverbSend: z.number().min(0).max(1).nullable().optional()
 });
 
 export const GenerationProposalSchema = z.object({
@@ -89,4 +138,4 @@ export type GenerationRequest = z.infer<typeof GenerationRequestSchema>;
 export type GenerationProposal = z.infer<typeof GenerationProposalSchema>;
 export type GeneratedTrack = z.infer<typeof GeneratedTrackSchema>;
 
-export * from "./to-project-transaction";
+export * from "./to-project-transaction.ts";

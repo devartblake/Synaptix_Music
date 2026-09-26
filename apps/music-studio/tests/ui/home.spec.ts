@@ -14,7 +14,8 @@ test("home opens the demo and resumes an edited local project", async ({ page })
   await expect(page.getByRole("heading", { name: "Synaptix Generated Arrangement" })).toBeVisible();
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await page.getByRole("spinbutton", { name: "Tempo" }).fill("124");
-  await expect(page.getByText("Revision saved and queued", { exact: false })).toBeVisible();
+  // The demo is a browser-only project: saved locally, never queued for cloud upload.
+  await expect(page.getByText("demo projects stay in this browser", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "Back to projects" }).click();
   const project = page
     .getByRole("link")
