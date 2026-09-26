@@ -73,7 +73,7 @@ export {
 
 import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
 import type { PluginAvailabilityState } from "@synaptix/project-model/plugin";
-import type { MusicProjectV2, TrackV2 } from "@synaptix/project-model/v2";
+import { projectV2BuiltinView, type MusicProjectV2, type TrackV2 } from "@synaptix/project-model/v2";
 import * as Tone from "tone";
 
 import {
@@ -132,19 +132,7 @@ export interface BrowserAudioEngineOptions {
  * Project Schema v1 view used by the built-in instrument runtime. Plug-in devices are
  * realized separately as insert chains, so only builtin devices are kept here.
  */
-export function builtinProjectView(project: MusicProject | MusicProjectV2): MusicProject {
-  if (project.schemaVersion === 1) return project;
-  return {
-    ...project,
-    schemaVersion: 1,
-    tracks: project.tracks.map((track) => ({
-      ...track,
-      devices: track.devices
-        .filter((device) => device.plugin.runtimeKind === "builtin")
-        .map(({ id, deviceType, deviceVersion, enabled, parameters }) => ({ id, deviceType, deviceVersion, enabled, parameters }))
-    }))
-  };
-}
+export const builtinProjectView = projectV2BuiltinView;
 
 export interface AudioTransport {
   initialize(): Promise<void>;

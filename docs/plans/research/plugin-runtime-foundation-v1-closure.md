@@ -42,9 +42,9 @@
 
 | Item | Deferred to |
 | --- | --- |
-| Studio/UI adoption of v2: inspector controls for plug-in devices, platform sync, backend API and render-worker loaders accepting v2, v1 -> v2 migration on open | Next milestone (v2 cutover); storage and history already support it |
-| Playing frozen audio in the browser when a plug-in is unavailable | v2 cutover (requires artifact download in the studio) |
-| Wiring `assessPluginProductionEligibility` into the render worker | v2 cutover (the worker only loads v1 today, so browser-only plug-ins cannot reach it) |
+| Studio/UI adoption of v2, sync gating, render-worker v2 loading | Done in Phase 1 of `docs/plans/implementation/project-schema-v2-cutover.md` |
+| Platform API accepting v2 revisions | Cutover Phase 2 (separate platform service) |
+| Freeze workflow, frozen playback in the render worker and the browser | Cutover Phase 2; the worker fails closed on live plug-ins until then |
 | WAM adapter (Slice E) | P2 |
 | Cross-origin isolation, SharedArrayBuffer, browser compatibility matrix (R8) and JS vs WASM benchmarks (R9) | P3 |
 | Native VST3 bridge | P4 |

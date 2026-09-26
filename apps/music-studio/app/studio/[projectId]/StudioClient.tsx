@@ -17,8 +17,10 @@ import {
   SetTrackVolumeEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
+import { liftEditorCommandToV2, type PluginEditorCommand } from "@synaptix/command-system/plugin";
 import {
   BrowserAudioEngine,
+  builtinProjectView,
   createFrequencyDroneTrack,
   DEVICE_PARAMETER_DEFINITIONS,
   FREQUENCY_DRONE_DEVICE_TYPE,
@@ -30,7 +32,8 @@ import {
   FILTER_FREQUENCY_PARAMETER,
   primaryDevice,
   resolveEffectiveInstrumentSettings,
-  REVERB_SEND_PARAMETER
+  REVERB_SEND_PARAMETER,
+  type PluginRuntimeStatus
 } from "@synaptix/daw-engine";
 import type { GenerationProposal } from "@synaptix/generator-contracts";
 import {
@@ -40,10 +43,17 @@ import {
   type MusicProject,
   type Track
 } from "@synaptix/project-model";
-import { IndexedDbProjectStorage, LocalProjectRepository } from "@synaptix/project-storage";
+import { toProjectV2, type MusicProjectV2 } from "@synaptix/project-model/v2";
+import {
+  IndexedDbProjectStorage,
+  LocalProjectRepository,
+  parseVersionedMusicProject,
+  type StoredMusicProject
+} from "@synaptix/project-storage";
 import {
   HybridProjectRepository,
   IndexedDbProjectSyncQueue,
+  platformEnvelopeConverter,
   type PlatformRevisionEnvelope,
   type RevisionUploadResult
 } from "@synaptix/project-storage/platform-sync";
@@ -56,10 +66,17 @@ import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
 import { MasterMeter } from "./MasterMeter";
 import { MixerDrawer } from "./MixerDrawer";
 import { PianoRoll } from "./PianoRoll";
+import { PluginRack } from "./PluginRack";
 import { ArrangementTimeline } from "./ArrangementTimeline";
 import { TransportPosition } from "./TransportPosition";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
 import { arrangementBars } from "../../../lib/editor/timeline-model";
+
+/**
+ * The project schema version the platform API accepts for revision uploads. Until the platform
+ * accepts v2, plug-in projects are saved locally only; plain projects are uploaded as v1.
+ */
+const PLATFORM_PROJECT_SCHEMA_VERSION = process.env.NEXT_PUBLIC_SYNAPTIX_PLATFORM_PROJECT_SCHEMA_VERSION === "2" ? 2 : 1;
 
 const TRACK_NAMES = ["Drums", "Bass", "Harmony", "Lead Melody"] as const;
 const TOTAL_BARS = 16;
@@ -94,7 +111,11 @@ function seedOptions(projectId: string): CreateEmptyProjectOptions {
   return { revisionId: `${projectId}-seed-revision`, now: SEED_TIMESTAMP };
 }
 
-function createStarterProject(projectId: string, options: CreateEmptyProjectOptions = {}): MusicProject {
+function createStarterProject(projectId: string, options: CreateEmptyProjectOptions = {}): MusicProjectV2 {
+  return toProjectV2(createStarterProjectV1(projectId, options));
+}
+
+function createStarterProjectV1(projectId: string, options: CreateEmptyProjectOptions = {}): MusicProject {
   const project = createEmptyProject(projectId, { name: "Synaptix Generated Arrangement", ...options });
   const patterns = [[36, 46, 38, 42], [45, 45, 48, 50], [57, 60, 64, 67], [72, 76, 79, 77]] as const;
   project.transport.loopRange = { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: TOTAL_BARS * TICKS_PER_BAR };
@@ -130,6 +151,7 @@ const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
 };
 
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
+type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
 type Workspace = "arrangement" | "generation" | "adaptive";
 
@@ -158,16 +180,22 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     if (!open) mixerToggleRef.current?.focus();
   }
   const engine = useMemo(() => new BrowserAudioEngine(), []);
-  const localRef = useRef<LocalProjectRepository | null>(null);
+  const localRef = useRef<LocalProjectRepository<StoredMusicProject> | null>(null);
   const hybridRef = useRef<HybridProjectRepository | null>(null);
   const coordinatorRef = useRef<ProjectSyncCoordinator | null>(null);
   const latestEnvelopeRef = useRef<PlatformRevisionEnvelope | null>(null);
-  const historyRef = useRef(new EditorCommandHistory());
+  const historyRef = useRef(new EditorCommandHistory<MusicProjectV2>());
+  const [pluginStatuses, setPluginStatuses] = useState<PluginRuntimeStatus[]>([]);
+  // Built-in controls and the v1-typed workspaces read a view without plug-in devices.
+  const builtinView = useMemo(() => builtinProjectView(project), [project]);
+  const deviceGestureRef = useRef<DeviceGesture | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const local = new LocalProjectRepository(new IndexedDbProjectStorage());
-    const hybrid = new HybridProjectRepository(local, new HttpPlatformProjectRepository(), new IndexedDbProjectSyncQueue());
+    const local = new LocalProjectRepository<StoredMusicProject>(new IndexedDbProjectStorage(), { parse: parseVersionedMusicProject });
+    const hybrid = new HybridProjectRepository(local, new HttpPlatformProjectRepository(), new IndexedDbProjectSyncQueue(), {
+      toPlatformEnvelope: platformEnvelopeConverter(PLATFORM_PROJECT_SCHEMA_VERSION)
+    });
     const coordinator = new ProjectSyncCoordinator(hybrid, setSync);
     localRef.current = local;
     hybridRef.current = hybrid;
@@ -176,7 +204,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     void hybrid.load(projectId).then((stored) => {
       if (cancelled) return;
       if (stored) {
-        setProject(stored);
+        setProject(toProjectV2(stored));
         setStorageStatus("Loaded local/cloud project");
       } else {
         setProject(createStarterProject(projectId));
@@ -197,6 +225,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   useEffect(() => engine.loadProject(project), [engine, project]);
+  useEffect(() => engine.subscribePluginStatus(setPluginStatuses), [engine]);
   useEffect(() => () => engine.dispose(), [engine]);
 
   useEffect(() => {
@@ -217,20 +246,29 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  async function queueRevision(nextProject: MusicProject, revision: ProjectRevision, expected: string): Promise<void> {
+  async function queueRevision(nextProject: MusicProjectV2, revision: ProjectRevision, expected: string): Promise<void> {
     const envelope: PlatformRevisionEnvelope = { projectId: nextProject.projectId, project: nextProject, revision };
     latestEnvelopeRef.current = envelope;
-    await hybridRef.current?.saveAndQueue(
+    const outcome = await hybridRef.current?.saveAndQueue(
       envelope,
       expected,
       `project-revision:${nextProject.projectId}:${revision.revisionId}`,
       crypto.randomUUID()
     );
+    if (outcome && !outcome.queued) {
+      setStorageStatus("Revision saved locally; cloud sync needs platform support for plug-in projects");
+      return;
+    }
     setStorageStatus("Revision saved and queued");
     await coordinatorRef.current?.drain();
   }
 
-  async function execute(command: EditorCommand): Promise<void> {
+  /** v1 editor commands (tracks, clips, timing) run through an adapter that keeps plug-in data. */
+  function executeV1(command: EditorCommand): Promise<void> {
+    return execute(liftEditorCommandToV2(command));
+  }
+
+  async function execute(command: PluginEditorCommand): Promise<void> {
     const expected = project.revisionId;
     const result = await historyRef.current.execute(project, command);
     setProject(result.project);
@@ -239,12 +277,12 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
 
   async function addFrequencyDrone(frequencyHz: number): Promise<void> {
-    await execute(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));
+    await executeV1(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));
     setWorkspace("arrangement");
   }
 
   async function applyGeneratedVariation(proposal: GenerationProposal, jobId: string): Promise<void> {
-    await execute(new ApplyGeneratedArrangementEditorCommand(proposal, jobId));
+    await executeV1(new ApplyGeneratedArrangementEditorCommand(proposal, jobId));
     setActiveClip(null);
   }
 
@@ -269,7 +307,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   async function useCloud(conflict: RevisionUploadResult): Promise<void> {
     if (conflict.outcome !== "conflict") return;
     await localRef.current?.save(conflict.remote.project, conflict.remote.revision);
-    setProject(conflict.remote.project);
+    setProject(toProjectV2(conflict.remote.project));
     historyRef.current.clear();
     setHistoryVersion((value) => value + 1);
     setSync(INITIAL_SYNC);
@@ -285,6 +323,36 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       `conflict-retry:${envelope.projectId}:${envelope.revision.revisionId}:${conflict.currentRevisionId}`
     );
     await coordinatorRef.current?.drain();
+  }
+
+  function previewDeviceParameter(trackId: string, deviceId: string, parameterId: string, value: number): void {
+    setProject((current) => ({
+      ...current,
+      tracks: current.tracks.map((candidate) => candidate.id !== trackId ? candidate : {
+        ...candidate,
+        devices: candidate.devices.map((candidateDevice) => candidateDevice.id !== deviceId ? candidateDevice : {
+          ...candidateDevice,
+          parameters: candidateDevice.parameters.some((parameter) => parameter.id === parameterId)
+            ? candidateDevice.parameters.map((parameter) => parameter.id === parameterId ? { ...parameter, value } : parameter)
+            : [...candidateDevice.parameters, { id: parameterId, value }]
+        })
+      })
+    }));
+  }
+
+  function beginDeviceGesture(trackId: string, deviceId: string, parameterId: string, initial: number): void {
+    const active = deviceGestureRef.current;
+    // Repeated keydown events continue the same gesture so it stays one undo step.
+    if (active && active.trackId === trackId && active.deviceId === deviceId && active.parameterId === parameterId) return;
+    deviceGestureRef.current = { trackId, deviceId, parameterId, initial };
+  }
+
+  async function endDeviceGesture(trackId: string, deviceId: string, parameterId: string, next: number): Promise<void> {
+    const gesture = deviceGestureRef.current;
+    deviceGestureRef.current = null;
+    if (!gesture || gesture.trackId !== trackId || gesture.deviceId !== deviceId
+      || gesture.parameterId !== parameterId || gesture.initial === next) return;
+    await execute(new SetDeviceParameterEditorCommand(trackId, deviceId, parameterId, gesture.initial, next));
   }
 
   function formatParameterValue(unit: "hz" | "seconds" | "ratio" | "count", value: number): string {
@@ -350,7 +418,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <Button onClick={stop}>Stop</Button>
           <Button disabled={!history.canUndo} onClick={() => void undo()}>Undo</Button>
           <Button disabled={!history.canRedo} onClick={() => void redo()}>Redo</Button>
-          <Button onClick={() => void execute(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}>
+          <Button onClick={() => void executeV1(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}>
             Loop: {project.transport.loopEnabled ? "On" : "Off"}
           </Button>
           <label>Tempo <input type="number" min={20} max={300} value={project.tempoMap[0]?.bpm ?? 120}
@@ -359,7 +427,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               const next = event.currentTarget.valueAsNumber;
               const current = project.tempoMap[0]?.bpm ?? 120;
               if (raw === "" || !Number.isFinite(next) || next < 20 || next > 300 || next === current) return;
-              void execute(new SetTempoEditorCommand(current, next));
+              void executeV1(new SetTempoEditorCommand(current, next));
             }} style={{ width: 64 }} /></label>
           <Button onClick={() => void coordinatorRef.current?.drain()}>Sync now</Button>
         </div>
@@ -425,7 +493,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               tabs={[{ value: "arrangement", label: "Arrangement", panelId: "arrangement-view" },
                 { value: "midi", label: "MIDI editor", panelId: "midi-view", disabled: !activeClip }]} />
             <span className="workspace-spacer" />
-            <TransportPosition engine={engine} project={project} />
+            <TransportPosition engine={engine} project={builtinView} />
             <Badge>Revision {project.revisionId.slice(0, 8)}</Badge>
           </div>}
 
@@ -440,34 +508,45 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       ))}
 
       <div id="arrangement-view" role="tabpanel" aria-labelledby="arrangement-view-tab" hidden={Boolean(activeClip)}>
-      <ArrangementTimeline project={project} engine={engine} onExecute={execute} onEdit={setActiveClip}
-        renderControls={(track) => <>
-          <CommitSlider label="Volume" value={track.volumeDb} min={-36} max={6} step={1} disabled={!hydrated}
-            format={(value) => `${value} dB`} onCommit={(value) => execute(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))} />
-          <CommitSlider label="Pan" value={track.pan} min={-1} max={1} step={0.1} disabled={!hydrated}
-            format={(value) => value.toFixed(1)} onCommit={(value) => execute(new SetTrackPanEditorCommand(track.id, track.pan, value))} />
-          {renderDeviceControls(track)}
-        </>} />
+      <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={setActiveClip}
+        renderControls={(track) => {
+          const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
+          return <>
+            <CommitSlider label="Volume" value={track.volumeDb} min={-36} max={6} step={1} disabled={!hydrated}
+              format={(value) => `${value} dB`} onCommit={(value) => executeV1(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))} />
+            <CommitSlider label="Pan" value={track.pan} min={-1} max={1} step={0.1} disabled={!hydrated}
+              format={(value) => value.toFixed(1)} onCommit={(value) => executeV1(new SetTrackPanEditorCommand(track.id, track.pan, value))} />
+            {renderDeviceControls(track)}
+            {pluginTrack && <PluginRack track={pluginTrack}
+              statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
+              onExecute={(command) => void execute(command)}
+              gestures={{
+                begin: beginDeviceGesture,
+                preview: previewDeviceParameter,
+                end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
+              }} />}
+          </>;
+        }} />
       </div>
 
       <div id="midi-view" role="tabpanel" aria-labelledby="midi-view-tab" hidden={!activeClip}>
       {activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine}
-        project={project}
+        project={builtinView}
         trackId={activeClip.trackId}
         clipId={activeClip.clipId}
-        onExecute={execute}
+        onExecute={executeV1}
         onClose={() => setActiveClip(null)}
       />}
       </div>
       </>}
 
       {workspace === "generation" && <GenerationWorkspace
-        project={project}
+        project={builtinView}
         onAddDrone={addFrequencyDrone}
         onApply={applyGeneratedVariation}
         onClose={() => setWorkspace("arrangement")}
       />}
-      {workspace === "adaptive" && <AdaptiveStatesWorkspace project={project} onClose={() => setWorkspace("arrangement")} />}
+      {workspace === "adaptive" && <AdaptiveStatesWorkspace project={builtinView} onClose={() => setWorkspace("arrangement")} />}
         </section>
 
         <aside id="studio-inspector" className="studio-inspector" aria-label="Project inspector" hidden={!panelLayout.inspectorVisible}>
@@ -478,7 +557,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <dl className="property-list">
             <div className="property-row"><dt>Project</dt><dd>{project.projectId}</dd></div>
             <div className="property-row"><dt>Tracks</dt><dd>{project.tracks.length}</dd></div>
-            <div className="property-row"><dt>Length</dt><dd>{arrangementBars(project)} bars</dd></div>
+            <div className="property-row"><dt>Length</dt><dd>{arrangementBars(builtinView)} bars</dd></div>
             <div className="property-row"><dt>Tempo</dt><dd>{project.tempoMap[0]?.bpm ?? 120} BPM</dd></div>
             <div className="property-row"><dt>Sync</dt><dd>{syncLabel}</dd></div>
           </dl>
@@ -494,9 +573,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </section>
         </aside>
       </div>
-      {mixerOpen && <MixerDrawer project={project} engine={engine} storageStatus={storageStatus}
+      {mixerOpen && <MixerDrawer project={builtinView} engine={engine} storageStatus={storageStatus}
         height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
-        syncLabel={syncLabel} onExecute={execute} onClose={() => changeMixerOpen(false)} />}
+        syncLabel={syncLabel} onExecute={executeV1} onClose={() => changeMixerOpen(false)} />}
     </main>
   );
 }

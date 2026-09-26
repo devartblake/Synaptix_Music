@@ -1,14 +1,16 @@
 import type { MusicProject } from "@synaptix/project-model";
+import type { MusicProjectV2 } from "@synaptix/project-model/v2";
 import type { RenderJob } from "@synaptix/render-contracts";
 
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
 import { renderProjectOffline, type RenderedArtifact } from "./offline-renderer.ts";
+import { resolveRenderableProject } from "./plugin-render-gate.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
 /** Fetches the exact immutable project revision a render manifest references. */
 export interface ProjectLoader {
-  loadProject(projectId: string, revisionId: string): Promise<MusicProject>;
+  loadProject(projectId: string, revisionId: string): Promise<MusicProject | MusicProjectV2>;
 }
 
 export interface ArtifactSink {
@@ -59,7 +61,8 @@ export async function processNextJob(
       job.manifest.projectId,
       job.manifest.revisionId
     );
-    const rendered = renderProjectOffline(project, job.manifest);
+    const renderable = await resolveRenderableProject(project, job.manifest);
+    const rendered = renderProjectOffline(renderable, job.manifest);
     const outcome = await packageRenderArtifacts(
       rendered,
       job.manifest,
