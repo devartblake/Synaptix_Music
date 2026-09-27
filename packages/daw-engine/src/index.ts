@@ -52,6 +52,7 @@ export {
   PluginCatalog,
   PluginIntegrityError,
   planAutomationEvents,
+  planFrozenFallback,
   planTrackPluginChain,
   pluginInstanceReuseKey,
   resolvePluginParameterValues,
@@ -61,6 +62,7 @@ export {
   type PlannedPluginInsert,
   type PluginAudioContext,
   type PluginCreateContext,
+  type PluginInsertNodes,
   type PluginInsertTarget,
   type PluginInstantiation,
   type PluginMidiEvent,
@@ -84,7 +86,12 @@ export {
 
 import type { MusicProject, MusicalPosition, Track } from "@synaptix/project-model";
 import type { PluginAvailabilityState } from "@synaptix/project-model/plugin";
-import { projectV2BuiltinView, type MusicProjectV2, type TrackV2 } from "@synaptix/project-model/v2";
+import {
+  projectV2BuiltinView,
+  type FrozenPluginArtifactReference,
+  type MusicProjectV2,
+  type TrackV2
+} from "@synaptix/project-model/v2";
 import * as Tone from "tone";
 
 import {
@@ -95,6 +102,7 @@ import {
 import { createDefaultPluginHostRegistry } from "./default-plugins.ts";
 import {
   planAutomationEvents,
+  planFrozenFallback,
   planTrackPluginChain,
   pluginInstanceReuseKey,
   resolvePluginParameterValues,
@@ -102,6 +110,7 @@ import {
   type BrowserPluginHostRegistry,
   type BrowserPluginInstance,
   type PluginAudioContext,
+  type PluginInsertNodes,
   type PluginInsertTarget
 } from "./plugin-host.ts";
 import { SILENT_METER, type MasterMeterSnapshot } from "./production-audio.ts";
@@ -130,14 +139,28 @@ export interface PluginRuntimeStatus {
   trackId: string;
   deviceId: string;
   pluginId: string;
-  availability: PluginAvailabilityState | { status: "loading" } | { status: "inactive"; message: string };
+  availability:
+    | PluginAvailabilityState
+    | { status: "loading" }
+    | { status: "inactive"; message: string }
+    | { status: "frozen"; message: string };
 }
 
 export type PluginStatusListener = (statuses: PluginRuntimeStatus[]) => void;
 
+/**
+ * Supplies a plug-in freeze's audio for frozen playback in the browser (cutover step F). The
+ * source must verify the bytes against `reference.artifactChecksumSha256` before returning them.
+ */
+export interface FrozenAudioSource {
+  load(reference: FrozenPluginArtifactReference): Promise<{ audio: ArrayBuffer; startTick: number }>;
+}
+
 export interface BrowserAudioEngineOptions {
   /** Trusted plug-in hosts. Defaults to the first-party AudioWorklet allowlist. */
   pluginRegistry?: BrowserPluginHostRegistry;
+  /** Where to fetch frozen audio for plug-ins this browser can't load. */
+  frozenAudio?: FrozenAudioSource;
 }
 
 /**
@@ -178,6 +201,10 @@ function clampMidiValue(value: number, minimum: number, maximum: number): number
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function frozenBufferKey(reference: FrozenPluginArtifactReference): string {
+  return `${reference.renderId}/${reference.artifactId}/${reference.artifactChecksumSha256}`;
+}
+
 function browserAudioAvailable(): boolean {
   return typeof window !== "undefined" && typeof window.AudioContext !== "undefined";
 }
@@ -197,9 +224,19 @@ export class BrowserAudioEngine implements AudioTransport {
   private readonly pluginStatusListeners = new Set<PluginStatusListener>();
   private pluginContext: { tone: Tone.BaseContext; adapter: PluginAudioContext } | null = null;
   private graphGeneration = 0;
+  private frozenAudio: FrozenAudioSource | null;
+  private readonly frozenBuffers = new Map<string, Promise<{ buffer: AudioBuffer; startTick: number }>>();
 
   constructor(options: BrowserAudioEngineOptions = {}) {
     this.pluginRegistry = options.pluginRegistry ?? createDefaultPluginHostRegistry();
+    this.frozenAudio = options.frozenAudio ?? null;
+  }
+
+  /** Set (or clear) where frozen audio comes from, e.g. once the player is signed in. */
+  setFrozenAudioSource(source: FrozenAudioSource | null): void {
+    if (this.frozenAudio === source) return;
+    this.frozenAudio = source;
+    if (this.project && this.graph) this.rebuildAudioGraph(this.project);
   }
 
   private ensureGraph(): BrowserProductionAudioGraph {
@@ -269,13 +306,13 @@ export class BrowserAudioEngine implements AudioTransport {
       if (drone) {
         drone.channel.mute = !trackAudible(track, project.tracks);
         this.droneRuntimes.set(track.id, drone);
-        if (pluginTrack) void this.attachPluginChain(pluginTrack, drone, generation, reusable);
+        if (pluginTrack) void this.attachPluginChain(source as MusicProjectV2, pluginTrack, drone, generation, reusable);
         continue;
       }
       const runtime = graph.createInstrument(track);
       runtime.channel.mute = !trackAudible(track, project.tracks);
       this.runtimes.set(track.id, runtime);
-      if (pluginTrack) void this.attachPluginChain(pluginTrack, runtime, generation, reusable);
+      if (pluginTrack) void this.attachPluginChain(source as MusicProjectV2, pluginTrack, runtime, generation, reusable);
 
       for (const clip of track.clips) {
         if (clip.kind !== "midi") continue;
@@ -327,6 +364,7 @@ export class BrowserAudioEngine implements AudioTransport {
    * reported through pluginStatuses(); the canonical project is never modified.
    */
   private async attachPluginChain(
+    project: MusicProjectV2,
     track: TrackV2,
     runtime: PluginInsertTarget,
     generation: number,
@@ -339,6 +377,7 @@ export class BrowserAudioEngine implements AudioTransport {
     const status = (deviceId: string, pluginId: string, availability: PluginRuntimeStatus["availability"]) =>
       this.setPluginStatus({ trackId: track.id, deviceId, pluginId, availability });
 
+    const fallBack = () => void this.playFrozenIfNeeded(project, track, chain, generation);
     const toLoad: { index: number; device: TrackV2["devices"][number] }[] = [];
     planned.forEach(({ device, availability }, index) => {
       if (availability.status === "unavailable") {
@@ -351,7 +390,7 @@ export class BrowserAudioEngine implements AudioTransport {
         reusable.delete(key);
         reused.cancelScheduledParameters(this.pluginAudioContext().currentTime);
         for (const [id, value] of resolvePluginParameterValues(device, reused.descriptor)) reused.setParameter(id, value);
-        this.adoptPluginInstance(track.id, chain, index, device, reused, key);
+        this.adoptPluginInstance(track.id, chain, index, device, reused, key, fallBack);
         status(device.id, device.plugin.pluginId, { status: "available" });
       } else {
         status(device.id, device.plugin.pluginId, { status: "loading" });
@@ -370,11 +409,89 @@ export class BrowserAudioEngine implements AudioTransport {
       if (result.status === "unavailable") {
         status(device.id, device.plugin.pluginId, result.availability);
       } else {
-        this.adoptPluginInstance(track.id, chain, index, device, result.instance, pluginInstanceReuseKey(track.id, device));
+        this.adoptPluginInstance(track.id, chain, index, device, result.instance, pluginInstanceReuseKey(track.id, device), fallBack);
         status(device.id, device.plugin.pluginId, { status: "available" });
       }
       this.emitPluginStatus();
     }
+    await this.playFrozenIfNeeded(project, track, chain, generation);
+  }
+
+  /**
+   * Frozen playback in the browser (cutover step F): when a plug-in on the track can't play
+   * here but a current freeze covers it, the freeze's audio replaces the synth and every
+   * plug-in up to the frozen one; later plug-ins, volume, pan, mute and sends still apply.
+   * If the audio can't be fetched or verified, the plug-in simply stays unavailable.
+   */
+  private async playFrozenIfNeeded(
+    project: MusicProjectV2,
+    track: TrackV2,
+    chain: TrackPluginChain,
+    generation: number
+  ): Promise<void> {
+    const source = this.frozenAudio;
+    if (!source || chain.frozenThrough !== null || chain.isDisposed) return;
+    const planned = planTrackPluginChain(track, this.pluginRegistry).map(({ device }) => ({
+      device,
+      unavailable: this.pluginStatus.get(`${track.id}:${device.id}`)?.availability.status === "unavailable"
+    }));
+    const plan = await planFrozenFallback(project, track.id, planned);
+    if (!plan) return;
+
+    let frozen: { buffer: AudioBuffer; startTick: number };
+    try {
+      frozen = await this.frozenBuffer(source, plan.reference);
+    } catch {
+      this.frozenBuffers.delete(frozenBufferKey(plan.reference));
+      return;
+    }
+    if (generation !== this.graphGeneration || chain.isDisposed || chain.frozenThrough !== null) return;
+
+    const raw = Tone.getContext().rawContext;
+    const input = raw.createGain() as unknown as AudioNode;
+    const output = raw.createGain() as unknown as AudioNode;
+    const player = new Tone.Player(new Tone.ToneAudioBuffer(frozen.buffer)).sync();
+    player.connect(output);
+    const transport = Tone.getTransport();
+    const startSeconds = Tone.Ticks(frozen.startTick).toSeconds();
+    player.start(startSeconds);
+    if (transport.state === "started") {
+      // Synced players only pick up transport starts; join a running transport mid-buffer.
+      const at = transport.seconds + 0.05;
+      const offset = at - startSeconds;
+      if (offset > 0 && offset < frozen.buffer.duration) player.start(at, offset);
+    }
+    const nodes: PluginInsertNodes = { input, output };
+    chain.playFrozen(plan.through, nodes, () => {
+      player.dispose();
+      input.disconnect();
+      output.disconnect();
+    });
+
+    const frozenName = plan.device.plugin.pluginId;
+    for (const { device } of planned.slice(0, plan.through + 1)) {
+      this.setPluginStatus({
+        trackId: track.id, deviceId: device.id, pluginId: device.plugin.pluginId,
+        availability: {
+          status: "frozen",
+          message: `A plug-in on this track can't load here, so the track plays its frozen audio (through ${frozenName}).`
+        }
+      });
+    }
+    this.emitPluginStatus();
+  }
+
+  private frozenBuffer(source: FrozenAudioSource, reference: FrozenPluginArtifactReference) {
+    const key = frozenBufferKey(reference);
+    let pending = this.frozenBuffers.get(key);
+    if (!pending) {
+      pending = source.load(reference).then(async ({ audio, startTick }) => ({
+        buffer: (await Tone.getContext().rawContext.decodeAudioData(audio.slice(0))) as AudioBuffer,
+        startTick
+      }));
+      this.frozenBuffers.set(key, pending);
+    }
+    return pending;
   }
 
   private adoptPluginInstance(
@@ -383,7 +500,8 @@ export class BrowserAudioEngine implements AudioTransport {
     index: number,
     device: TrackV2["devices"][number],
     instance: BrowserPluginInstance,
-    key: string
+    key: string,
+    onFailed?: () => void
   ): void {
     const unsubscribe = instance.onFailure((availability) => {
       this.setPluginStatus({ trackId, deviceId: device.id, pluginId: device.plugin.pluginId, availability });
@@ -391,6 +509,7 @@ export class BrowserAudioEngine implements AudioTransport {
       this.pluginInstanceMeta.delete(instance);
       chain.remove(instance);
       this.emitPluginStatus();
+      onFailed?.();
     });
     this.pluginInstanceMeta.set(instance, { key, unsubscribe });
     chain.fill(index, instance);
