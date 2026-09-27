@@ -26,6 +26,7 @@ import {
   buildGenerationJobRequest,
   formForPreset,
   interpretCreativeBrief,
+  prototypeAudioPrompt,
   proposalSummary,
   type GenerationForm,
   type GenerationPresetId
@@ -37,6 +38,7 @@ import {
 } from "../../../src/lib/generation-job-realtime";
 import { pollGenerationJob, submitGenerationJob } from "../../../src/lib/platform-api";
 import { FrequencyDroneInstrument } from "./FrequencyDroneInstrument";
+import { PrototypeAudioPanel } from "./PrototypeAudioPanel";
 import { BrowserAppliedGenerationJobRegistry } from "../../../src/lib/apply-completed-generation-job";
 
 interface GenerationWorkspaceProps {
@@ -252,5 +254,6 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
         </> : <div className="preview-empty"><strong>No variation preview yet</strong><p>Submit a job or recover an existing one to inspect its musical structure before applying it.</p></div>}
       </section>
     </div>
+    <PrototypeAudioPanel suggestedPrompt={prototypeAudioPrompt(form, brief)} />
   </section>;
 }

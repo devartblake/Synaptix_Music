@@ -9,6 +9,8 @@ services:
       SYNAPTIX_PLATFORM_API_URL: ${SYNAPTIX_PLATFORM_API_URL:-}
       NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL: ${NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL:-}
       RENDER_WORKER_API_URL: http://render-worker:8200
+      # Prototype MusicGen audio (local-ai profile). Empty hides the studio's prototype audio panel.
+      AUDIO_GENERATION_API_URL: ${AUDIO_GENERATION_API_URL:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -66,6 +68,29 @@ services:
       - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - synaptix-ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Prototype text-to-audio on the local GPU. MusicGen weights are CC-BY-NC 4.0, so its
+  # outputs are prototype-only: never published, packaged or shipped.
+  audio-generation:
+    build:
+      context: ../..
+      dockerfile: services/audio-generation/Dockerfile
+    profiles: ["local-ai"]
+    environment:
+      MUSICGEN_MODEL: ${MUSICGEN_MODEL:-facebook/musicgen-small}
+      # Download and load the model at startup so the first request doesn't time out.
+      MUSICGEN_PRELOAD: ${MUSICGEN_PRELOAD:-true}
+    ports:
+      - "127.0.0.1:${AUDIO_GENERATION_PORT:-8400}:8400"
+    volumes:
+      - synaptix-hf-models:/models
     deploy:
       resources:
         reservations:
@@ -150,4 +175,6 @@ volumes:
   # Fixed name so downloaded models are shared across stack restarts.
   synaptix-ollama:
     name: synaptix-ollama
+  synaptix-hf-models:
+    name: synaptix-hf-models
   minio-data:

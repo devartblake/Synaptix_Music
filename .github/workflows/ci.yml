@@ -56,7 +56,7 @@ jobs:
             typescript=true
           fi
 
-          if grep -Eq '^(services/generation-api/|\.python-version$)' /tmp/synaptix-music-changed.txt; then
+          if grep -Eq '^(services/generation-api/|services/audio-generation/|\.python-version$)' /tmp/synaptix-music-changed.txt; then
             python=true
           fi
 
@@ -129,6 +129,28 @@ jobs:
           cache: pip
           cache-dependency-path: services/generation-api/pyproject.toml
       - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: ruff check app tests
+      - run: ruff format --check app tests
+      - run: pytest
+
+  python-audio:
+    name: Python (prototype audio)
+    needs: changes
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.python == 'true' }}
+    runs-on: ${{ fromJSON(vars.SYNAPTIX_MUSIC_RUNNER_LABELS || vars.SYNAPTIX_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    defaults:
+      run:
+        working-directory: services/audio-generation
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: services/audio-generation/pyproject.toml
+      - run: python -m pip install --upgrade pip
+      # Tests use a fake generator, so the GPU model stack ([model] extra) isn't installed.
       - run: python -m pip install -e ".[dev]"
       - run: ruff check app tests
       - run: ruff format --check app tests

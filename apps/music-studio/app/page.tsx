@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { PlatformAccount } from "../components/PlatformAccount";
+import { ListeningDock } from "../components/player/MiniPlayer";
 import { RecentProjects } from "./RecentProjects";
 import styles from "./home.module.css";
 
@@ -19,6 +22,7 @@ export default function HomePage() {
         </a>
         <nav className={styles.navigation} aria-label="Main navigation">
           <a href="#projects">Your projects</a>
+          <Link href="/library">Library</Link>
           <PlatformAccount />
           <a className={styles.headerCta} href="/studio/local-demo">
             Open studio <span aria-hidden="true">↗</span>
@@ -117,10 +121,11 @@ export default function HomePage() {
           </div>
         </section>
       </main>
-      <footer className={styles.footer}>
+      <footer className={styles.footer} style={{ paddingBottom: 150 }}>
         <span>Synaptix Music · A space to create.</span>
         <span>Local editing works without the SynaptixPlay platform.</span>
       </footer>
+      <ListeningDock />
     </div>
   );
 }

@@ -259,6 +259,32 @@ cd services/generation-api
 python -m scripts.evaluate_local_composer qwen2.5:7b llama3.1:8b
 ```
 
+### Prototype audio (MusicGen)
+
+`services/audio-generation` turns a text prompt into a short audio sketch with MusicGen
+(`facebook/musicgen-small` by default) on your NVIDIA GPU. **The MusicGen weights are licensed
+CC-BY-NC 4.0 (non-commercial)**, so this is a prototyping tool: every response is labelled
+`prototype-only`, and clips are never added to projects, rendered, packaged or published.
+
+Enable it in `.env.docker`, then start the service (it's in the `local-ai` Compose profile):
+
+```text
+AUDIO_GENERATION_API_URL=http://audio-generation:8400
+```
+
+```bash
+docker compose --project-name synaptix-music --env-file .env.docker   -f infrastructure/docker/docker-compose.yml -f infrastructure/docker/docker-compose.local.yml   --profile local-ai up -d --build audio-generation music-studio
+```
+
+The studio's **Generate** workspace then shows a **Prototype audio** panel. Its prompt follows
+the generator's mood, tempo, key and brief until you edit it. When the service starts it downloads
+the model (about 2 GB, kept in the `synaptix-hf-models` volume) and loads it onto the GPU, which
+takes a few minutes (`MUSICGEN_PRELOAD=false` defers this to the first request). Until it's
+ready, requests answer "still loading"; after that, clips take roughly their own length to
+generate on a laptop GPU. One clip generates at a time; a busy GPU
+answers 429. Set `MUSICGEN_MODEL=facebook/musicgen-medium` for higher quality if you have the
+VRAM, and stop Ollama first if both won't fit on the GPU together.
+
 ## Start PostgreSQL and Redis
 
 ```bash

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildGenerationJobRequest, composerLabel, formForPreset, interpretCreativeBrief, proposalSummary } from "./generation-workspace-model.ts";
+import { buildGenerationJobRequest, composerLabel, formForPreset, interpretCreativeBrief, proposalSummary, prototypeAudioPrompt } from "./generation-workspace-model.ts";
 
 test("presets build a valid idempotent platform request", () => {
   const request = buildGenerationJobRequest(
@@ -94,4 +94,11 @@ test("an up-tempo brief asks for real speed", () => {
   assert.equal(interpretCreativeBrief(form, "An up-tempo route theme").tempo, 152);
   assert.equal(interpretCreativeBrief(form, "Fast quiz round").tempo, 132);
   assert.equal(formForPreset("adventure-route").tempo, 156);
+});
+
+test("prototype audio prompts combine the brief with the musical controls", () => {
+  const prompt = prototypeAudioPrompt(formForPreset("adventure-route"), "  Heroic   route theme ");
+  assert.equal(prompt, "Heroic route theme. upbeat, bright and bouncy video game music, 156 BPM, C major, high energy, full band");
+  assert.ok(prototypeAudioPrompt(formForPreset("bright-round"), "x".repeat(900)).length <= 500);
+  assert.match(prototypeAudioPrompt(formForPreset("villain-encounter"), ""), /^tense, urgent and driving video game music, 136 BPM, A harmonic minor/);
 });
