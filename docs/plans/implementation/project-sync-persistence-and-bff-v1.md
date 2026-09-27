@@ -1,6 +1,6 @@
 # Project Synchronization Persistence and BFF v1
 
-**Status (2026-09-27):** Complete. Backend sync endpoints, reconnect drain, conflict UI and multi-tab coordination shipped. Still open: archive/delete synchronization (the studio hides archived cloud projects but can't archive them).
+**Status (2026-09-27):** Complete. Backend sync endpoints, reconnect drain, conflict UI and multi-tab coordination shipped. Cloud projects can be archived and restored from the studio (2026-09-27). Still open: syncing deletes.
 
 ## Scope
 

@@ -1,6 +1,6 @@
 # Stage 9 — SynaptixPlay Platform Integration
 
-**Status (2026-09-27):** Historical. The deferred follow-ups shipped (studio sign-in, SignalR updates, .NET endpoints, durable jobs and credits, project sync, applying proposals) except render-job authorization per player: render jobs are not yet scoped to their owner.
+**Status (2026-09-27):** Historical. The deferred follow-ups shipped (studio sign-in, SignalR updates, .NET endpoints, durable jobs and credits, project sync, applying proposals) and, since 2026-09-27, render-job authorization per player: the studio's BFF resolves the player with the platform and the render worker scopes every job to them.
 
 ## Status
 

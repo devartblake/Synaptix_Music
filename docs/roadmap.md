@@ -11,7 +11,7 @@ Current estimated completion:
 - Foundational stages 1–11: complete
 - Stage 12: complete. Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.
 - Stage 13: approximately 80% implementation-complete (2026-09-27). Slice 13.1 (verified publication) has met its exit; the Flutter loader, scheduler, stem/intensity mixer and stingers are implemented and await on-device listening tests; telemetry dashboards (13.6) and the device matrix and soak (13.7) need staging and physical devices.
-- Project Schema v2 plug-in cutover: steps A-E done (plug-in projects sync as v2; first-party plug-ins can be frozen); frozen playback (F) and retiring v1 writes (G) remain
+- Project Schema v2 plug-in cutover: steps A-F done (plug-in projects sync as v2; first-party plug-ins can be frozen, and freezes play in renders and in the browser); retiring v1 writes (G) remains
 - Full planned DAW roadmap: 52-56% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
@@ -132,6 +132,7 @@ Contracts, package builder, transition planning, platform/BFF routes, backend re
 - ~~PostgreSQL persistence~~ Done: `PostgresRenderJobStore` in the new `@synaptix/render-worker` service uses `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent leasing across worker processes, and shares `resolveFailureOutcome` with the in-memory queue so retry/dead-letter rules cannot drift between the two. Verified with 14 integration tests against a real Postgres instance, including a concurrent-leasing test proving no job is double-claimed. CI now runs these against a Postgres service container instead of skipping them.
 - ~~HTTP submission/status API~~ Done: a private, server-to-server HTTP API (submit/status/list/cancel/events) over the store, deliberately not internet-facing (matching the Python generation-api's "private server-to-server dependency" posture).
 - ~~BFF wiring~~ Done: Next.js routes at `/api/platform/render-jobs/*` proxy directly to the render-worker HTTP API, requiring end-user authentication. This is a deliberate deviation from the generation-jobs/adaptive-packages convention of routing everything through the .NET SynaptixPlay backend — implementing that convention here would mean extending a separate, large, unfamiliar production backend (which also hosts KMS, Wallet, and Compliance) for a resource that doesn't yet need its multi-tenant authorization model.
+- ~~Per-player render jobs~~ Done (2026-09-27): the BFF asks the platform who the session belongs to (`GET /api/v1/users/me`, cached a minute per token) and sends `x-synaptix-owner`; the worker stores the owner (migration 0003) and scopes list, status, events, cancel, delivery and idempotency to it. Private callers without the header, such as certification tooling, stay unscoped.
 
 ### 3. Deterministic offline rendering — done in code
 
