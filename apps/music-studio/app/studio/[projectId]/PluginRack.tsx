@@ -13,10 +13,11 @@ import {
   resolvePluginParameterValues,
   type PluginRuntimeStatus
 } from "@synaptix/daw-engine";
-import type { PluginParameterDescriptor } from "@synaptix/project-model/plugin";
+import type { FrozenPluginEvidenceStatus, PluginParameterDescriptor } from "@synaptix/project-model/plugin";
 import type { TrackV2 } from "@synaptix/project-model/v2";
 
 import { Button } from "../../../components/ui/StudioControls";
+import { canFreeze } from "../../../lib/platform/plugin-freeze-model";
 
 const CATALOG = new PluginCatalog(FIRST_PARTY_AUDIO_WORKLET_MODULES.map((module) => module.descriptor));
 
@@ -42,11 +43,25 @@ function statusLabel(status: PluginRuntimeStatus | undefined, enabled: boolean):
   return "Unavailable";
 }
 
-export function PluginRack({ track, statuses, onExecute, gestures }: {
+/** Freeze (render-to-audio) state for the rack's plug-ins; omitted where freezing isn't offered. */
+export interface PluginFreezeControls {
+  evidence: ReadonlyMap<string, FrozenPluginEvidenceStatus>;
+  progress: Readonly<Record<string, { busy: boolean; message: string }>>;
+  onFreeze(trackId: string, deviceId: string): void;
+}
+
+function freezeSummary(evidence: FrozenPluginEvidenceStatus | undefined): string | null {
+  if (!evidence || evidence.status === "absent") return null;
+  if (evidence.status === "current") return "Frozen · current";
+  return `Frozen · out of date: ${evidence.reasons[0] ?? "the plug-in or its input changed"}`;
+}
+
+export function PluginRack({ track, statuses, onExecute, gestures, freeze }: {
   track: TrackV2;
   statuses: readonly PluginRuntimeStatus[];
   onExecute(command: PluginEditorCommand): void;
   gestures: PluginParameterGestures;
+  freeze?: PluginFreezeControls;
 }) {
   const inserts = track.devices.filter((device) => device.plugin.runtimeKind !== "builtin");
 
@@ -74,7 +89,18 @@ export function PluginRack({ track, statuses, onExecute, gestures }: {
               </Button>
               <Button aria-label={`Remove ${name} from ${track.name}`}
                 onClick={() => onExecute(new RemovePluginDeviceEditorCommand(track.id, device.id))}>Remove</Button>
+              {freeze && canFreeze(device) && (
+                <Button aria-label={`Freeze ${name} on ${track.name}`} disabled={freeze.progress[device.id]?.busy}
+                  onClick={() => freeze.onFreeze(track.id, device.id)}>
+                  {freeze.progress[device.id]?.busy ? "Freezing…" : device.frozen ? "Refreeze" : "Freeze"}
+                </Button>
+              )}
             </div>
+            {freeze && (freeze.progress[device.id]?.message || freezeSummary(freeze.evidence.get(device.id))) && (
+              <p role="status" style={{ margin: 0, opacity: 0.85 }}>
+                {freeze.progress[device.id]?.message || freezeSummary(freeze.evidence.get(device.id))}
+              </p>
+            )}
             {unavailable && <p style={{ margin: 0, opacity: 0.8 }}>{unavailable.message} Its settings are kept in the project.</p>}
             {inactive && <p style={{ margin: 0, opacity: 0.8 }}>{inactive.message} Its settings are kept in the project.</p>}
             {descriptor && values && descriptor.parameters.map((parameter) => {

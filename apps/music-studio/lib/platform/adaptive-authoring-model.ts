@@ -63,6 +63,8 @@ export function eligibleAdaptiveRenders(
       job.status === "completed" &&
       job.result?.status === "completed" &&
       job.manifest.projectId === projectId &&
+      // Plug-in freezes are one device's audio, never a playable game state.
+      job.manifest.scope.kind !== "plugin-freeze" &&
       job.result.artifacts.some(
         (artifact) =>
           artifact.trackId === null &&

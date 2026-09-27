@@ -12,7 +12,13 @@ export const PreviewOutputSchema = z
   .strict();
 export const RenderScopeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("master") }),
-  z.object({ kind: z.literal("stems"), trackIds: z.array(z.string().min(1)).min(1) })
+  z.object({ kind: z.literal("stems"), trackIds: z.array(z.string().min(1)).min(1) }),
+  /**
+   * A plug-in freeze: one track's pre-fader signal through its devices up to and including
+   * `deviceId` (Project Schema v2 cutover step E). Only first-party plug-ins with a
+   * deterministic offline processor can be frozen; others fail the job closed.
+   */
+  z.object({ kind: z.literal("plugin-freeze"), trackId: z.string().min(1), deviceId: z.string().min(1) })
 ]);
 
 export const RenderRangeSchema = z

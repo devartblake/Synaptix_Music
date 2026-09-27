@@ -4,7 +4,7 @@ import type { RenderJob } from "@synaptix/render-contracts";
 
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
-import { renderProjectOffline, type RenderedArtifact } from "./offline-renderer.ts";
+import { renderPluginFreeze, renderProjectOffline, type RenderedArtifact } from "./offline-renderer.ts";
 import { resolveRenderableProject } from "./plugin-render-gate.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
@@ -61,8 +61,13 @@ export async function processNextJob(
       job.manifest.projectId,
       job.manifest.revisionId
     );
-    const renderable = await resolveRenderableProject(project, job.manifest);
-    const rendered = renderProjectOffline(renderable, job.manifest);
+    let rendered: ReturnType<typeof renderProjectOffline>;
+    if (job.manifest.scope.kind === "plugin-freeze") {
+      if (project.schemaVersion !== 2) throw new Error("Plug-in freezes need a Project Schema v2 revision.");
+      rendered = renderPluginFreeze(project, job.manifest);
+    } else {
+      rendered = renderProjectOffline(await resolveRenderableProject(project, job.manifest), job.manifest);
+    }
     const outcome = await packageRenderArtifacts(
       rendered,
       job.manifest,

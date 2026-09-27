@@ -82,7 +82,7 @@ Groundwork is implemented (#29–#31): adaptive package contracts and validation
 
 1. ~~Adaptive package contracts and validation.~~ Done (#29).
 2. ~~Export builder from certified render artifacts.~~ Done (#30).
-3. ~~SynaptixPlay backend authorization, versioning, retention, and signed delivery.~~ Implemented; server-side render-ID verification waits on Stage 12 staging evidence.
+3. ~~SynaptixPlay backend authorization, versioning, retention, and signed delivery.~~ Implemented, including server-side render verification: publication checks every package artifact against the render worker's records.
 4. ~~Flutter runtime package loader, checksum verification, and offline caching.~~ Implemented.
 5. ~~Beat/bar/phrase-aware transition scheduler.~~ Implemented (clock, boundary preload, cancellation, drift correction, per-package tempo from the manifest `clock`).
 6. ~~Layer and stem mixing with intensity interpolation.~~ Implemented; needs on-device listening tests.
@@ -95,7 +95,7 @@ See the per-slice status audit in `stage-13-execution-plan-v1.md`.
 ## Completion Estimate
 
 - Stages 1–11: complete
-- Stage 12: 100% implementation-complete; local certification rehearsal passed 2026-09-26; acceptance of that evidence (or a staging run) remains before operational closure
+- Stage 12: complete. Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.
 - Stage 13: approximately 75% implementation-complete (2026-09-23 audit); no slice has formally exited, because publication is gated on Stage 12 staging evidence and rollout needs on-device certification
 - Full planned DAW roadmap: approximately 48–52% complete
 

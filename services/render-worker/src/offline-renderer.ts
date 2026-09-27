@@ -18,7 +18,11 @@ import {
   type RenderResult
 } from "@synaptix/render-contracts";
 
+import { projectV2BuiltinView, type MusicProjectV2 } from "@synaptix/project-model/v2";
+
 import { applyCompressor } from "./compressor.ts";
+import { offlineProcessorFor, type OfflinePluginProcessor } from "./plugin-processors.ts";
+import { PluginRenderUnsupportedError } from "./plugin-render-gate.ts";
 import { applyReverb } from "./reverb.ts";
 import { encodeWav, type StereoBuffer } from "./wav-encoder.ts";
 
@@ -112,7 +116,9 @@ function renderTrackBuffer(
   ppq: number,
   beatsPerBar: number,
   bpm: number,
-  forceAudible: boolean
+  forceAudible: boolean,
+  /** False stops before the channel strip (volume and pan), where plug-in inserts sit. */
+  applyChannel = true
 ): StereoBuffer {
   const left = new Float64Array(totalSamples);
   const right = new Float64Array(totalSamples);
@@ -151,6 +157,7 @@ function renderTrackBuffer(
     }
   }
 
+  if (!applyChannel) return { left, right };
   const gainLinear = 10 ** (track.volumeDb / 20);
   const panAngle = ((track.pan + 1) * Math.PI) / 4;
   const leftGain = gainLinear * Math.cos(panAngle);
@@ -301,6 +308,10 @@ export function renderProjectOffline(
       `Manifest revisionId '${manifest.revisionId}' does not match project revision '${project.revisionId}'.`
     );
   }
+  if (manifest.scope.kind === "plugin-freeze") {
+    // Freezes need the v2 project's plug-in devices; see renderPluginFreeze.
+    throw new Error("Plug-in freeze renders must use renderPluginFreeze.");
+  }
 
   const ppq = project.transport.ticksPerQuarterNote;
   const beatsPerBar = project.timeSignatureMap[0]?.numerator ?? 4;
@@ -388,5 +399,68 @@ export function renderProjectOffline(
     completedAt: new Date().toISOString()
   };
 
+  return { result, artifacts };
+}
+
+/**
+ * A plug-in freeze (cutover step E): the track's pre-fader signal through its devices up to and
+ * including the frozen one, as one WAV. Built-in devices are the synth itself; bypassed plug-ins
+ * are skipped; any other plug-in needs a deterministic first-party processor or the job fails.
+ */
+export function renderPluginFreeze(project: MusicProjectV2, manifest: RenderManifest): OfflineRenderOutcome {
+  if (manifest.scope.kind !== "plugin-freeze") throw new Error("renderPluginFreeze needs a plugin-freeze scope.");
+  const { trackId, deviceId } = manifest.scope;
+  if (project.projectId !== manifest.projectId || project.revisionId !== manifest.revisionId) {
+    throw new Error("The freeze manifest does not match the loaded project revision.");
+  }
+  const track = project.tracks.find((candidate) => candidate.id === trackId);
+  if (!track || track.kind !== "instrument") throw new Error(`Track '${trackId}' was not found or is not an instrument track.`);
+  const deviceIndex = track.devices.findIndex((device) => device.id === deviceId);
+  if (deviceIndex < 0) throw new Error(`Device '${deviceId}' was not found on track '${trackId}'.`);
+  const target = track.devices[deviceIndex]!;
+  if (target.plugin.runtimeKind === "builtin") throw new Error("Built-in devices don't need freezing.");
+
+  const chain: { device: (typeof track.devices)[number]; processor: OfflinePluginProcessor }[] = [];
+  const unsupported: { trackId: string; deviceId: string; pluginId: string; reason: string }[] = [];
+  for (const device of track.devices.slice(0, deviceIndex + 1)) {
+    if (device.plugin.runtimeKind === "builtin" || !device.enabled) continue;
+    const processor = offlineProcessorFor(device);
+    if (typeof processor === "string") unsupported.push({ trackId, deviceId: device.id, pluginId: device.plugin.pluginId, reason: processor });
+    else chain.push({ device, processor });
+  }
+  if (unsupported.length > 0) throw new PluginRenderUnsupportedError(unsupported);
+
+  const builtin = projectV2BuiltinView(project);
+  const builtinTrack = builtin.tracks.find((candidate) => candidate.id === trackId)!;
+  if (builtinTrack.devices.some((device) => device.deviceType === "synaptix-frequency-drone")) {
+    throw new Error("Frequency drone tracks can't be frozen yet.");
+  }
+  const ppq = builtin.transport.ticksPerQuarterNote;
+  const beatsPerBar = builtin.timeSignatureMap[0]?.numerator ?? 4;
+  const bpm = builtin.tempoMap[0]?.bpm ?? 120;
+  const sampleRate = manifest.output.sampleRate;
+  const range: TickRange = { startTick: manifest.range.startTick, endTick: manifest.range.endTick };
+  const totalSamples = Math.max(
+    1,
+    Math.round((ticksToSeconds(range.endTick - range.startTick, ppq, bpm) + manifest.output.includeTailSeconds) * sampleRate)
+  );
+
+  const buffer = renderTrackBuffer(builtinTrack, builtin.tracks, range, totalSamples, sampleRate, ppq, beatsPerBar, bpm, true, false);
+  for (const { device, processor } of chain) processor.process(buffer, device, sampleRate);
+
+  const warnings: string[] = [];
+  const artifacts = [
+    buildArtifact(manifest, buffer, trackId, `freeze-${slugify(track.name)}-${slugify(target.plugin.pluginId)}.wav`, warnings)
+  ];
+  const result: RenderResult = {
+    contractVersion: RENDER_CONTRACT_VERSION,
+    renderId: manifest.renderId,
+    status: "completed",
+    artifacts: artifacts.map((artifact) => artifact.metadata),
+    warnings,
+    errorCode: null,
+    errorMessage: null,
+    completedAt: new Date().toISOString()
+  };
   return { result, artifacts };
 }

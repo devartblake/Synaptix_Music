@@ -25,6 +25,9 @@ export async function resolveRenderableProject(
   project: MusicProject | MusicProjectV2,
   manifest: Pick<RenderManifest, "scope">
 ): Promise<MusicProject> {
+  if (manifest.scope.kind === "plugin-freeze") {
+    throw new Error("Plug-in freeze renders are produced by renderPluginFreeze, not the mix renderer.");
+  }
   if (project.schemaVersion === 1) return project;
 
   const inScope = manifest.scope.kind === "stems" ? new Set(manifest.scope.trackIds) : null;

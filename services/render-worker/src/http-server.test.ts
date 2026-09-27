@@ -47,7 +47,8 @@ if (!connectionString) {
       return `https://objects.example/renders/${renderId}/${fileName}?signed=true`;
     }
   };
-  const server = createRenderJobHttpServer(store, artifactDelivery);
+  const SERVICE_TOKEN = "test-service-token";
+  const server = createRenderJobHttpServer(store, artifactDelivery, { serviceToken: SERVICE_TOKEN });
   let baseUrl = "";
 
   before(async () => {
@@ -178,6 +179,64 @@ if (!connectionString) {
     );
     assert.equal(missing.status, 404);
     assert.equal((await missing.json()).code, "render_artifact_not_found");
+  });
+
+  async function completedRender(renderId: string, artifactId: string, manifestArtifactId: string) {
+    const submitted = await store.submit(manifest(renderId), `evidence-${renderId}`);
+    await store.lease("worker-a");
+    const artifact = (id: string, fileName: string, checksum: string) => ({
+      artifactId: id, renderId, trackId: null, fileName,
+      mediaType: fileName.endsWith(".json") ? "application/vnd.synaptix.render-manifest+json" : "audio/wav",
+      byteLength: 44, checksumSha256: checksum, durationSeconds: 1
+    });
+    await store.reportResult(submitted.jobId, "worker-a", {
+      contractVersion: RENDER_CONTRACT_VERSION, renderId, status: "completed",
+      artifacts: [artifact(artifactId, "master.wav", "b".repeat(64)), artifact(manifestArtifactId, "artifact-manifest.json", "c".repeat(64))],
+      warnings: [], errorCode: null, errorMessage: null, completedAt: new Date().toISOString()
+    } as RenderResult);
+    return submitted.jobId;
+  }
+
+  async function evidence(body: unknown, token: string | null = SERVICE_TOKEN, url = baseUrl) {
+    return fetch(`${url}/internal/render-evidence`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(token ? { "x-service-token": token } : {}) },
+      body: JSON.stringify(body)
+    });
+  }
+
+  test("render evidence reports the render and artifacts the backend verifies before publication", async () => {
+    const renderId = "10000000-0000-4000-8000-00000000000a";
+    const artifactId = "20000000-0000-4000-8000-00000000000a";
+    const jobId = await completedRender(renderId, artifactId, "20000000-0000-4000-8000-00000000000b");
+
+    const response = await evidence({ renderIds: [renderId], artifactIds: [artifactId, "20000000-0000-4000-8000-0000000000ff"] });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.renders, [{
+      renderId, projectId: "project-a", revisionId: "revision-a", projectChecksumSha256: "a".repeat(64),
+      jobId, status: "completed", artifactManifestChecksumSha256: "c".repeat(64)
+    }]);
+    assert.deepEqual(body.artifacts, [{
+      renderId, projectId: "project-a", revisionId: "revision-a", projectChecksumSha256: "a".repeat(64),
+      jobId, status: "completed", artifactId, fileName: "master.wav", checksumSha256: "b".repeat(64), byteLength: 44
+    }], "unknown artifacts are simply absent");
+  });
+
+  test("render evidence requires the service token and valid ids", async () => {
+    assert.equal((await evidence({ renderIds: [], artifactIds: [] }, null)).status, 401);
+    assert.equal((await evidence({ renderIds: [], artifactIds: [] }, "wrong-token")).status, 401);
+    assert.equal((await evidence({ renderIds: ["not-a-uuid"], artifactIds: [] })).status, 400);
+
+    const unconfigured = createRenderJobHttpServer(store);
+    await new Promise<void>((resolve) => unconfigured.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = unconfigured.address() as AddressInfo;
+      const response = await evidence({ renderIds: [], artifactIds: [] }, SERVICE_TOKEN, `http://127.0.0.1:${address.port}`);
+      assert.equal(response.status, 503);
+    } finally {
+      await new Promise<void>((resolve) => unconfigured.close(() => resolve()));
+    }
   });
 
   test("cancel stops a queued job and rejects a second cancel with a 409", async () => {

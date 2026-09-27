@@ -100,9 +100,10 @@ For cloud synchronization, configure:
 
 ```env
 SYNAPTIX_PLATFORM_API_URL=http://localhost:8080
-# Project schema the platform accepts for revision uploads (1 or 2; default 1).
-# With 1, projects without plug-ins upload as v1 and plug-in projects stay local-only.
-NEXT_PUBLIC_SYNAPTIX_PLATFORM_PROJECT_SCHEMA_VERSION=1
+# Project schema the platform accepts for revision uploads (1 or 2; default 1 when unset).
+# 2 uploads every revision as v2, including plug-in projects (needs a backend that validates v2).
+# 1 uploads plain projects as v1 and keeps plug-in projects local-only.
+NEXT_PUBLIC_SYNAPTIX_PLATFORM_PROJECT_SCHEMA_VERSION=2
 ```
 
 The browser studio remains locally usable when the platform API is unavailable. IndexedDB persistence, editing, transport, and preview audio do not require PostgreSQL or Redis.

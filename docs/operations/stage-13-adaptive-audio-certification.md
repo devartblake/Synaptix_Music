@@ -18,6 +18,7 @@ The Stage 13 runtime is implemented and unit-tested. This runbook turns the Slic
 | `adaptive_music_stems_enabled` | Admin flags | `false` forces the master mix on every device (no stem layering). |
 | `Music:AdaptiveGamePackageId` | Backend configuration | The package the game plays. It must be a UUID. |
 | `Music:AdaptiveArtifactSigningKey`, `Music:AdaptiveArtifactBaseUrl` | Backend secrets/config | Signed delivery. The signing key must be at least 32 characters. |
+| `Music:RenderWorkerApiUrl` (+ `ServiceTokens:RenderWorker`) | Backend config | Publication verification: the backend checks every package artifact against the render worker's records (`POST /internal/render-evidence`). Missing or unreachable, publication fails closed with 503. |
 
 **Flags are read when the app starts.** Changing a flag affects new sessions, not sessions already running. To stop music in running sessions, revoke the package version (see *Kill switch*).
 

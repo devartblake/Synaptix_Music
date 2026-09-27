@@ -374,7 +374,7 @@ export function RenderWorkspace({
             >
               <div className={styles.historyHeader}>
                 <strong>
-                  {job.manifest.scope.kind === "master" ? "Master mix" : "Stems"} ·{" "}
+                  {job.manifest.scope.kind === "master" ? "Master mix" : job.manifest.scope.kind === "stems" ? "Stems" : "Plug-in freeze"} ·{" "}
                   {job.manifest.output.format.toUpperCase()}
                 </strong>
                 <Badge>{job.status.replaceAll("_", " ")}</Badge>
