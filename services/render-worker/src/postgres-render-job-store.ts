@@ -32,6 +32,7 @@ interface RenderJobRow {
   next_attempt_at: Date | null;
   result: RenderResult | null;
   last_error: string | null;
+  owner_id: string | null;
 }
 
 interface RenderJobEventRow {
@@ -159,7 +160,16 @@ export class PostgresRenderJobStore {
     }
   }
 
-  async submit(manifest: RenderManifest, idempotencyKey: string, maxAttempts = DEFAULT_MAX_ATTEMPTS): Promise<RenderJob> {
+  /**
+   * Queue a render. `ownerId` is the signed-in player the studio submitted it for (null for
+   * private callers); an idempotency key can't be reused across owners.
+   */
+  async submit(
+    manifest: RenderManifest,
+    idempotencyKey: string,
+    maxAttempts = DEFAULT_MAX_ATTEMPTS,
+    ownerId: string | null = null
+  ): Promise<RenderJob> {
     if (idempotencyKey.length === 0) throw new Error("idempotencyKey must not be empty.");
     const validatedManifest = RenderManifestSchema.parse(manifest);
     if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
@@ -172,11 +182,11 @@ export class PostgresRenderJobStore {
     const inserted = await this.pool.query<RenderJobRow>(
       `INSERT INTO render_jobs (
          job_id, idempotency_key, contract_version, manifest, status, attempt,
-         max_attempts, submitted_at, updated_at
-       ) VALUES ($1, $2, $3, $4, 'queued', 0, $5, $6, $6)
+         max_attempts, submitted_at, updated_at, owner_id
+       ) VALUES ($1, $2, $3, $4, 'queued', 0, $5, $6, $6, $7)
        ON CONFLICT (idempotency_key) DO NOTHING
        RETURNING *`,
-      [jobId, idempotencyKey, RENDER_JOB_CONTRACT_VERSION, JSON.stringify(validatedManifest), maxAttempts, timestamp]
+      [jobId, idempotencyKey, RENDER_JOB_CONTRACT_VERSION, JSON.stringify(validatedManifest), maxAttempts, timestamp, ownerId]
     );
 
     if (inserted.rows[0]) {
@@ -190,6 +200,9 @@ export class PostgresRenderJobStore {
       [idempotencyKey]
     );
     const existingJob = mapRow(existing.rows[0]!);
+    if (existing.rows[0]!.owner_id !== ownerId) {
+      throw new Error(`idempotencyKey '${idempotencyKey}' was already used by another caller.`);
+    }
     if (existingJob.manifest.renderId !== validatedManifest.renderId) {
       throw new Error(
         `idempotencyKey '${idempotencyKey}' was already used for a different render (${existingJob.manifest.renderId}).`
@@ -407,15 +420,32 @@ export class PostgresRenderJobStore {
     }
   }
 
-  async get(jobId: string): Promise<RenderJob | undefined> {
-    const result = await this.pool.query<RenderJobRow>(`SELECT * FROM render_jobs WHERE job_id = $1`, [jobId]);
+  /** A job by id; with `ownerId`, only that player's job (so other players' jobs read as missing). */
+  async get(jobId: string, ownerId?: string): Promise<RenderJob | undefined> {
+    const result = await this.pool.query<RenderJobRow>(
+      `SELECT * FROM render_jobs WHERE job_id = $1 AND ($2::text IS NULL OR owner_id = $2)`,
+      [jobId, ownerId ?? null]
+    );
     return result.rows[0] ? mapRow(result.rows[0]) : undefined;
   }
 
-  async list(status?: RenderJobStatus): Promise<RenderJob[]> {
-    const result = status
-      ? await this.pool.query<RenderJobRow>(`SELECT * FROM render_jobs WHERE status = $1 ORDER BY submitted_at ASC`, [status])
-      : await this.pool.query<RenderJobRow>(`SELECT * FROM render_jobs ORDER BY submitted_at ASC`);
+  /** The job that produced a render (the completed one, if a render was ever resubmitted). */
+  async getByRenderId(renderId: string, ownerId?: string): Promise<RenderJob | undefined> {
+    const result = await this.pool.query<RenderJobRow>(
+      `SELECT * FROM render_jobs WHERE manifest->>'renderId' = $1 AND ($2::text IS NULL OR owner_id = $2)
+        ORDER BY (status = 'completed') DESC, submitted_at DESC LIMIT 1`,
+      [renderId, ownerId ?? null]
+    );
+    return result.rows[0] ? mapRow(result.rows[0]) : undefined;
+  }
+
+  async list(status?: RenderJobStatus, ownerId?: string): Promise<RenderJob[]> {
+    const result = await this.pool.query<RenderJobRow>(
+      `SELECT * FROM render_jobs
+        WHERE ($1::text IS NULL OR status = $1) AND ($2::text IS NULL OR owner_id = $2)
+        ORDER BY submitted_at ASC`,
+      [status ?? null, ownerId ?? null]
+    );
     return result.rows.map(mapRow);
   }
 

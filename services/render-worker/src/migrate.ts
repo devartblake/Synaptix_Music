@@ -7,7 +7,7 @@ import type { Pool } from "pg";
 const packageRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = path.join(packageRoot, "db", "migrations");
 
-const MIGRATIONS = ["0001_render_jobs.sql", "0002_render_evidence_lookup.sql"] as const;
+const MIGRATIONS = ["0001_render_jobs.sql", "0002_render_evidence_lookup.sql", "0003_render_job_owner.sql"] as const;
 
 // Migrations use CREATE TABLE/INDEX IF NOT EXISTS, so applying them is safe
 // to repeat on every process/test startup.

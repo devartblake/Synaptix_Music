@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { correlationId, renderWorkerBaseUrl, requireAuthentication } from "../../../../_proxy";
+import { correlationId, renderOwnerHeaders, renderWorkerBaseUrl } from "../../../../_proxy";
 
 export const runtime = "nodejs";
 
@@ -24,14 +24,14 @@ export async function GET(
   context: { params: Promise<{ jobId: string; artifactId: string }> }
 ): Promise<Response> {
   const id = correlationId(request);
-  const authError = requireAuthentication(request, id);
-  if (authError) return authError;
+  const owner = await renderOwnerHeaders(request, id);
+  if (owner instanceof NextResponse) return owner;
   const { jobId, artifactId } = await context.params;
 
   try {
     const link = await fetch(
       `${renderWorkerBaseUrl()}/render-jobs/${encodeURIComponent(jobId)}/artifacts/${encodeURIComponent(artifactId)}/download-url`,
-      { headers: { "x-correlation-id": id }, cache: "no-store" }
+      { headers: { "x-correlation-id": id, ...owner }, cache: "no-store" }
     );
     if (!link.ok) {
       return NextResponse.json({ code: "artifact_unavailable", message: "The render file isn't available.", correlationId: id }, { status: link.status });

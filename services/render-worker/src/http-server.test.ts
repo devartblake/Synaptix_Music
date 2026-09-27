@@ -287,6 +287,53 @@ if (!connectionString) {
     }
   });
 
+  async function submitAs(owner: string | null, renderId: string, key: string) {
+    return fetch(`${baseUrl}/render-jobs`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": key,
+        ...(owner ? { "x-synaptix-owner": owner } : {})
+      },
+      body: JSON.stringify({ manifest: manifest(renderId) })
+    });
+  }
+
+  test("players only see, follow and cancel their own render jobs", async () => {
+    const alice = await (await submitAs("alice", "10000000-0000-4000-8000-000000000001", "key-a")).json();
+    const bob = await (await submitAs("bob", "10000000-0000-4000-8000-000000000002", "key-b")).json();
+    await submitAs(null, "10000000-0000-4000-8000-000000000003", "key-private");
+    const asAlice = { headers: { "x-synaptix-owner": "alice" } };
+
+    const listed = await (await fetch(`${baseUrl}/render-jobs`, asAlice)).json();
+    assert.deepEqual(listed.jobs.map((job: { jobId: string }) => job.jobId), [alice.jobId]);
+    assert.equal((await (await fetch(`${baseUrl}/render-jobs`)).json()).jobs.length, 3, "private callers stay unscoped");
+
+    assert.equal((await fetch(`${baseUrl}/render-jobs/${alice.jobId}`, asAlice)).status, 200);
+    for (const path of [`/render-jobs/${bob.jobId}`, `/render-jobs/${bob.jobId}/events`, `/renders/${bob.manifest.renderId}`]) {
+      const response = await fetch(`${baseUrl}${path}`, asAlice);
+      assert.equal(response.status, 404, path);
+    }
+    const cancel = await fetch(`${baseUrl}/render-jobs/${bob.jobId}/cancel`, { method: "POST", ...asAlice });
+    assert.equal(cancel.status, 404);
+    assert.equal((await (await fetch(`${baseUrl}/render-jobs/${bob.jobId}`)).json()).status, "queued");
+
+    // Another player can't claim someone else's idempotency key.
+    const reused = await submitAs("bob", "10000000-0000-4000-8000-000000000001", "key-a");
+    assert.equal(reused.status, 409);
+    assert.equal((await submitAs("alice,bob", "10000000-0000-4000-8000-000000000004", "key-list")).status, 400);
+  });
+
+  test("a render can be looked up by its render id", async () => {
+    const job = await (await submitAs("alice", "10000000-0000-4000-8000-000000000005", "key-r")).json();
+    const response = await fetch(`${baseUrl}/renders/${job.manifest.renderId}`, { headers: { "x-synaptix-owner": "alice" } });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).jobId, job.jobId);
+    const missing = await fetch(`${baseUrl}/renders/10000000-0000-4000-8000-00000000ffff`);
+    assert.equal(missing.status, 404);
+    assert.equal((await missing.json()).code, "render_not_found");
+  });
+
   test("unknown routes return a 404 envelope", async () => {
     const response = await fetch(`${baseUrl}/nonexistent`);
     assert.equal(response.status, 404);
