@@ -44,8 +44,11 @@ export function RecentProjects() {
   const [importError, setImportError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [cloud, setCloud] = useState<{ projectId: string; name: string }[]>([]);
+  const [cloud, setCloud] = useState<{ projectId: string; name: string; archived: boolean }[]>([]);
+  const [cloudLoaded, setCloudLoaded] = useState(false);
   const [cloudMessage, setCloudMessage] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiving, setArchiving] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { health: storage, refresh: refreshStorage } = useStorageHealth();
@@ -148,8 +151,37 @@ export function RecentProjects() {
       const values = z
         .array(z.object({ projectId: z.string().min(1), name: z.string(), archived: z.boolean() }))
         .parse(await response.json());
-      setCloud(values.filter((project) => !project.archived));
+      setCloud(values);
+      setCloudLoaded(true);
       setCloudMessage("Cloud projects loaded.");
+    } catch (cause) {
+      setCloudMessage(cause instanceof Error ? cause.message : "Cloud projects unavailable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Archiving hides a cloud project from the list; it stays restorable and local copies are untouched. */
+  async function setArchived(project: { projectId: string; name: string }, archived: boolean) {
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/platform/projects/${encodeURIComponent(project.projectId)}/${archived ? "archive" : "restore"}`,
+        { method: "POST", credentials: "include", cache: "no-store", signal: AbortSignal.timeout(15000) }
+      );
+      if (!response.ok)
+        throw new Error(
+          response.status === 401
+            ? "Sign in to the platform to change cloud projects."
+            : response.status === 403 || response.status === 404
+              ? `${project.name} isn't one of your cloud projects.`
+              : `Couldn't ${archived ? "archive" : "restore"} ${project.name}. Try again.`
+        );
+      setCloud((current) =>
+        current.map((candidate) => (candidate.projectId === project.projectId ? { ...candidate, archived } : candidate))
+      );
+      setArchiving(null);
+      setCloudMessage(archived ? `Archived ${project.name}.` : `Restored ${project.name}.`);
     } catch (cause) {
       setCloudMessage(cause instanceof Error ? cause.message : "Cloud projects unavailable.");
     } finally {
@@ -310,18 +342,65 @@ export function RecentProjects() {
             Browse cloud projects
           </button>
           {cloudMessage && <p role="status">{cloudMessage}</p>}
-          {cloudMessage === "Cloud projects loaded." && (
-            <ul className={styles.projectResults} aria-label="Cloud projects">
-              {cloud
-                .filter((project) => project.name.toLowerCase().includes(query.trim().toLowerCase()))
-                .map((project) => (
-                  <li key={project.projectId}>
-                    <a href={`/studio/${encodeURIComponent(project.projectId)}`}>
-                      {project.name} · Cloud
-                    </a>
-                  </li>
-                ))}
-            </ul>
+          {cloudLoaded && (
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(event) => setShowArchived(event.target.checked)}
+                />{" "}
+                Show archived projects
+              </label>
+              <ul className={styles.projectResults} aria-label="Cloud projects">
+                {cloud
+                  .filter((project) => showArchived || !project.archived)
+                  .filter((project) => project.name.toLowerCase().includes(query.trim().toLowerCase()))
+                  .map((project) => (
+                    <li key={project.projectId} className={styles.cloudProjectRow}>
+                      {project.archived ? (
+                        <span>{project.name} · Archived</span>
+                      ) : (
+                        <a href={`/studio/${encodeURIComponent(project.projectId)}`}>
+                          {project.name} · Cloud
+                        </a>
+                      )}
+                      {archiving === project.projectId ? (
+                        <div className={styles.deletePrompt}>
+                          <p>
+                            Archive {project.name}? It leaves your cloud list but can be restored.
+                            Copies in this browser aren’t touched.
+                          </p>
+                          <button disabled={busy} onClick={() => void setArchived(project, true)}>
+                            Confirm archive
+                          </button>
+                          <button disabled={busy} onClick={() => setArchiving(null)}>
+                            Keep in cloud list
+                          </button>
+                        </div>
+                      ) : project.archived ? (
+                        <button
+                          className={styles.deleteLink}
+                          disabled={busy}
+                          aria-label={`Restore cloud project ${project.name}`}
+                          onClick={() => void setArchived(project, false)}
+                        >
+                          Restore
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.deleteLink}
+                          disabled={busy}
+                          aria-label={`Archive cloud project ${project.name}`}
+                          onClick={() => setArchiving(project.projectId)}
+                        >
+                          Archive
+                        </button>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </>
           )}
         </section>
       </div>
