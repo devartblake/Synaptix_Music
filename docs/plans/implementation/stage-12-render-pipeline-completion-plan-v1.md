@@ -1,5 +1,7 @@
 # Stage 12 Render Pipeline Completion — Plan v1
 
+**Status (2026-09-27):** Complete and accepted. The release owner accepted the local certification evidence on 2026-09-26 (`docs/operations/evidence/`). Staging provisioning and a staging run remain recommended operations work, not a gate.
+
 ## Objective
 
 Close the three gaps left open after the render-job control plane, offline WAV renderer, and worker loop landed (commits `c3b3d98`, `c3ffdc9`, `513b7b9`):

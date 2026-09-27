@@ -1,5 +1,7 @@
 # Stage 5 — Local Project Storage v1
 
+**Status (2026-09-27):** Complete. Crash-recovery journal, quota reporting, import/export, multi-tab leases, cloud sync and browser IndexedDB tests are done. Debounced autosave is not needed: each command saves one revision immediately.
+
 ## Objective
 
 Persist canonical music projects and immutable revision snapshots locally without coupling editor state to a browser-specific database API.

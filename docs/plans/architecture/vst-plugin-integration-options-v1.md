@@ -1,5 +1,7 @@
 # VST and Extensible Audio Plug-in Integration — Architecture Decision v1
 
+**Status (2026-09-27):** Options study for P4 (native VST3 bridge). Nothing implemented; its deferred list stands.
+
 ## Decision
 
 Synaptix Music can support third-party audio plug-ins, but the current browser DAW cannot load native VST3 binaries directly. Adopt a two-tier architecture:

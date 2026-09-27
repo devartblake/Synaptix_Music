@@ -1,17 +1,18 @@
 # Synaptix Music Roadmap and Current Status
 
-**Revision date:** 2026-09-23
+**Revision date:** 2026-09-27
 
 ## Executive Summary
 
-Synaptix Music has completed its foundational editor, project, synchronization, generation, and browser-audio milestones. The active program is Stage 12 — Production Audio and Rendering. Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — has also started in parallel: its contract, package-builder, transition-planning, and platform/BFF layers are implemented ahead of the Stage 12 render pipeline they ultimately depend on.
+Synaptix Music has completed its foundational editor, project, synchronization, generation, and browser-audio milestones, and Stage 12 — Production Audio and Rendering — is complete and accepted (local certification evidence, 2026-09-26). The active program is Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — alongside the Project Schema v2 plug-in cutover.
 
 Current estimated completion:
 
 - Foundational stages 1–11: complete
 - Stage 12: complete. Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.
-- Stage 13: approximately 75% implementation-complete (audited 2026-09-23; previously reported as ~25%). Publication hardening, the Flutter loader/offline cache, runtime scheduler, stem/intensity mixer and stingers/ducking are implemented. Telemetry dashboards and cross-device rollout certification remain, and publication stays gated on Stage 12 staging evidence.
-- Full planned DAW roadmap: 48–52% complete
+- Stage 13: approximately 80% implementation-complete (2026-09-27). Slice 13.1 (verified publication) has met its exit; the Flutter loader, scheduler, stem/intensity mixer and stingers are implemented and await on-device listening tests; telemetry dashboards (13.6) and the device matrix and soak (13.7) need staging and physical devices.
+- Project Schema v2 plug-in cutover: steps A-E done (plug-in projects sync as v2; first-party plug-ins can be frozen); frozen playback (F) and retiring v1 writes (G) remain
+- Full planned DAW roadmap: 52-56% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
 
@@ -55,6 +56,17 @@ The percentages represent planned functional scope. They do not represent produc
 - Proposal-to-command/revision conversion
 - Durable generation-job lifecycle with polling, SignalR, replay, and acknowledgements
 
+### AI-assisted composition
+
+- Switchable composers: procedural, Claude (Anthropic API) and a local open-weight model on the GPU, with automatic procedural fallback
+- 12 keys x 7 modes, 60-200 BPM, and orchestration across all 12 studio instruments with per-section layers and mix hints
+- Prototype text-to-audio with MusicGen on the local GPU (non-commercial weights; outputs are prototype-only and never published)
+
+### Plug-ins and Project Schema v2
+
+- Project Schema v2 with plug-in devices, state envelopes, automation lanes and freeze evidence; AudioWorklet host and the first-party Reference Drive
+- Plug-in projects sync to the platform as v2; renders pin the stored snapshot's checksum; first-party plug-ins can be frozen on the render worker
+
 ### Project synchronization
 
 - IndexedDB-first hybrid repository
@@ -95,7 +107,7 @@ The percentages represent planned functional scope. They do not represent produc
 
 Implementation is complete. The control plane, deterministic renderer/master effects, worker loop, fail-closed platform loader, master/stem WAV output, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, production image, storage policy, and certification harness are implemented and tested. Stage 12 closes operationally only after backend PR #525 is deployed, secrets are provisioned by an authorized operator, and the staging certification runbook passes. A local rehearsal of the complete runbook passed on 2026-09-26 (`docs/operations/evidence/stage-12-local-2026-09-26/`); the release owner decides whether to accept it or repeat it in staging. **Stage 12 evidence: Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.**
 
-### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (started in parallel)
+### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (active)
 
 Contracts, package builder, transition planning, platform/BFF routes, backend retention/revocation, the Flutter loader/offline cache, the runtime clock and scheduler, stem/intensity mixing, and stingers/ducking are implemented. The remaining work is telemetry dashboards and on-device certification. The per-slice audit is in `stage-13-execution-plan-v1.md`. Package publication remains disabled until Stage 12 staging evidence is accepted.
 
@@ -144,10 +156,10 @@ Contracts, package builder, transition planning, platform/BFF routes, backend re
 ### 5. Lossy and adaptive exports
 
 - ~~MP3 and OGG conversion after WAV certification~~ Done with FFmpeg; MP3 metadata and Ogg stream identity are canonicalized for repeatable bytes.
-- Loop metadata and cue points
-- Adaptive state packages
-- Flutter/SynaptixPlay consumption contracts
-- Game-runtime transition and intensity metadata
+- ~~Loop metadata and cue points~~ Done (Stage 13)
+- ~~Adaptive state packages~~ Done (Stage 13)
+- ~~Flutter/SynaptixPlay consumption contracts~~ Done (Stage 13)
+- ~~Game-runtime transition and intensity metadata~~ Done (Stage 13)
 
 Adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes are implemented as Stage 13 groundwork. Stage 12 evidence is accepted, and publication is verified against the render worker's records (Stage 13.1). The remaining sequence is defined in the Stage 13 execution plan.
 

@@ -1,5 +1,7 @@
 # SynaptixPlay Music Studio Architecture Plan
 
+**Status (2026-09-27):** Reference architecture (openDAW evaluation). Kept for background; the current system is described in `docs/architecture/system-architecture.md`.
+
 ## Executive recommendation
 
 Use a multi-runtime architecture:

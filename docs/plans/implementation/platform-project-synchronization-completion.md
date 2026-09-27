@@ -1,5 +1,7 @@
 # Platform Project Synchronization Completion
 
+**Status (2026-09-27):** Complete. Cloud projects are listed on home after sign-in. Still open: a richer structural diff view and a duplicate-project conflict action.
+
 ## Scope
 
 Task 3 completes the local-first project synchronization path between the Synaptix Music editor, its Next.js BFF, and the SynaptixPlay backend.

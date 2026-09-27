@@ -1,5 +1,7 @@
 # Piano Roll v1
 
+**Status (2026-09-27):** Complete. Still open: per-note resize previews.
+
 ## Scope
 
 This slice adds the first detailed MIDI-note editor on top of the shared command and revision system.

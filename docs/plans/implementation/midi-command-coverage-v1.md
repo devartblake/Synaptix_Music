@@ -1,5 +1,7 @@
 # MIDI Command Coverage v1
 
+**Status (2026-09-27):** Complete. The piano roll consumes these commands.
+
 ## Objective
 
 Provide one reversible command boundary shared by the piano roll and drum step sequencer. MIDI editing must never mutate canonical project state directly.

@@ -1,5 +1,7 @@
 # Piano Roll Interaction Hardening v1
 
+**Status (2026-09-27):** Complete. The drum workflow it names shipped (`drum-step-sequencer-v1.md`).
+
 This slice completes the first detailed MIDI-editor interaction layer on top of the canonical command system.
 
 ## Included

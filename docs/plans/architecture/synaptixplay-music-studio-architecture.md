@@ -1,5 +1,7 @@
 # SynaptixPlay Music Studio Architecture Plan
 
+**Status (2026-09-27):** Reference architecture. Its direction is implemented through Stages 9-13; the current system is described in `docs/architecture/system-architecture.md`.
+
 ## Executive recommendation
 
 Use a multi-runtime architecture:

@@ -1,5 +1,7 @@
 # Generation Job Realtime v1
 
+**Status (2026-09-27):** Complete. Still deferred: server-side event sequence numbers/replay cursor, cross-device applied-job registry, partial-track/section regeneration conflicts.
+
 ## Objective
 
 Deliver low-latency music-generation lifecycle updates while keeping durable polling as the recovery authority.

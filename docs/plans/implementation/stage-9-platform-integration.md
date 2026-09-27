@@ -1,5 +1,7 @@
 # Stage 9 — SynaptixPlay Platform Integration
 
+**Status (2026-09-27):** Historical. The deferred follow-ups shipped (studio sign-in, SignalR updates, .NET endpoints, durable jobs and credits, project sync, applying proposals) except render-job authorization per player: render jobs are not yet scoped to their owner.
+
 ## Status
 
 > **Historical plan.** Completed and superseded by Stages 10–13. Deferred items below were delivered later (platform endpoints, SignalR job updates, project sync) or are tracked in `docs/roadmap.md`.
