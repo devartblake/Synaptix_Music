@@ -40,10 +40,10 @@ test("plug-in projects sync to the platform as v2 and renders refuse live plug-i
     return `v${project.schemaVersion} drive=${hasDrive}`;
   }, { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }).toBe("v2 drive=true");
 
-  // Rendering is refused up front while the plug-in is live (the worker can't run it yet).
+  // Rendering is refused up front while the plug-in is live and unfrozen.
   await page.getByRole("combobox", { name: "Workspace", exact: true }).selectOption("render");
   await page.getByRole("button", { name: "Render current revision", exact: true }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "can't play plug-ins yet" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "can't play live plug-ins" })).toBeVisible();
 
   await page.request.delete("/api/auth/session");
 });

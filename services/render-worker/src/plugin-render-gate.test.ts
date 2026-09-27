@@ -50,12 +50,13 @@ function manifest(scope: RenderManifest["scope"] = { kind: "master" }): RenderMa
 
 test("v1 projects pass through unchanged", async () => {
   const project = v1Project();
-  assert.equal(await resolveRenderableProject(project, manifest()), project);
+  assert.equal((await resolveRenderableProject(project, manifest())).project, project);
 });
 
 test("a migrated v2 project renders byte-identically to its v1 source", async () => {
   const v1 = v1Project();
-  const renderable = await resolveRenderableProject(migrateProjectV1ToV2(v1), manifest());
+  const { project: renderable, options } = await resolveRenderableProject(migrateProjectV1ToV2(v1), manifest());
+  assert.deepEqual(options, {});
   const fromV1 = renderProjectOffline(v1, manifest());
   const fromV2 = renderProjectOffline(renderable, manifest());
   assert.deepEqual(
@@ -73,12 +74,12 @@ test("enabled plug-ins on rendered tracks fail closed with the device named", as
 });
 
 test("bypassed plug-ins and plug-ins outside the requested stems do not block rendering", async () => {
-  assert.equal((await resolveRenderableProject(withDrive(false), manifest())).schemaVersion, 1);
-  const stems = await resolveRenderableProject(withDrive(), manifest({ kind: "stems", trackIds: ["bass"] }));
+  assert.equal((await resolveRenderableProject(withDrive(false), manifest())).project.schemaVersion, 1);
+  const { project: stems } = await resolveRenderableProject(withDrive(), manifest({ kind: "stems", trackIds: ["bass"] }));
   assert.deepEqual(stems.tracks.map((track) => track.devices.map((device) => device.id)), [["lead-device"], ["bass-device"]]);
 });
 
-test("current frozen evidence is recognized but still rejected until frozen playback exists", async () => {
+test("a current freeze still fails closed on a worker without frozen artifact storage", async () => {
   const project = withDrive();
   const device = project.tracks[0]!.devices[1]!;
   device.frozen = {
@@ -88,5 +89,5 @@ test("current frozen evidence is recognized but still rejected until frozen play
     sourceSignalChainChecksumSha256: await computeSignalChainChecksum(project, device.id),
     artifactChecksumSha256: "d".repeat(64), engineVersion: "1.0.0", frozenAt: "2026-09-22T00:00:00Z"
   };
-  await assert.rejects(resolveRenderableProject(project, manifest()), /frozen artifact playback is not supported/);
+  await assert.rejects(resolveRenderableProject(project, manifest()), /frozen artifact playback is not configured/);
 });

@@ -27,6 +27,7 @@ export interface MinioClientLike {
     metadata?: Record<string, string>
   ): Promise<unknown>;
   presignedGetObject(bucketName: string, objectName: string, expires?: number): Promise<string>;
+  getObject(bucketName: string, objectName: string): Promise<AsyncIterable<Buffer | string>>;
 }
 
 function safeSegment(value: string, label: string): string {
@@ -86,6 +87,14 @@ export class MinioArtifactStore implements ArtifactSink, ArtifactDelivery {
       "X-Amz-Meta-Artifact-Id": artifact.metadata.artifactId,
       "X-Amz-Meta-Sha256": artifact.metadata.checksumSha256
     });
+  }
+
+  /** Reads a stored render artifact back, e.g. a plug-in freeze for frozen playback. */
+  async load(renderId: string, fileName: string): Promise<Buffer> {
+    const stream = await this.client.getObject(this.bucket, renderArtifactObjectName(renderId, fileName));
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    return Buffer.concat(chunks);
   }
 
   async createDownloadUrl(

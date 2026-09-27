@@ -5,6 +5,7 @@ import type { RenderJob } from "@synaptix/render-contracts";
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
 import { renderPluginFreeze, renderProjectOffline, type RenderedArtifact } from "./offline-renderer.ts";
+import type { FrozenArtifactSource } from "./frozen-playback.ts";
 import { resolveRenderableProject } from "./plugin-render-gate.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
@@ -21,6 +22,8 @@ export interface WorkerDependencies {
   loader: ProjectLoader;
   sink: ArtifactSink;
   transcoder?: AudioTranscoder;
+  /** Where plug-in freezes are read back for frozen playback; without it frozen plug-ins fail closed. */
+  frozenSource?: FrozenArtifactSource;
 }
 
 export interface ProcessJobOptions {
@@ -66,7 +69,8 @@ export async function processNextJob(
       if (project.schemaVersion !== 2) throw new Error("Plug-in freezes need a Project Schema v2 revision.");
       rendered = renderPluginFreeze(project, job.manifest);
     } else {
-      rendered = renderProjectOffline(await resolveRenderableProject(project, job.manifest), job.manifest);
+      const renderable = await resolveRenderableProject(project, job.manifest, dependencies.frozenSource);
+      rendered = renderProjectOffline(renderable.project, job.manifest, renderable.options);
     }
     const outcome = await packageRenderArtifacts(
       rendered,

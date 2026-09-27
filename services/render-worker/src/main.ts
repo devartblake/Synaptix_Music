@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   console.log(`render-worker artifact delivery ${artifactStore ? "enabled" : "disabled"}`);
   if (projectLoader && artifactStore) {
     const workerId = process.env.RENDER_WORKER_ID ?? `${hostname()}-${process.pid}`;
-    void runWorker(store, { loader: projectLoader, sink: artifactStore }, workerId, {
+    void runWorker(store, { loader: projectLoader, sink: artifactStore, frozenSource: artifactStore }, workerId, {
       signal: workerAbort.signal
     });
     console.log(`render-worker polling enabled as '${workerId}'`);
