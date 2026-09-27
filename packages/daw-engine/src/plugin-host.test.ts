@@ -292,3 +292,57 @@ test("reuse keys change with plug-in identity or state but not with parameters",
   assert.notEqual(pluginInstanceReuseKey("track-1", { ...device, pluginState: { stateVersion: 1, encoding: "json", payload: "{}", checksumSha256: null } }), key);
   assert.notEqual(pluginInstanceReuseKey("track-1", { ...device, plugin: { ...device.plugin, version: "2.0.0" } }), key);
 });
+
+test("frozen audio stands in for the slots it covers; later slots stay live", async () => {
+  const { TrackPluginChain } = await import("./plugin-host.ts");
+  const wirings: string[][] = [];
+  const target = { setInserts: (inserts: readonly { input: AudioNode }[]) => { wirings.push(inserts.map((insert) => (insert.input as unknown as { deviceId: string }).deviceId)); } };
+  const chain = new TrackPluginChain(target, 3);
+  const [a, c] = ["a", "c"].map(fakeInstance);
+  chain.fill(0, a!.instance);
+  chain.fill(2, c!.instance);
+  chain.attach();
+
+  let frozenDisposed = 0;
+  const frozen = { deviceId: "frozen" } as unknown as AudioNode;
+  chain.playFrozen(1, { input: frozen, output: frozen }, () => { frozenDisposed += 1; });
+  assert.equal(chain.frozenThrough, 1);
+  assert.equal(a!.disposed, 1, "the covered live instance is disposed");
+  const late = fakeInstance("b");
+  chain.fill(1, late.instance);
+  assert.equal(late.disposed, 1, "a covered slot that finishes loading later is discarded");
+  assert.deepEqual(wirings, [["a", "c"], ["frozen", "c"]]);
+
+  chain.playFrozen(0, { input: frozen, output: frozen }, () => { frozenDisposed += 10; });
+  assert.equal(frozenDisposed, 10, "a second stand-in is refused");
+  assert.deepEqual(chain.release().map((instance) => instance.deviceId), ["c"]);
+  assert.equal(frozenDisposed, 11);
+});
+
+test("a current freeze stands in only when a plug-in it covers can't play", async () => {
+  const { planFrozenFallback } = await import("./plugin-host.ts");
+  const { computePluginStateChecksum, computeSignalChainChecksum } = await import("@synaptix/project-model/plugin");
+  const project: MusicProjectV2 = migrateProjectV1ToV2(createEmptyProject("project-1", { revisionId: "revision-1", now: "2026-09-22T00:00:00.000Z" }));
+  const unknown = driveDevice({ id: "device-unknown", plugin: { ...REFERENCE_DRIVE_DESCRIPTOR.reference, pluginId: "vendor.unknown" } });
+  const drive = driveDevice();
+  project.tracks.push(v2Track([BUILTIN, unknown, drive]));
+  const plugins = () => project.tracks[0]!.devices.slice(1);
+  const planned = (unavailable: string[]) => plugins().map((device) => ({ device, unavailable: unavailable.includes(device.id) }));
+
+  assert.equal(await planFrozenFallback(project, "track-1", planned(["device-unknown"])), null, "nothing frozen");
+  const frozenDrive = project.tracks[0]!.devices[2]!;
+  frozenDrive.frozen = {
+    renderId: "7f7b8f0e-7f55-4a41-9d4e-3b1f8f3f7a10", artifactId: "0c3f3f0e-1a55-4a41-9d4e-3b1f8f3f7a11",
+    sourceProjectId: project.projectId, sourceRevisionId: project.revisionId, sourceProjectChecksumSha256: "c".repeat(64),
+    sourceDeviceId: frozenDrive.id, sourcePluginStateChecksumSha256: await computePluginStateChecksum(frozenDrive),
+    sourceSignalChainChecksumSha256: await computeSignalChainChecksum(project, frozenDrive.id, "track-1"),
+    artifactChecksumSha256: "d".repeat(64), engineVersion: "1.0.0", frozenAt: "2026-09-22T00:00:00Z"
+  };
+  const plan = await planFrozenFallback(project, "track-1", planned(["device-unknown"]));
+  assert.equal(plan?.through, 1);
+  assert.equal(plan?.device.id, "device-drive");
+  assert.equal(await planFrozenFallback(project, "track-1", planned([])), null, "everything plays live");
+
+  frozenDrive.parameters = [{ id: "drive", value: 9 }];
+  assert.equal(await planFrozenFallback(project, "track-1", planned(["device-unknown"])), null, "a stale freeze never plays");
+});

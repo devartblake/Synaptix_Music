@@ -158,7 +158,7 @@ export function RenderWorkspace({
       let payload = pendingRequest;
       if (!payload) {
         const draft = await createExportManifest(project, options);
-        const plugins = livePluginsInScope(editorProject, draft.scope);
+        const plugins = await livePluginsInScope(editorProject, draft.scope);
         if (plugins.length) throw new Error(describeLivePlugins(plugins));
         await onSync();
         const manifest = await pinManifestToPlatformRevision(

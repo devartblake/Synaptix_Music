@@ -68,3 +68,48 @@ export function encodeWav(buffer: StereoBuffer, sampleRate: number, bitDepth: Wa
 
   return out;
 }
+
+/** Decodes a PCM WAV (16/24/32-bit, mono or stereo) as written by encodeWav, for frozen playback. */
+export function decodeWav(bytes: Buffer): { buffer: StereoBuffer; sampleRate: number } {
+  if (bytes.toString("ascii", 0, 4) !== "RIFF" || bytes.toString("ascii", 8, 12) !== "WAVE") {
+    throw new Error("Not a WAV file.");
+  }
+  let offset = 12;
+  let format: { channels: number; sampleRate: number; bitDepth: number } | null = null;
+  while (offset + 8 <= bytes.length) {
+    const id = bytes.toString("ascii", offset, offset + 4);
+    const size = bytes.readUInt32LE(offset + 4);
+    const body = offset + 8;
+    if (id === "fmt ") {
+      if (bytes.readUInt16LE(body) !== 1) throw new Error("Only PCM WAV files can be decoded.");
+      format = {
+        channels: bytes.readUInt16LE(body + 2),
+        sampleRate: bytes.readUInt32LE(body + 4),
+        bitDepth: bytes.readUInt16LE(body + 14)
+      };
+    } else if (id === "data") {
+      if (!format) throw new Error("WAV data appears before its format.");
+      const { channels, bitDepth } = format;
+      if (![16, 24, 32].includes(bitDepth) || channels < 1 || channels > 2) {
+        throw new Error(`Unsupported WAV layout (${channels} channels, ${bitDepth}-bit).`);
+      }
+      const bytesPerSample = bitDepth / 8;
+      const frames = Math.floor(Math.min(size, bytes.length - body) / (bytesPerSample * channels));
+      const left = new Float64Array(frames);
+      const right = new Float64Array(frames);
+      const max = 2 ** (bitDepth - 1);
+      for (let frame = 0; frame < frames; frame++) {
+        for (let channel = 0; channel < channels; channel++) {
+          const at = body + (frame * channels + channel) * bytesPerSample;
+          const raw = bitDepth === 16 ? bytes.readInt16LE(at) : bitDepth === 24 ? bytes.readIntLE(at, 3) : bytes.readInt32LE(at);
+          const value = raw < 0 ? raw / max : raw / (max - 1);
+          if (channel === 0) left[frame] = value;
+          if (channel === 1 || channels === 1) right[frame] = value;
+        }
+      }
+      return { buffer: { left, right }, sampleRate: format.sampleRate };
+    }
+    offset = body + size + (size % 2);
+  }
+  throw new Error("WAV file has no data.");
+}

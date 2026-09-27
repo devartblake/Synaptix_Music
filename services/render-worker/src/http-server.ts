@@ -83,6 +83,24 @@ function isServiceAuthorized(req: IncomingMessage, expected: string): boolean {
   return supplied.length === wanted.length && timingSafeEqual(supplied, wanted);
 }
 
+/**
+ * The player a request acts for. The studio's BFF sets it after verifying the player's session
+ * with the platform; every read and write is then scoped to that player. The worker is only
+ * reachable on the private network, so requests without it (certification tooling, operators)
+ * stay unscoped.
+ */
+export const RENDER_OWNER_HEADER = "x-synaptix-owner";
+
+function renderOwner(req: IncomingMessage): string | undefined {
+  const value = req.headers[RENDER_OWNER_HEADER];
+  if (value === undefined) return undefined;
+  const owner = (Array.isArray(value) ? value.join(",") : value).trim();
+  if (owner.length === 0 || owner.length > 200 || owner.includes(",")) {
+    throw new Error("The render owner header is invalid.");
+  }
+  return owner;
+}
+
 async function handleRequest(
   store: PostgresRenderJobStore,
   artifactDelivery: ArtifactDelivery | undefined,
@@ -95,6 +113,7 @@ async function handleRequest(
   const segments = url.pathname.split("/").filter(Boolean);
 
   try {
+    const owner = renderOwner(req);
     if (req.method === "POST" && url.pathname === "/internal/render-evidence") {
       if (!options.serviceToken) {
         return sendError(res, 503, "service_authentication_unavailable", "Render-worker service authentication is not configured.", correlationId);
@@ -106,7 +125,7 @@ async function handleRequest(
       return sendJson(res, 200, await store.renderEvidence(request.renderIds, request.artifactIds));
     }
     if (req.method === "POST" && segments.length === 1 && segments[0] === "render-jobs") {
-      await handleSubmit(store, req, res, correlationId);
+      await handleSubmit(store, req, res, correlationId, owner ?? null);
       return;
     }
     if (req.method === "GET" && segments.length === 1 && segments[0] === "render-jobs") {
@@ -120,11 +139,17 @@ async function handleRequest(
           correlationId
         );
       }
-      const jobs = await store.list(statusParam ?? undefined);
+      const jobs = await store.list(statusParam ?? undefined, owner);
       return sendJson(res, 200, { jobs });
     }
+    if (req.method === "GET" && segments.length === 2 && segments[0] === "renders") {
+      // Frozen plug-in references name a render, not a job; this resolves one to the other.
+      const job = await store.getByRenderId(segments[1]!, owner);
+      if (!job) return sendError(res, 404, "render_not_found", `Render '${segments[1]}' was not found.`, correlationId);
+      return sendJson(res, 200, job);
+    }
     if (req.method === "GET" && segments.length === 2 && segments[0] === "render-jobs") {
-      const job = await store.get(segments[1]!);
+      const job = await store.get(segments[1]!, owner);
       if (!job)
         return sendError(
           res,
@@ -141,6 +166,9 @@ async function handleRequest(
       segments[0] === "render-jobs" &&
       segments[2] === "events"
     ) {
+      if (owner && !(await store.get(segments[1]!, owner))) {
+        return sendError(res, 404, "render_job_not_found", `Render job '${segments[1]}' was not found.`, correlationId);
+      }
       const events = await store.events(segments[1]!);
       return sendJson(res, 200, { events });
     }
@@ -161,7 +189,7 @@ async function handleRequest(
           true
         );
       }
-      const job = await store.get(segments[1]!);
+      const job = await store.get(segments[1]!, owner);
       if (!job)
         return sendError(
           res,
@@ -194,6 +222,9 @@ async function handleRequest(
       segments[0] === "render-jobs" &&
       segments[2] === "cancel"
     ) {
+      if (owner && !(await store.get(segments[1]!, owner))) {
+        return sendError(res, 404, "render_job_not_found", `Render job '${segments[1]}' was not found.`, correlationId);
+      }
       const job = await store.cancel(segments[1]!);
       return sendJson(res, 200, job);
     }
@@ -207,7 +238,8 @@ async function handleSubmit(
   store: PostgresRenderJobStore,
   req: IncomingMessage,
   res: ServerResponse,
-  correlationId: string
+  correlationId: string,
+  owner: string | null
 ): Promise<void> {
   const idempotencyKey = req.headers["idempotency-key"]?.toString();
   if (!idempotencyKey) {
@@ -232,7 +264,7 @@ async function handleSubmit(
   }
 
   const manifest = RenderManifestSchema.parse(body.manifest);
-  const job = await store.submit(manifest, idempotencyKey, body.maxAttempts);
+  const job = await store.submit(manifest, idempotencyKey, body.maxAttempts, owner);
   sendJson(res, 201, job);
 }
 
@@ -264,7 +296,8 @@ function handleError(res: ServerResponse, error: unknown, correlationId: string)
     return sendError(res, 404, "render_job_not_found", message, correlationId);
   if (
     message.includes("already terminal") ||
-    message.includes("already used for a different render")
+    message.includes("already used for a different render") ||
+    message.includes("already used by another caller")
   ) {
     return sendError(res, 409, "render_job_conflict", message, correlationId);
   }

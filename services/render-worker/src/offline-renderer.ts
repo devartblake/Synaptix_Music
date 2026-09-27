@@ -22,7 +22,7 @@ import { projectV2BuiltinView, type MusicProjectV2 } from "@synaptix/project-mod
 
 import { applyCompressor } from "./compressor.ts";
 import { offlineProcessorFor, type OfflinePluginProcessor } from "./plugin-processors.ts";
-import { PluginRenderUnsupportedError } from "./plugin-render-gate.ts";
+import { PluginRenderUnsupportedError } from "./plugin-render-error.ts";
 import { applyReverb } from "./reverb.ts";
 import { encodeWav, type StereoBuffer } from "./wav-encoder.ts";
 
@@ -89,7 +89,7 @@ function envelopeValue(
   return release > 0 ? sustain * (1 - sinceRelease / release) : 0;
 }
 
-function ticksToSeconds(ticks: number, ppq: number, bpm: number): number {
+export function ticksToSeconds(ticks: number, ppq: number, bpm: number): number {
   return (ticks / ppq) * (60 / bpm);
 }
 
@@ -294,9 +294,43 @@ function buildArtifact(
   };
 }
 
+export interface OfflineRenderOptions {
+  /**
+   * Pre-fader signals that replace a track's synthesized audio (frozen plug-in playback, cutover
+   * step F). Volume, pan, mute, solo, routing and sends still apply on top.
+   */
+  preFader?: ReadonlyMap<string, StereoBuffer>;
+}
+
+/** Samples in a mix/stems render of this manifest: the range plus the requested tail. */
+export function renderLengthSamples(
+  project: Pick<MusicProject, "transport" | "tempoMap">,
+  manifest: Pick<RenderManifest, "range" | "output">
+): number {
+  const bpm = project.tempoMap[0]?.bpm ?? 120;
+  const seconds = ticksToSeconds(manifest.range.endTick - manifest.range.startTick, project.transport.ticksPerQuarterNote, bpm);
+  return Math.max(1, Math.round((seconds + manifest.output.includeTailSeconds) * manifest.output.sampleRate));
+}
+
+/** A copy of a pre-fader signal fitted to the render length, through the track's volume and pan. */
+function channelStrip(source: StereoBuffer, track: Track, totalSamples: number): StereoBuffer {
+  const gainLinear = 10 ** (track.volumeDb / 20);
+  const panAngle = ((track.pan + 1) * Math.PI) / 4;
+  const leftGain = gainLinear * Math.cos(panAngle);
+  const rightGain = gainLinear * Math.sin(panAngle);
+  const left = new Float64Array(totalSamples);
+  const right = new Float64Array(totalSamples);
+  for (let i = 0; i < totalSamples; i++) {
+    left[i] = (source.left[i] ?? 0) * leftGain;
+    right[i] = (source.right[i] ?? 0) * rightGain;
+  }
+  return { left, right };
+}
+
 export function renderProjectOffline(
   project: MusicProject,
-  manifest: RenderManifest
+  manifest: RenderManifest,
+  options: OfflineRenderOptions = {}
 ): OfflineRenderOutcome {
   if (project.projectId !== manifest.projectId) {
     throw new Error(
@@ -319,11 +353,7 @@ export function renderProjectOffline(
   const sampleRate = manifest.output.sampleRate;
   const range: TickRange = { startTick: manifest.range.startTick, endTick: manifest.range.endTick };
 
-  const rangeSeconds = ticksToSeconds(range.endTick - range.startTick, ppq, bpm);
-  const totalSamples = Math.max(
-    1,
-    Math.round((rangeSeconds + manifest.output.includeTailSeconds) * sampleRate)
-  );
+  const totalSamples = renderLengthSamples(project, manifest);
 
   const instrumentTracks = project.tracks.filter((track) => track.kind === "instrument");
   const warnings: string[] = [];
@@ -334,7 +364,8 @@ export function renderProjectOffline(
       const track = instrumentTracks.find((candidate) => candidate.id === trackId);
       if (!track)
         throw new Error(`Track '${trackId}' was not found or is not an instrument track.`);
-      const buffer = renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, true) ?? renderTrackBuffer(
+      const frozen = options.preFader?.get(track.id);
+      const buffer = frozen ? channelStrip(frozen, track, totalSamples) : renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, true) ?? renderTrackBuffer(
         track,
         project.tracks,
         range,
@@ -361,7 +392,12 @@ export function renderProjectOffline(
     const mixer = project.mixer ?? defaultMixer();
     const channelGain = (settings: { muted: boolean; volumeDb: number }) => settings.muted ? 0 : 10 ** (settings.volumeDb / 20);
     for (const track of instrumentTracks) {
-      const trackBuffer = renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, false) ?? renderTrackBuffer(
+      const frozen = options.preFader?.get(track.id);
+      const trackBuffer = frozen
+        ? trackAudible(track, project.tracks)
+          ? channelStrip(frozen, track, totalSamples)
+          : { left: new Float64Array(totalSamples), right: new Float64Array(totalSamples) }
+        : renderFrequencyDroneTrackBuffer(track, project.tracks, totalSamples, sampleRate, totalSamples / sampleRate, false) ?? renderTrackBuffer(
         track,
         project.tracks,
         range,

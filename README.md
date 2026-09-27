@@ -130,7 +130,7 @@ CI independently validates TypeScript, Python, Rust/WASM, and Docker Compose.
 
 ## Current Development Stage
 
-Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is implementation-complete and awaiting live staging certification; Stage 13 is about 75% implementation-complete.
+Stages 1–11 are complete. **Stage 12 — Production Audio and Rendering** is complete and accepted (local certification evidence, 2026-09-26). **Stage 13 — Adaptive Game Audio** is about 80% implementation-complete, with verified publication enabled; on-device certification, dashboards and rollout remain.
 
 Completed Stage 12 foundation work includes:
 
@@ -139,7 +139,7 @@ Completed Stage 12 foundation work includes:
 - peak/RMS metering and clipping evidence;
 - versioned deterministic render manifests and result contracts.
 
-Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, exact-revision loading, deterministic offline WAV rendering with reverb and master compression, MP3/OGG derivatives, bounded previews, validated artifact manifests, and MinIO-backed signed delivery. The repository also contains a production image, least-privilege storage policy, and evidence-producing certification command. An authorized staging operator must still provision secrets and execute the certification runbook before Stage 12 is operationally closed.
+Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted master metering, canonical device parameters, durable render jobs, exact-revision loading, deterministic offline WAV rendering with reverb and master compression, MP3/OGG derivatives, bounded previews, validated artifact manifests, and MinIO-backed signed delivery. The repository also contains a production image, least-privilege storage policy, and evidence-producing certification command. The certification runbook passed in a local rehearsal and that evidence is accepted; running it again in staging is recommended before production.
 
 ## Documentation
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createEmptyProject, defaultMixer } from "@synaptix/project-model";
 import { computeProjectChecksum } from "@synaptix/command-system";
+import { computePluginStateChecksum, computeSignalChainChecksum } from "@synaptix/project-model/plugin";
 import { downgradeProjectV2ToV1, projectV2BuiltinView, toProjectV2 } from "@synaptix/project-model/v2";
 import {
   createExportManifest,
@@ -71,7 +72,28 @@ test("pinning refuses other revisions, changed music, bad checksums and live plu
     plugin: { pluginId: "synaptix.reference-drive", vendorId: "synaptix", version: "1.0.0", runtimeKind: "audio-worklet", moduleChecksumSha256: null },
     pluginState: null, automation: [], frozen: null
   });
-  assert.deepEqual(livePluginsInScope(withPlugin, { kind: "master" }), [{ trackName: "Bass", pluginId: "synaptix.reference-drive" }]);
-  assert.deepEqual(livePluginsInScope(withPlugin, { kind: "stems", trackIds: [] }), []);
-  await assert.rejects(pinManifestToPlatformRevision(draft, withPlugin, { project: withPlugin }), /can't play plug-ins yet/);
+  assert.deepEqual(await livePluginsInScope(withPlugin, { kind: "master" }), [{ trackName: "Bass", pluginId: "synaptix.reference-drive" }]);
+  assert.deepEqual(await livePluginsInScope(withPlugin, { kind: "stems", trackIds: [] }), []);
+  await assert.rejects(pinManifestToPlatformRevision(draft, withPlugin, { project: withPlugin }), /can't play live plug-ins/);
+});
+
+test("plug-ins covered by a current freeze don't block rendering; stale freezes still do", async () => {
+  const project = v2Project();
+  project.tracks[0]!.devices.push({
+    id: "drive", deviceType: "synaptix.reference-drive", deviceVersion: "1.0.0", enabled: true, parameters: [],
+    plugin: { pluginId: "synaptix.reference-drive", vendorId: "synaptix", version: "1.0.0", runtimeKind: "audio-worklet", moduleChecksumSha256: null },
+    pluginState: null, automation: [], frozen: null
+  });
+  const device = project.tracks[0]!.devices.at(-1)!;
+  device.frozen = {
+    renderId: "7f7b8f0e-7f55-4a41-9d4e-3b1f8f3f7a10", artifactId: "0c3f3f0e-1a55-4a41-9d4e-3b1f8f3f7a11",
+    sourceProjectId: project.projectId, sourceRevisionId: project.revisionId, sourceProjectChecksumSha256: "c".repeat(64),
+    sourceDeviceId: device.id, sourcePluginStateChecksumSha256: await computePluginStateChecksum(device),
+    sourceSignalChainChecksumSha256: await computeSignalChainChecksum(project, device.id),
+    artifactChecksumSha256: "d".repeat(64), engineVersion: "1.0.0", frozenAt: "2026-09-27T00:00:00Z"
+  };
+  assert.deepEqual(await livePluginsInScope(project, { kind: "master" }), []);
+
+  device.parameters = [{ id: "drive", value: 4 }];
+  assert.equal((await livePluginsInScope(project, { kind: "master" })).length, 1);
 });

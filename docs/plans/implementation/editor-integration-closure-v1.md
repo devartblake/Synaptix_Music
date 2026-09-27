@@ -1,5 +1,7 @@
 # Editor Integration and Recovery Closure v1
 
+**Status (2026-09-27):** Complete. Its "Next stage" (production audio and rendering) is Stage 12, now accepted.
+
 ## Status
 
 Implemented in PR #24 after the command-history, piano-roll, drum-sequencer, audition, and transport foundations.

@@ -1,5 +1,7 @@
 # Synaptix Music Studio UI Modernization v1
 
+**Status (2026-09-27):** Complete. Later UI work (sign-in, listening library, instrument picker, prototype audio) is recorded in the CHANGELOG and `listening-player-v1.md`.
+
 ## Goal
 
 Evolve the current functional editor into a coherent production-oriented DAW interface without coupling visual redesign to audio-runtime or synchronization correctness.

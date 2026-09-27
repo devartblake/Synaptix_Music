@@ -1,5 +1,7 @@
 # MIDI Synthesis, Clip Visualization, Mixer Commands, and Autosave v1
 
+**Status (2026-09-27):** Complete. The deferred items are done (drum synthesis, instrument catalog, filter/envelope/reverb effects, AudioWorklet plug-ins, command-backed mute/solo/loop, undo/redo UI, multi-tab coordination, IndexedDB tests) except General MIDI percussion mapping and automation of built-in instruments.
+
 ## Objective
 
 Turn the browser arrangement shell into an audible and locally durable editor by scheduling canonical MIDI notes, rendering clip regions, applying mixer edits through project commands and revisions, and persisting snapshots in IndexedDB.

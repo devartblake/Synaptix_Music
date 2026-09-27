@@ -80,6 +80,7 @@ import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack } from "./PluginRack";
 import { createFreezeManifest, FreezeError, freezeReference, storedRevision } from "../../../lib/platform/plugin-freeze-model";
+import { createPlatformFrozenAudioSource } from "../../../lib/platform/frozen-audio-source";
 import { ProjectTitle } from "./ProjectTitle";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
@@ -212,7 +213,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     catch { /* The mixer remains usable without persisted preferences. */ }
     if (!open) mixerToggleRef.current?.focus();
   }
-  const engine = useMemo(() => new BrowserAudioEngine(), []);
+  const engine = useMemo(() => new BrowserAudioEngine({ frozenAudio: createPlatformFrozenAudioSource() }), []);
   // Tone.js has one global transport: the listening player hands the audio to the studio.
   useEffect(() => { usePlayer.getState().release(); }, []);
   const localRef = useRef<LocalProjectRepository<StoredMusicProject> | null>(null);

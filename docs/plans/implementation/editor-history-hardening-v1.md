@@ -1,5 +1,7 @@
 # Editor History Hardening v1
 
+**Status (2026-09-27):** Complete. All six integration items below are done (see the 2026-09-25 note); edits, undo and redo also queue so an edit made during a save is never dropped.
+
 ## Scope
 
 This slice strengthens the command-backed editor history before broader integration and release testing.

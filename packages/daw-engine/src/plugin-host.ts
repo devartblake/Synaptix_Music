@@ -1,4 +1,5 @@
 import {
+  evaluateFrozenPluginEvidence,
   pluginReferenceKey,
   pluginUnavailable,
   resolvePluginAvailability,
@@ -9,6 +10,8 @@ import {
 import type {
   AutomationPoint,
   DeviceV2,
+  FrozenPluginArtifactReference,
+  MusicProjectV2,
   PluginReference,
   PluginRuntimeKind,
   PluginStateEnvelope,
@@ -253,6 +256,7 @@ export class TrackPluginChain {
   private readonly slots: (BrowserPluginInstance | null)[];
   private attached = false;
   private disposed = false;
+  private frozen: { through: number; nodes: PluginInsertNodes; dispose(): void } | null = null;
 
   constructor(private readonly target: PluginInsertTarget, size: number) {
     this.slots = Array.from({ length: size }, () => null);
@@ -266,8 +270,31 @@ export class TrackPluginChain {
     return this.disposed;
   }
 
+  /** The last slot a frozen stand-in replaces, or null while every slot plays live. */
+  get frozenThrough(): number | null {
+    return this.frozen?.through ?? null;
+  }
+
+  /**
+   * Replace slots 0..through with frozen audio (cutover step F): the stand-in's input is a dead
+   * end for the live signal, and its output feeds the remaining live slots. Live instances in
+   * the replaced slots are disposed; the stand-in is disposed with the chain.
+   */
+  playFrozen(through: number, nodes: PluginInsertNodes, dispose: () => void): void {
+    if (this.disposed || this.frozen) {
+      dispose();
+      return;
+    }
+    this.frozen = { through, nodes, dispose };
+    for (let index = 0; index <= through && index < this.slots.length; index++) {
+      this.slots[index]?.dispose();
+      this.slots[index] = null;
+    }
+    this.rewire();
+  }
+
   fill(index: number, instance: BrowserPluginInstance): void {
-    if (this.disposed) {
+    if (this.disposed || (this.frozen && index <= this.frozen.through)) {
       instance.dispose();
       return;
     }
@@ -293,6 +320,7 @@ export class TrackPluginChain {
   release(): BrowserPluginInstance[] {
     const released = this.instances;
     this.slots.fill(null);
+    this.disposeFrozen();
     this.disposed = true;
     return released;
   }
@@ -300,12 +328,49 @@ export class TrackPluginChain {
   dispose(): void {
     for (const instance of this.instances) instance.dispose();
     this.slots.fill(null);
+    this.disposeFrozen();
     this.disposed = true;
   }
 
-  private rewire(): void {
-    if (this.attached && !this.disposed) this.target.setInserts(this.instances);
+  private disposeFrozen(): void {
+    this.frozen?.dispose();
+    this.frozen = null;
   }
+
+  private rewire(): void {
+    if (!this.attached || this.disposed) return;
+    this.target.setInserts(this.frozen
+      ? [this.frozen.nodes, ...this.slots.slice(this.frozen.through + 1).filter((slot): slot is BrowserPluginInstance => slot !== null)]
+      : this.instances);
+  }
+}
+
+/** A plug-in insert's audio endpoints. */
+export interface PluginInsertNodes {
+  readonly input: AudioNode;
+  readonly output: AudioNode;
+}
+
+/**
+ * When a track's live chain can't play because a plug-in is unavailable in this browser, the
+ * frozen audio that can stand in for it: the last plug-in with a current freeze, as long as an
+ * unavailable plug-in sits at or before it (a freeze covers every device before it). Plug-ins
+ * after it keep playing live. Null when nothing is unavailable or no current freeze covers it.
+ */
+export async function planFrozenFallback(
+  project: MusicProjectV2,
+  trackId: string,
+  planned: readonly { device: DeviceV2; unavailable: boolean }[]
+): Promise<{ through: number; device: DeviceV2; reference: FrozenPluginArtifactReference } | null> {
+  const firstUnavailable = planned.findIndex((entry) => entry.unavailable);
+  if (firstUnavailable < 0) return null;
+  for (let index = planned.length - 1; index >= firstUnavailable; index--) {
+    const { device } = planned[index]!;
+    if (!device.frozen) continue;
+    const evidence = await evaluateFrozenPluginEvidence(project, device.id, trackId);
+    if (evidence.status === "current") return { through: index, device, reference: evidence.reference };
+  }
+  return null;
 }
 
 /** Identity under which a live instance can be reused by the next graph rebuild. */

@@ -1,7 +1,7 @@
 # Browser DAW and Plug-in Extensibility — Actionable Roadmap
 
-**Status:** Proposed  
-**Revision date:** 2026-09-22  
+**Status:** In progress. P0 and P1 are done; freezing first-party plug-ins (from the P1/P2 freeze plan) is done; P2 (WAM), P3 (browser DSP certification), P4 (VST3 bridge) and P5 have not started.  
+**Revision date:** 2026-09-27  
 **Scope:** Browser DAW extensibility, AudioWorklet/WAM, WebAssembly DSP, native VST3 bridging, licensing, rendering, and adaptive-game-audio integration.
 
 ## Decision summary

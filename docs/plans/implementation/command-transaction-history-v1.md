@@ -1,5 +1,7 @@
 # Command, Transaction, Undo, and Revision System v1
 
+**Status (2026-09-27):** Complete. Of the deferred items, MIDI-note commands, device-graph commands (plug-in insert/remove) and automation-lane commands (`SetAutomationLaneEditorCommand`) now exist; continuous controls commit one undo step per gesture; edits queue so none are lost. Still deferred: revision branching/named variants, collaborative conflict resolution, server-assigned revision IDs, and a persistent command journal (a revision-level crash-recovery journal exists instead).
+
 ## Status
 
 In implementation.

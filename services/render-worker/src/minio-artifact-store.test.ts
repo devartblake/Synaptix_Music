@@ -31,6 +31,16 @@ class FakeMinioClient implements MinioClientLike {
   async presignedGetObject(bucket: string, objectName: string, expires = 0): Promise<string> {
     return `https://objects.example/${bucket}/${objectName}?expires=${expires}`;
   }
+
+  async getObject(bucket: string, objectName: string): Promise<AsyncIterable<Buffer>> {
+    const upload = this.uploads.find((candidate) => candidate.bucket === bucket && candidate.objectName === objectName);
+    if (!upload) throw new Error("NoSuchKey");
+    const bytes = upload.bytes;
+    return (async function* () {
+      yield bytes.subarray(0, 3);
+      yield bytes.subarray(3);
+    })();
+  }
 }
 
 function artifact(): RenderedArtifact {
@@ -116,4 +126,13 @@ test("environment configuration is opt-in and complete", () => {
       RENDER_WORKER_MINIO_SECRET_KEY: "secret"
     })
   );
+});
+
+test("stored artifacts can be read back for frozen playback", async () => {
+  const client = new FakeMinioClient();
+  const store = new MinioArtifactStore({ endpoint: "localhost", accessKey: "access", secretKey: "secret", bucket: "synaptix-assets" }, client);
+  const rendered = artifact();
+  await store.store(rendered.metadata.renderId, rendered);
+  assert.deepEqual(await store.load(rendered.metadata.renderId, rendered.metadata.fileName), rendered.bytes);
+  await assert.rejects(store.load(rendered.metadata.renderId, "missing.wav"), /NoSuchKey/);
 });

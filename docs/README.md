@@ -40,11 +40,11 @@ docs/
 
 ## Current Status
 
-Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is implementation-complete and awaiting live staging certification. Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — is about 75% implementation-complete, with telemetry dashboards and on-device certification remaining.
+Stages 1–11 are complete. Stage 12 — Production Audio and Rendering — is complete and accepted (local certification evidence, 2026-09-26). Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration — is about 80% implementation-complete: publication is verified and enabled, and on-device certification, telemetry dashboards and rollout remain. The Project Schema v2 plug-in cutover has reached step E (freezing).
 
 Completed capabilities include the canonical project model, deterministic procedural generation, command-backed editing, undo/redo, piano roll, drum sequencer, browser transport, local/cloud project synchronization, generation-job lifecycle delivery, persistence recovery, multi-tab coordination, production audio profiles, buses, master metering, deterministic render contracts, a production audio graph integrated into the live browser engine with reversible device/parameter commands, a mounted studio master meter, and canonical filter/envelope/reverb-send device-parameter binding.
 
-The render pipeline now covers durable jobs, exact-revision loading, deterministic WAV masters/stems, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, a production image, least-privilege policy, and an evidence-producing certification command. Live credential provisioning and staging evidence remain operator work. Stage 13 has implemented adaptive package contracts, deterministic package assembly, transition planning, and SynaptixPlay platform/BFF routes; publication remains gated on successful Stage 12 staging certification.
+The render pipeline covers durable jobs, exact-revision loading, deterministic WAV masters/stems, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, a production image, least-privilege policy, an evidence-producing certification command, and plug-in freeze renders. Stage 13 publication checks every package artifact against the render worker's records before a version goes live.
 
 ## Documentation Ownership
 

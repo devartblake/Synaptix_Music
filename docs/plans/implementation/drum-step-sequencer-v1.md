@@ -1,5 +1,7 @@
 # Drum Step Sequencer v1
 
+**Status (2026-09-27):** Complete. Audition, panic and a transport-following cursor are implemented. Still open: device-provided drum lane metadata beyond pitch overrides.
+
 ## Scope
 
 This slice adds a drum-focused MIDI editor that reuses the canonical project model, editor command history, IndexedDB persistence, and platform synchronization pipeline.

@@ -1,5 +1,7 @@
 # Canonical Project Schema v1
 
+**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
+
 ## Goal
 
 Establish one versioned, transport-neutral music-project contract shared by the browser DAW, Python generation service, future render workers, Rust/WASM components, and SynaptixPlay platform APIs.

@@ -1,5 +1,7 @@
 # Stage 6 — Procedural Generation Service v1
 
+**Status (2026-09-27):** Complete, and extended: switchable composers (procedural, Claude, local model), 12 keys x 7 modes, orchestration across all 12 instruments with per-section layers and mix hints, a 60-200 BPM range, and prototype text-to-audio (MusicGen, non-commercial). Still deferred: additional genres and meters, chord/section regeneration endpoints, user instrument packs, similarity and copyright-risk analysis.
+
 ## Goal
 
 Provide a deterministic server-side composition service that creates an editable arrangement proposal for the canonical Synaptix Music project model.

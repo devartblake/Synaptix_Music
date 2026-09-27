@@ -1,5 +1,7 @@
 # Generation Commands and Browser Transport v1
 
+**Status (2026-09-27):** Complete. The follow-ups it names (clip rendering, command-backed mixer, IndexedDB autosave, playback scheduling) all shipped.
+
 ## Purpose
 
 Convert a validated procedural generation proposal into canonical project mutations, commit the result as one undoable transaction and project revision, and establish the first browser transport and four-track arrangement shell.

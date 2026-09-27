@@ -48,6 +48,39 @@ test("projects can be created, searched, discovered in the cloud and deleted loc
     "/studio/cloud-piano"
   );
   await expect(page.getByRole("link", { name: "Old piano · Cloud" })).toHaveCount(0);
+
+  // Archiving asks first, hides the project, and can be undone from the archived list.
+  const lifecycle: string[] = [];
+  await page.route("**/api/platform/projects/*/archive", (route) => {
+    lifecycle.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ status: 204 });
+  });
+  await page.route("**/api/platform/projects/*/restore", (route) => {
+    lifecycle.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ status: 204 });
+  });
+  await page.getByRole("button", { name: "Archive cloud project Cloud piano" }).click();
+  await page.getByRole("button", { name: "Keep in cloud list" }).click();
+  await expect(page.getByRole("link", { name: "Cloud piano · Cloud" })).toBeVisible();
+  expect(lifecycle).toEqual([]);
+  await page.getByRole("button", { name: "Archive cloud project Cloud piano" }).click();
+  await page.getByRole("button", { name: "Confirm archive" }).click();
+  await expect(page.getByText("Archived Cloud piano.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Cloud piano · Cloud" })).toHaveCount(0);
+  await page.getByLabel("Show archived projects").check();
+  await expect(page.getByText("Cloud piano · Archived")).toBeVisible();
+  await page.getByRole("button", { name: "Restore cloud project Old piano" }).click();
+  await expect(page.getByText("Restored Old piano.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Old piano · Cloud" })).toBeVisible();
+  expect(lifecycle).toEqual(["/api/platform/projects/cloud-piano/archive", "/api/platform/projects/archived/restore"]);
+
+  await page.route("**/api/platform/projects/*/archive", (route) =>
+    route.fulfill({ status: 403, json: { code: "ProjectAccessDenied" } })
+  );
+  await page.getByRole("button", { name: "Archive cloud project Old piano" }).click();
+  await page.getByRole("button", { name: "Confirm archive" }).click();
+  await expect(page.getByText("Old piano isn't one of your cloud projects.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Old piano · Cloud" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(tools).toBeHidden();
   await page.getByRole("button", { name: "Delete local project Quiet piano" }).click();

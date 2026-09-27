@@ -1,5 +1,7 @@
 # Editor Command Coverage and Browser Undo/Redo v1
 
+**Status (2026-09-27):** Complete. The "Next slice" (MIDI note commands, piano roll, drum sequencer) shipped.
+
 ## Scope
 
 This slice moves all currently exposed editor mutations through a revision-producing command boundary.

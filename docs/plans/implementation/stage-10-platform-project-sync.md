@@ -1,5 +1,7 @@
 # Stage 10 — Platform Project Synchronization
 
+**Status (2026-09-27):** Historical. Superseded by `platform-project-synchronization-completion.md`. Still open from its deferred list: archive/delete/share, large binary asset sync, collaborative merge.
+
 > **Historical plan.** Completed. The persistent IndexedDB queue, reconnect drain and conflict banner listed as deferred below were delivered later; see `platform-project-synchronization-completion.md` and `docs/architecture/flows.md`.
 
 ## Objective

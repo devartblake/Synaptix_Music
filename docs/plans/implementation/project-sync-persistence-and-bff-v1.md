@@ -1,5 +1,7 @@
 # Project Synchronization Persistence and BFF v1
 
+**Status (2026-09-27):** Complete. Backend sync endpoints, reconnect drain, conflict UI and multi-tab coordination shipped. Cloud projects can be archived and restored from the studio (2026-09-27). Still open: syncing deletes.
+
 ## Scope
 
 This slice builds on the Stage 10 synchronization foundation by adding a browser-persistent synchronization queue and authenticated Next.js backend-for-frontend routes for project discovery, project download, and optimistic revision upload.

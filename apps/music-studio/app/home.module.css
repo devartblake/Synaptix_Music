@@ -571,6 +571,27 @@
 .projectResults a:focus-visible {
   background: var(--sx-surface-hover);
 }
+.cloudProjectRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+}
+.cloudProjectRow > a,
+.cloudProjectRow > span {
+  flex: 1;
+  min-width: 0;
+}
+.cloudProjectRow > span {
+  padding: 10px 12px;
+  color: var(--sx-text-muted);
+  font-size: 14px;
+}
+.cloudProjectRow > div {
+  flex-basis: 100%;
+  padding: 0 0 10px 12px;
+}
 .projectResults small {
   flex-shrink: 0;
   color: var(--sx-text-muted);
