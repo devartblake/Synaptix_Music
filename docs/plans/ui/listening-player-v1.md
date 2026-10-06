@@ -25,7 +25,7 @@ Durations, queue rules (repeat off/all/one, "previous" restarts after 3 s), solo
 - **One audio owner.** Tone.js has a single global transport, so the player and the studio cannot both drive audio. The studio calls `usePlayer.getState().release()` on mount: the player stops and frees its engine, and the studio's own transport takes over. The mini player is not shown in the studio.
 - **Navigation.** The player lives in a module-level zustand store, so it keeps playing across client-side navigation between Home, Library and project pages (internal links use Next `<Link>`). A full page load stops playback.
 - **Edits.** The library reads projects from IndexedDB when a page opens, so a project edited in the studio plays its latest saved revision next time it's started from the library.
-- **Handoff to editing.** "Open in Studio" (project page and Now Playing) opens the project in the editor; playback stops there by design.
+- **Handoff to editing.** "Open in Studio" (Now Playing) and "Edit in Studio" (project page, while that project is playing or paused) open the editor at the listening position. The link carries `?t=<seconds>`. The studio converts it with the project tempo (`studioStartTick`), snaps it back to the beat, keeps it inside the arrangement, moves the playhead there once the project loads, and removes `t` from the address. Positions under a second open at the start. Playback stops on arrival, and Play continues from that spot.
 
 ## Project details: name and cover art
 
@@ -55,7 +55,7 @@ The worker's logic is unit-tested by running `public/sw.js` against fake Cache S
 
 ## Deliberate limits (follow-ups)
 
-- Playback position is not carried into the studio ("continue from here in Studio").
+- A rendered mix maps onto the project timeline by time, so a render from an older revision with a different tempo can land on a slightly different spot.
 - Covers are local to this browser; syncing them across devices needs a platform asset upload.
 - Only pages opened online (plus Home and Library) work offline; studio pages for other projects show the offline page.
 - Search covers project names only.
