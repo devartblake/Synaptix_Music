@@ -2,285 +2,234 @@
 > @synaptix/daw-engine@0.1.0 test
 > node --experimental-transform-types --test src/*.test.ts
 
+(node:269060) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
 TAP version 13
-# (node:3414) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:270456) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: browser audio engine construction is safe without a browser AudioContext
 ok 1 - browser audio engine construction is safe without a browser AudioContext
   ---
-  duration_ms: 1.773888
-  type: 'test'
+  duration_ms: 2.978
   ...
-# (node:3415) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271168) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: clamping keeps values within the canonical parameter range
 ok 2 - clamping keeps values within the canonical parameter range
   ---
-  duration_ms: 0.677455
-  type: 'test'
+  duration_ms: 2.8673
   ...
 # Subtest: clamping is a no-op for unknown parameter identifiers
 ok 3 - clamping is a no-op for unknown parameter identifiers
   ---
-  duration_ms: 0.093216
-  type: 'test'
+  duration_ms: 0.255
   ...
 # Subtest: resolving a device parameter prefers the stored override, clamped to range
 ok 4 - resolving a device parameter prefers the stored override, clamped to range
   ---
-  duration_ms: 0.117156
-  type: 'test'
+  duration_ms: 1.3852
   ...
 # Subtest: resolving a device parameter falls back to the default when unset or non-finite
 ok 5 - resolving a device parameter falls back to the default when unset or non-finite
   ---
-  duration_ms: 0.098347
-  type: 'test'
+  duration_ms: 0.2114
   ...
 # Subtest: every canonical definition exposes a finite, ordered range
 ok 6 - every canonical definition exposes a finite, ordered range
   ---
-  duration_ms: 0.115867
-  type: 'test'
+  duration_ms: 9.3804
   ...
-# (node:3421) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271452) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: frequency drone rendering is deterministic and bounded
 ok 7 - frequency drone rendering is deterministic and bounded
   ---
-  duration_ms: 20.153291
-  type: 'test'
+  duration_ms: 12.4511
   ...
 # Subtest: frequency drone render rejects non-positive durations
 ok 8 - frequency drone render rejects non-positive durations
   ---
-  duration_ms: 0.304636
-  type: 'test'
+  duration_ms: 0.6091
   ...
-# (node:3537) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271540) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: catalog device types are unique and each resolves to its own profile
 ok 9 - catalog device types are unique and each resolves to its own profile
   ---
-  duration_ms: 0.865954
-  type: 'test'
+  duration_ms: 1.6787
   ...
 # Subtest: catalog profile defaults sit inside the device parameter slider ranges
 ok 10 - catalog profile defaults sit inside the device parameter slider ranges
   ---
-  duration_ms: 0.405543
-  type: 'test'
+  duration_ms: 0.6571
   ...
 # Subtest: specific keywords win over the ones they contain
 ok 11 - specific keywords win over the ones they contain
   ---
-  duration_ms: 0.100992
-  type: 'test'
+  duration_ms: 0.1955
   ...
 # Subtest: an explicit device type wins over the track name, a generic one defers to it
 ok 12 - an explicit device type wins over the track name, a generic one defers to it
   ---
-  duration_ms: 0.08144
-  type: 'test'
+  duration_ms: 0.2051
   ...
 # Subtest: new instrument tracks are valid, audible, and carry a starter phrase
 ok 13 - new instrument tracks are valid, audible, and carry a starter phrase
   ---
-  duration_ms: 7.369323
-  type: 'test'
+  duration_ms: 10.5631
   ...
 # Subtest: pads default to a wetter reverb send than drums
 ok 14 - pads default to a wetter reverb send than drums
   ---
-  duration_ms: 0.244691
-  type: 'test'
+  duration_ms: 0.5261
   ...
 # Subtest: unknown instruments are rejected
 ok 15 - unknown instruments are rejected
   ---
-  duration_ms: 0.40513
-  type: 'test'
+  duration_ms: 0.5969
   ...
-# (node:3630) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271652) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: the registry instantiates the Reference Drive, loading its module once per context
 ok 16 - the registry instantiates the Reference Drive, loading its module once per context
   ---
-  duration_ms: 17.90637
-  type: 'test'
+  duration_ms: 17.1288
   ...
 # Subtest: unknown, mismatched, and non-browser plug-ins are reported unavailable without throwing
 ok 17 - unknown, mismatched, and non-browser plug-ins are reported unavailable without throwing
   ---
-  duration_ms: 0.344277
-  type: 'test'
+  duration_ms: 0.8189
   ...
 # Subtest: module bytes that do not match the pinned checksum are never loaded
 ok 18 - module bytes that do not match the pinned checksum are never loaded
   ---
-  duration_ms: 1.437507
-  type: 'test'
+  duration_ms: 1.7223
   ...
 # Subtest: a failed module load is reported and retried on the next instantiation
 ok 19 - a failed module load is reported and retried on the next instantiation
   ---
-  duration_ms: 4.053463
-  type: 'test'
+  duration_ms: 1.4191
   ...
 # Subtest: plug-in state is verified before restore and round-trips through the instance
 ok 20 - plug-in state is verified before restore and round-trips through the instance
   ---
-  duration_ms: 11.963967
-  type: 'test'
+  duration_ms: 2.3384
   ...
 # Subtest: parameters, ramps, failures, and idempotent disposal reach the worklet node
 ok 21 - parameters, ramps, failures, and idempotent disposal reach the worklet node
   ---
-  duration_ms: 0.8811
-  type: 'test'
+  duration_ms: 1.4672
   ...
 # Subtest: track insert chains skip built-in and bypassed devices and keep unknown ones visible
 ok 22 - track insert chains skip built-in and bypassed devices and keep unknown ones visible
   ---
-  duration_ms: 0.279749
-  type: 'test'
+  duration_ms: 0.7474
   ...
 # Subtest: automation lanes become clamped, ordered parameter events with linear ramps
 ok 23 - automation lanes become clamped, ordered parameter events with linear ramps
   ---
-  duration_ms: 0.21033
-  type: 'test'
+  duration_ms: 0.5942
   ...
 # Subtest: the built-in runtime sees a v1 view without plug-in devices or fields
 ok 24 - the built-in runtime sees a v1 view without plug-in devices or fields
   ---
-  duration_ms: 4.092915
-  type: 'test'
+  duration_ms: 7.3515
   ...
 # Subtest: a plug-in that fails while later slots load is never rewired into the chain
 ok 25 - a plug-in that fails while later slots load is never rewired into the chain
   ---
-  duration_ms: 0.612668
-  type: 'test'
+  duration_ms: 1.3237
   ...
 # Subtest: insert chains keep planned order, release without disposing, and dispose once
 ok 26 - insert chains keep planned order, release without disposing, and dispose once
   ---
-  duration_ms: 0.484872
-  type: 'test'
+  duration_ms: 1.0762
   ...
 # Subtest: reuse keys change with plug-in identity or state but not with parameters
 ok 27 - reuse keys change with plug-in identity or state but not with parameters
   ---
-  duration_ms: 0.228089
-  type: 'test'
+  duration_ms: 0.5069
   ...
-# Subtest: frozen audio stands in for the slots it covers; later slots stay live
-ok 28 - frozen audio stands in for the slots it covers; later slots stay live
-  ---
-  duration_ms: 0.372879
-  type: 'test'
-  ...
-# Subtest: a current freeze stands in only when a plug-in it covers can't play
-ok 29 - a current freeze stands in only when a plug-in it covers can't play
-  ---
-  duration_ms: 7.415323
-  type: 'test'
-  ...
-# (node:3644) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271800) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: device-specific profiles route drums and bass deterministically
-ok 30 - device-specific profiles route drums and bass deterministically
+ok 28 - device-specific profiles route drums and bass deterministically
   ---
-  duration_ms: 2.229822
-  type: 'test'
+  duration_ms: 5.6132
   ...
 # Subtest: master meter reports clipping from stereo values
-ok 31 - master meter reports clipping from stereo values
+ok 29 - master meter reports clipping from stereo values
   ---
-  duration_ms: 1.040803
-  type: 'test'
+  duration_ms: 1.3093
   ...
 # Subtest: master meter clamps sub-floor readings to silence instead of reporting drifting negative values
-ok 32 - master meter clamps sub-floor readings to silence instead of reporting drifting negative values
+ok 30 - master meter clamps sub-floor readings to silence instead of reporting drifting negative values
   ---
-  duration_ms: 0.092831
-  type: 'test'
+  duration_ms: 0.2805
   ...
 # Subtest: master meter leaves audible readings just above the silence floor untouched
-ok 33 - master meter leaves audible readings just above the silence floor untouched
+ok 31 - master meter leaves audible readings just above the silence floor untouched
   ---
-  duration_ms: 0.07509
-  type: 'test'
+  duration_ms: 6.1456
   ...
 # Subtest: effective instrument settings fall back to profile defaults without overrides
-ok 34 - effective instrument settings fall back to profile defaults without overrides
+ok 32 - effective instrument settings fall back to profile defaults without overrides
   ---
-  duration_ms: 0.150218
-  type: 'test'
+  duration_ms: 0.3898
   ...
 # Subtest: effective instrument settings apply and clamp canonical device parameter overrides
-ok 35 - effective instrument settings apply and clamp canonical device parameter overrides
+ok 33 - effective instrument settings apply and clamp canonical device parameter overrides
   ---
-  duration_ms: 0.113959
-  type: 'test'
+  duration_ms: 0.2938
   ...
-# (node:3651) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271876) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: the shipped processor source matches its pinned integrity checksum
-ok 36 - the shipped processor source matches its pinned integrity checksum
+ok 34 - the shipped processor source matches its pinned integrity checksum
   ---
-  duration_ms: 1.178966
-  type: 'test'
+  duration_ms: 2.4171
   ...
 # Subtest: processor parameter descriptors match the canonical plug-in descriptor
-ok 37 - processor parameter descriptors match the canonical plug-in descriptor
+ok 35 - processor parameter descriptors match the canonical plug-in descriptor
   ---
-  duration_ms: 2.445062
-  type: 'test'
+  duration_ms: 7.1714
   ...
 # Subtest: a fully dry mix passes stereo audio through unchanged
-ok 38 - a fully dry mix passes stereo audio through unchanged
+ok 36 - a fully dry mix passes stereo audio through unchanged
   ---
-  duration_ms: 1.115586
-  type: 'test'
+  duration_ms: 15.6406
   ...
 # Subtest: the soft clipper is unity for small signals and bounded for large ones
-ok 39 - the soft clipper is unity for small signals and bounded for large ones
+ok 37 - the soft clipper is unity for small signals and bounded for large ones
   ---
-  duration_ms: 1.77278
-  type: 'test'
+  duration_ms: 3.7118
   ...
 # Subtest: gains and a-rate automation are applied per sample
-ok 40 - gains and a-rate automation are applied per sample
+ok 38 - gains and a-rate automation are applied per sample
   ---
-  duration_ms: 1.234669
-  type: 'test'
+  duration_ms: 3.0693
   ...
 # Subtest: mono input is up-mixed and missing input yields silence
-ok 41 - mono input is up-mixed and missing input yields silence
+ok 39 - mono input is up-mixed and missing input yields silence
   ---
-  duration_ms: 1.56776
-  type: 'test'
+  duration_ms: 2.5546
   ...
 # Subtest: the processor stops after a dispose message
-ok 42 - the processor stops after a dispose message
+ok 40 - the processor stops after a dispose message
   ---
-  duration_ms: 1.025023
-  type: 'test'
+  duration_ms: 1.6208
   ...
 # Subtest: new Reference Drive devices are valid v2 devices at descriptor defaults
-ok 43 - new Reference Drive devices are valid v2 devices at descriptor defaults
+ok 41 - new Reference Drive devices are valid v2 devices at descriptor defaults
   ---
-  duration_ms: 0.813437
-  type: 'test'
+  duration_ms: 1.5603
   ...
-1..43
-# tests 43
+1..41
+# tests 41
 # suites 0
-# pass 43
+# pass 41
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 3772.729531
+# duration_ms 5597.4946

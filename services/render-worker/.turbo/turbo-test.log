@@ -2,389 +2,279 @@
 > @synaptix/render-worker@0.1.0 test
 > node --experimental-transform-types --test --test-concurrency=1 src/*.test.ts
 
+(node:266996) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
 TAP version 13
-# (node:3405) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:269340) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: packages a requested lossy master, preview, and validated artifact manifest
 ok 1 - packages a requested lossy master, preview, and validated artifact manifest
   ---
-  duration_ms: 40.704801
-  type: 'test'
+  duration_ms: 10.2169
   ...
 # Subtest: keeps certified WAV bytes and still emits an artifact manifest
 ok 2 - keeps certified WAV bytes and still emits an artifact manifest
   ---
-  duration_ms: 0.53134
-  type: 'test'
+  duration_ms: 0.5611
   ...
-# (node:3503) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:264936) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: compressor leaves signal below threshold at unity gain
 ok 3 - compressor leaves signal below threshold at unity gain
   ---
-  duration_ms: 5.660747
-  type: 'test'
+  duration_ms: 3.9959
   ...
 # Subtest: compressor applies the configured ratio above threshold
 ok 4 - compressor applies the configured ratio above threshold
   ---
-  duration_ms: 0.148197
-  type: 'test'
+  duration_ms: 0.4427
   ...
 # Subtest: compressor is stereo-linked and deterministic
 ok 5 - compressor is stereo-linked and deterministic
   ---
-  duration_ms: 0.195559
-  type: 'test'
+  duration_ms: 0.5657
   ...
 # Subtest: compressor validates its settings
 ok 6 - compressor validates its settings
   ---
-  duration_ms: 0.311608
-  type: 'test'
+  duration_ms: 0.9043
   ...
-# (node:3516) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271108) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: FFmpeg creates deterministic MP3 and OGG delivery artifacts
 ok 7 - FFmpeg creates deterministic MP3 and OGG delivery artifacts # SKIP
   ---
-  duration_ms: 0.593956
-  type: 'test'
+  duration_ms: 1.2982
   ...
-# (node:3530) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# Subtest: a current freeze plays in place of the live plug-in, through the track's channel strip
-ok 8 - a current freeze plays in place of the live plug-in, through the track's channel strip
-  ---
-  duration_ms: 193.294771
-  type: 'test'
-  ...
-# Subtest: the freeze lines up with a render range that starts later, and mute silences it in the mix
-ok 9 - the freeze lines up with a render range that starts later, and mute silences it in the mix
-  ---
-  duration_ms: 188.260852
-  type: 'test'
-  ...
-# Subtest: later first-party plug-ins run on the frozen audio; unsupported ones fail closed
-ok 10 - later first-party plug-ins run on the frozen audio; unsupported ones fail closed
-  ---
-  duration_ms: 173.85909
-  type: 'test'
-  ...
-# Subtest: frozen playback refuses anything it can't verify
-ok 11 - frozen playback refuses anything it can't verify
-  ---
-  duration_ms: 51.665538
-  type: 'test'
-  ...
-# (node:3657) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272088) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: loads and validates an exact revision with service authentication
-ok 12 - loads and validates an exact revision with service authentication
+ok 8 - loads and validates an exact revision with service authentication
   ---
-  duration_ms: 85.847585
-  type: 'test'
+  duration_ms: 31.8035
   ...
 # Subtest: fails closed on HTTP errors, schema drift, or identifier mismatch
-ok 13 - fails closed on HTTP errors, schema drift, or identifier mismatch
+ok 9 - fails closed on HTTP errors, schema drift, or identifier mismatch
   ---
-  duration_ms: 4.138743
-  type: 'test'
+  duration_ms: 2.3687
   ...
 # Subtest: environment configuration is optional but fails on partial configuration
-ok 14 - environment configuration is optional but fails on partial configuration
+ok 10 - environment configuration is optional but fails on partial configuration
   ---
-  duration_ms: 0.274923
-  type: 'test'
+  duration_ms: 0.3675
   ...
 # Subtest: loads Project Schema v2 revisions and still rejects unknown schema versions
-ok 15 - loads Project Schema v2 revisions and still rejects unknown schema versions
+ok 11 - loads Project Schema v2 revisions and still rejects unknown schema versions
   ---
-  duration_ms: 2.754147
-  type: 'test'
+  duration_ms: 4.9867
   ...
-# (node:3687) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:266444) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: render-job HTTP API (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
-ok 16 - render-job HTTP API (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+ok 12 - render-job HTTP API (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
   ---
-  duration_ms: 0.451917
-  type: 'test'
+  duration_ms: 1.1591
   ...
-# (node:3703) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272900) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: stores render artifacts under a deterministic least-privilege prefix
-ok 17 - stores render artifacts under a deterministic least-privilege prefix
+ok 13 - stores render artifacts under a deterministic least-privilege prefix
   ---
-  duration_ms: 0.679399
-  type: 'test'
+  duration_ms: 1.389
   ...
 # Subtest: creates a bounded short-lived download URL
-ok 18 - creates a bounded short-lived download URL
+ok 14 - creates a bounded short-lived download URL
   ---
-  duration_ms: 0.448237
-  type: 'test'
+  duration_ms: 0.6321
   ...
 # Subtest: rejects path traversal and mismatched render metadata
-ok 19 - rejects path traversal and mismatched render metadata
+ok 15 - rejects path traversal and mismatched render metadata
   ---
-  duration_ms: 0.157712
-  type: 'test'
+  duration_ms: 0.335
   ...
 # Subtest: environment configuration is opt-in and complete
-ok 20 - environment configuration is opt-in and complete
+ok 16 - environment configuration is opt-in and complete
   ---
-  duration_ms: 0.366907
-  type: 'test'
+  duration_ms: 0.6448
   ...
-# Subtest: stored artifacts can be read back for frozen playback
-ok 21 - stored artifacts can be read back for frozen playback
-  ---
-  duration_ms: 1.217238
-  type: 'test'
-  ...
-# (node:3743) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:270084) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: rendering the same project and manifest twice is byte-identical
-ok 22 - rendering the same project and manifest twice is byte-identical
+ok 17 - rendering the same project and manifest twice is byte-identical
   ---
-  duration_ms: 122.238024
-  type: 'test'
+  duration_ms: 91.5826
   ...
 # Subtest: master rendering applies the canonical reverb-send parameter
-ok 23 - master rendering applies the canonical reverb-send parameter
+ok 18 - master rendering applies the canonical reverb-send parameter
   ---
-  duration_ms: 52.728294
-  type: 'test'
+  duration_ms: 48.7148
   ...
 # Subtest: stem rendering stays dry and independent of master effects
-ok 24 - stem rendering stays dry and independent of master effects
+ok 19 - stem rendering stays dry and independent of master effects
   ---
-  duration_ms: 11.401408
-  type: 'test'
+  duration_ms: 13.8298
   ...
 # Subtest: produces a valid RenderResult with one master artifact
-ok 25 - produces a valid RenderResult with one master artifact
+ok 20 - produces a valid RenderResult with one master artifact
   ---
-  duration_ms: 21.835638
-  type: 'test'
+  duration_ms: 21.3623
   ...
 # Subtest: artifact metadata matches the encoded bytes
-ok 26 - artifact metadata matches the encoded bytes
+ok 21 - artifact metadata matches the encoded bytes
   ---
-  duration_ms: 21.389557
-  type: 'test'
+  duration_ms: 22.3621
   ...
 # Subtest: a note produces silence before its onset and signal during sustain
-ok 27 - a note produces silence before its onset and signal during sustain
+ok 22 - a note produces silence before its onset and signal during sustain
   ---
-  duration_ms: 30.723595
-  type: 'test'
+  duration_ms: 22.2643
   ...
 # Subtest: a muted track is silent in the master mix
-ok 28 - a muted track is silent in the master mix
+ok 23 - a muted track is silent in the master mix
   ---
-  duration_ms: 20.167956
-  type: 'test'
+  duration_ms: 21.3196
   ...
 # Subtest: soloing one track silences the others in the master mix
-ok 29 - soloing one track silences the others in the master mix
+ok 24 - soloing one track silences the others in the master mix
   ---
-  duration_ms: 68.354461
-  type: 'test'
+  duration_ms: 47.978
   ...
 # Subtest: notes starting outside the render range are excluded
-ok 30 - notes starting outside the render range are excluded
+ok 25 - notes starting outside the render range are excluded
   ---
-  duration_ms: 22.768415
-  type: 'test'
+  duration_ms: 23.2153
   ...
 # Subtest: stems scope renders one artifact per requested track and ignores mute
-ok 31 - stems scope renders one artifact per requested track and ignores mute
+ok 26 - stems scope renders one artifact per requested track and ignores mute
   ---
-  duration_ms: 11.384677
-  type: 'test'
+  duration_ms: 10.072
   ...
 # Subtest: stem filenames are slugified and trimmed safely
-ok 32 - stem filenames are slugified and trimmed safely
+ok 27 - stem filenames are slugified and trimmed safely
   ---
-  duration_ms: 12.407961
-  type: 'test'
+  duration_ms: 12.7534
   ...
 # Subtest: requesting an unknown stem track fails closed
-ok 33 - requesting an unknown stem track fails closed
+ok 28 - requesting an unknown stem track fails closed
   ---
-  duration_ms: 0.500411
-  type: 'test'
+  duration_ms: 0.5381
   ...
 # Subtest: a projectId or revisionId mismatch between the manifest and project fails closed
-ok 34 - a projectId or revisionId mismatch between the manifest and project fails closed
+ok 29 - a projectId or revisionId mismatch between the manifest and project fails closed
   ---
-  duration_ms: 0.185994
-  type: 'test'
+  duration_ms: 0.2644
   ...
 # Subtest: normalization scales the output to the requested peak level
-ok 35 - normalization scales the output to the requested peak level
+ok 30 - normalization scales the output to the requested peak level
   ---
-  duration_ms: 34.0242
-  type: 'test'
+  duration_ms: 35.737
   ...
 # Subtest: frequency drone devices render signal in master and stems
-ok 36 - frequency drone devices render signal in master and stems
+ok 31 - frequency drone devices render signal in master and stems
   ---
-  duration_ms: 48.267227
-  type: 'test'
+  duration_ms: 45.7084
   ...
 # Subtest: muted frequency drone is silent in master but explicit stem remains audible
-ok 37 - muted frequency drone is silent in master but explicit stem remains audible
+ok 32 - muted frequency drone is silent in master but explicit stem remains audible
   ---
-  duration_ms: 29.322924
-  type: 'test'
+  duration_ms: 33.7127
   ...
 # Subtest: master rendering respects bus routing, return mute, and post-compressor master gain
-ok 38 - master rendering respects bus routing, return mute, and post-compressor master gain
+ok 33 - master rendering respects bus routing, return mute, and post-compressor master gain
   ---
-  duration_ms: 188.745946
-  type: 'test'
+  duration_ms: 478.3156
   ...
-# (node:3826) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# Subtest: the offline Reference Drive matches the browser AudioWorklet sample for sample
-ok 39 - the offline Reference Drive matches the browser AudioWorklet sample for sample
-  ---
-  duration_ms: 8.711095
-  type: 'test'
-  ...
-# Subtest: a freeze renders the track through the drive, deterministically, as one named WAV
-ok 40 - a freeze renders the track through the drive, deterministically, as one named WAV
-  ---
-  duration_ms: 67.401675
-  type: 'test'
-  ...
-# Subtest: the drive changes the sound, and a dry mix leaves it untouched
-ok 41 - the drive changes the sound, and a dry mix leaves it untouched
-  ---
-  duration_ms: 47.594955
-  type: 'test'
-  ...
-# Subtest: freezes are pre-fader: track volume, pan and mute don't change them
-ok 42 - freezes are pre-fader: track volume, pan and mute don't change them
-  ---
-  duration_ms: 21.613946
-  type: 'test'
-  ...
-# Subtest: unsupported plug-ins and automation fail closed; other scopes are refused
-ok 43 - unsupported plug-ins and automation fail closed; other scopes are refused
-  ---
-  duration_ms: 2.378525
-  type: 'test'
-  ...
-# (node:3881) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272348) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: v1 projects pass through unchanged
-ok 44 - v1 projects pass through unchanged
+ok 34 - v1 projects pass through unchanged
   ---
-  duration_ms: 2.713068
-  type: 'test'
+  duration_ms: 3.1259
   ...
 # Subtest: a migrated v2 project renders byte-identically to its v1 source
-ok 45 - a migrated v2 project renders byte-identically to its v1 source
+ok 35 - a migrated v2 project renders byte-identically to its v1 source
   ---
-  duration_ms: 124.346993
-  type: 'test'
+  duration_ms: 117.0262
   ...
 # Subtest: enabled plug-ins on rendered tracks fail closed with the device named
-ok 46 - enabled plug-ins on rendered tracks fail closed with the device named
+ok 36 - enabled plug-ins on rendered tracks fail closed with the device named
   ---
-  duration_ms: 1.12898
-  type: 'test'
+  duration_ms: 1.5554
   ...
 # Subtest: bypassed plug-ins and plug-ins outside the requested stems do not block rendering
-ok 47 - bypassed plug-ins and plug-ins outside the requested stems do not block rendering
+ok 37 - bypassed plug-ins and plug-ins outside the requested stems do not block rendering
   ---
-  duration_ms: 1.627397
-  type: 'test'
+  duration_ms: 1.6664
   ...
-# Subtest: a current freeze still fails closed on a worker without frozen artifact storage
-ok 48 - a current freeze still fails closed on a worker without frozen artifact storage
+# Subtest: current frozen evidence is recognized but still rejected until frozen playback exists
+ok 38 - current frozen evidence is recognized but still rejected until frozen playback exists
   ---
-  duration_ms: 10.009121
-  type: 'test'
+  duration_ms: 5.5579
   ...
-# (node:3904) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271756) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: PostgresRenderJobStore (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
-ok 49 - PostgresRenderJobStore (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+ok 39 - PostgresRenderJobStore (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
   ---
-  duration_ms: 0.434376
-  type: 'test'
+  duration_ms: 0.8761
   ...
-# (node:3911) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271076) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: reverb is deterministic and produces a decaying stereo tail
-ok 50 - reverb is deterministic and produces a decaying stereo tail
+ok 40 - reverb is deterministic and produces a decaying stereo tail
   ---
-  duration_ms: 37.042905
-  type: 'test'
+  duration_ms: 27.591
   ...
 # Subtest: a longer decay retains more late-tail energy
-ok 51 - a longer decay retains more late-tail energy
+ok 41 - a longer decay retains more late-tail energy
   ---
-  duration_ms: 12.991547
-  type: 'test'
+  duration_ms: 11.8638
   ...
 # Subtest: reverb validates channel lengths and processing settings
-ok 52 - reverb validates channel lengths and processing settings
+ok 42 - reverb validates channel lengths and processing settings
   ---
-  duration_ms: 0.380657
-  type: 'test'
+  duration_ms: 0.4614
   ...
-# (node:3918) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271740) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: WAV header describes the format correctly
-ok 53 - WAV header describes the format correctly
+ok 43 - WAV header describes the format correctly
   ---
-  duration_ms: 0.781543
-  type: 'test'
+  duration_ms: 1.9804
   ...
 # Subtest: 16-bit samples round-trip through full-scale values
-ok 54 - 16-bit samples round-trip through full-scale values
+ok 44 - 16-bit samples round-trip through full-scale values
   ---
-  duration_ms: 0.229181
-  type: 'test'
+  duration_ms: 0.2665
   ...
 # Subtest: out-of-range samples are hard-clipped rather than wrapping
-ok 55 - out-of-range samples are hard-clipped rather than wrapping
+ok 45 - out-of-range samples are hard-clipped rather than wrapping
   ---
-  duration_ms: 0.167714
-  type: 'test'
+  duration_ms: 0.1921
   ...
 # Subtest: 24-bit and 32-bit encodings use the requested bit depth and byte layout
-ok 56 - 24-bit and 32-bit encodings use the requested bit depth and byte layout
+ok 46 - 24-bit and 32-bit encodings use the requested bit depth and byte layout
   ---
-  duration_ms: 0.13029
-  type: 'test'
+  duration_ms: 0.2312
   ...
 # Subtest: mismatched channel lengths fail closed
-ok 57 - mismatched channel lengths fail closed
+ok 47 - mismatched channel lengths fail closed
   ---
-  duration_ms: 0.283578
-  type: 'test'
+  duration_ms: 0.4302
   ...
-# (node:3925) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:260172) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: render worker loop (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
-ok 58 - render worker loop (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
+ok 48 - render worker loop (skipped: set RENDER_WORKER_TEST_DATABASE_URL to run against a real database)
   ---
-  duration_ms: 0.433246
-  type: 'test'
+  duration_ms: 0.9217
   ...
-1..58
-# tests 58
+1..48
+# tests 48
 # suites 0
-# pass 57
+# pass 47
 # fail 0
 # cancelled 0
 # skipped 1
 # todo 0
-# duration_ms 7107.875005
+# duration_ms 6246.5612

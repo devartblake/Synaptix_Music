@@ -1,782 +1,546 @@
 
 > test
-> node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts lib/audio/*.test.ts lib/player/*.test.ts lib/pwa/*.test.ts
+> node --experimental-transform-types --test lib/platform/*.test.ts lib/editor/*.test.ts lib/audio/*.test.ts
 
+(node:268584) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
 TAP version 13
-# (node:3447) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:242320) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3447) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/audio/adaptive-preview.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:242320) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/audio/adaptive-preview.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: preview schedules quantized crossfades, reports the audible state, wraps loops and stops all voices
 ok 1 - preview schedules quantized crossfades, reports the audible state, wraps loops and stops all voices
   ---
-  duration_ms: 48.355643
-  type: 'test'
+  duration_ms: 23.9019
   ...
-# (node:3448) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272444) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3448) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/audio/frequency-drone-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272444) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/audio/frequency-drone-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: ships the nine requested frequency presets
 ok 2 - ships the nine requested frequency presets
   ---
-  duration_ms: 1.721191
-  type: 'test'
+  duration_ms: 2.3499
   ...
 # Subtest: uses conservative output defaults and clamps unsafe model ranges
 ok 3 - uses conservative output defaults and clamps unsafe model ranges
   ---
-  duration_ms: 0.283331
-  type: 'test'
+  duration_ms: 0.3152
   ...
-# (node:3450) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272276) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3450) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/apply-generated-arrangement-command.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272276) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/apply-generated-arrangement-command.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: generated variations replace the arrangement and undo restores it
 ok 4 - generated variations replace the arrangement and undo restores it
   ---
-  duration_ms: 8.186487
-  type: 'test'
+  duration_ms: 44.4284
   ...
 # Subtest: generated mix hints and supporting layers become the project's tracks
 ok 5 - generated mix hints and supporting layers become the project's tracks
   ---
-  duration_ms: 0.63141
-  type: 'test'
+  duration_ms: 25.356
   ...
-# (node:3523) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272952) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3523) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/drum-step-sequencer-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272952) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/drum-step-sequencer-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: resolves device drum mapping overrides
 ok 6 - resolves device drum mapping overrides
   ---
-  duration_ms: 0.601538
-  type: 'test'
+  duration_ms: 2.4651
   ...
 # Subtest: finds notes at exact steps and within bars
 ok 7 - finds notes at exact steps and within bars
   ---
-  duration_ms: 37.203745
-  type: 'test'
+  duration_ms: 1.2054
   ...
 # Subtest: cycles velocity through soft normal and accent
 ok 8 - cycles velocity through soft normal and accent
   ---
-  duration_ms: 0.152053
-  type: 'test'
+  duration_ms: 0.2081
   ...
 # Subtest: computes looping playback cursor
 ok 9 - computes looping playback cursor
   ---
-  duration_ms: 0.413843
-  type: 'test'
+  duration_ms: 0.2631
   ...
-# (node:3531) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271692) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3531) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/editor-clip-target.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:271692) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/editor-clip-target.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: each editor opens the first clip on a matching track
 ok 10 - each editor opens the first clip on a matching track
   ---
-  duration_ms: 6.955469
-  type: 'test'
+  duration_ms: 40.4356
   ...
 # Subtest: the clip already being edited wins when it suits the editor
 ok 11 - the clip already being edited wins when it suits the editor
   ---
-  duration_ms: 0.491995
-  type: 'test'
+  duration_ms: 1.4634
   ...
 # Subtest: editors without a suitable clip have nothing to open
 ok 12 - editors without a suitable clip have nothing to open
   ---
-  duration_ms: 0.241712
-  type: 'test'
+  duration_ms: 0.4493
   ...
-# (node:3586) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:268136) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3586) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/editor-session-coordinator.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:268136) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/editor-session-coordinator.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: failed persistence can retry the same revision without replaying a command
 ok 13 - failed persistence can retry the same revision without replaying a command
   ---
-  duration_ms: 22.917939
-  type: 'test'
+  duration_ms: 15.0297
   ...
 # Subtest: failed retry preserves the pending revision and unload warning
 ok 14 - failed retry preserves the pending revision and unload warning
   ---
-  duration_ms: 0.526996
-  type: 'test'
+  duration_ms: 1.491
   ...
 # Subtest: competing project tab puts the current editor into read-only mode
 ok 15 - competing project tab puts the current editor into read-only mode
   ---
-  duration_ms: 0.580739
-  type: 'test'
+  duration_ms: 1.1886
   ...
 # Subtest: a tab opened later never locks the tab that was editing first
 ok 16 - a tab opened later never locks the tab that was editing first
   ---
-  duration_ms: 0.240941
-  type: 'test'
+  duration_ms: 0.3656
   ...
 # Subtest: the later of two tabs becomes read-only and is released when the owner leaves
 ok 17 - the later of two tabs becomes read-only and is released when the owner leaves
   ---
-  duration_ms: 0.318137
-  type: 'test'
+  duration_ms: 2.1429
   ...
-# (node:3593) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272512) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3593) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/new-clip.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272512) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/new-clip.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: new clips start on the first whole bar after the last clip
 ok 18 - new clips start on the first whole bar after the last clip
   ---
-  duration_ms: 73.373643
-  type: 'test'
+  duration_ms: 15.5424
   ...
 # Subtest: drones never get MIDI clips
 ok 19 - drones never get MIDI clips
   ---
-  duration_ms: 0.185122
-  type: 'test'
+  duration_ms: 0.281
   ...
-# (node:3636) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272316) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3636) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/note-clipboard.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272316) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/note-clipboard.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: copy keeps timing relative to the earliest selected note
 ok 20 - copy keeps timing relative to the earliest selected note
   ---
-  duration_ms: 6.036051
-  type: 'test'
+  duration_ms: 12.6442
   ...
 # Subtest: paste places notes at the target with fresh IDs
 ok 21 - paste places notes at the target with fresh IDs
   ---
-  duration_ms: 0.326232
-  type: 'test'
+  duration_ms: 0.5271
   ...
 # Subtest: paste near the clip end drops and trims notes to fit
 ok 22 - paste near the clip end drops and trims notes to fit
   ---
-  duration_ms: 0.266926
-  type: 'test'
+  duration_ms: 0.3189
   ...
 # Subtest: the clipboard is shared for the session
 ok 23 - the clipboard is shared for the session
   ---
-  duration_ms: 0.158619
-  type: 'test'
+  duration_ms: 0.1927
   ...
-# (node:3681) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272000) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3681) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/note-editing.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272000) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/note-editing.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: group movement preserves spacing at both clip and pitch boundaries
 ok 24 - group movement preserves spacing at both clip and pitch boundaries
   ---
-  duration_ms: 1.537678
-  type: 'test'
+  duration_ms: 3.5184
   ...
 # Subtest: group resizing keeps every duration positive and within the clip
 ok 25 - group resizing keeps every duration positive and within the clip
   ---
-  duration_ms: 0.159138
-  type: 'test'
+  duration_ms: 0.3371
   ...
-# (node:3696) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:264588) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3696) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/piano-roll-interactions.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:264588) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/piano-roll-interactions.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: normalizes marquee coordinates and selects intersecting notes
 ok 26 - normalizes marquee coordinates and selects intersecting notes
   ---
-  duration_ms: 1.449488
-  type: 'test'
+  duration_ms: 2.9497
   ...
 # Subtest: clamps zoom and notes to supported bounds
 ok 27 - clamps zoom and notes to supported bounds
   ---
-  duration_ms: 0.155057
-  type: 'test'
+  duration_ms: 0.3208
   ...
 # Subtest: preserves relative clipboard timing
 ok 28 - preserves relative clipboard timing
   ---
-  duration_ms: 0.08965
-  type: 'test'
+  duration_ms: 0.1792
   ...
-# (node:3709) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:270636) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3709) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/piano-roll-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:270636) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/piano-roll-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: snapTick rounds to the nearest grid and clamps to clip bounds
 ok 29 - snapTick rounds to the nearest grid and clamps to clip bounds
   ---
-  duration_ms: 0.753883
-  type: 'test'
+  duration_ms: 2.0909
   ...
 # Subtest: toggleSelection supports replacement and additive toggles
 ok 30 - toggleSelection supports replacement and additive toggles
   ---
-  duration_ms: 1.608629
-  type: 'test'
+  duration_ms: 1.0209
   ...
 # Subtest: pointer conversion maps coordinates to valid pitch and ticks
 ok 31 - pointer conversion maps coordinates to valid pitch and ticks
   ---
-  duration_ms: 0.135676
-  type: 'test'
+  duration_ms: 0.2076
   ...
-# (node:3715) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272772) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3715) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/project-file.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272772) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/project-file.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: an exported project imports as a new copy with identical music
 ok 32 - an exported project imports as a new copy with identical music
   ---
-  duration_ms: 39.687536
-  type: 'test'
+  duration_ms: 35.8142
   ...
 # Subtest: imports refuse edited, damaged, foreign and future files
 ok 33 - imports refuse edited, damaged, foreign and future files
   ---
-  duration_ms: 6.448898
-  type: 'test'
+  duration_ms: 4.12
   ...
 # Subtest: file names are readable and safe
 ok 34 - file names are readable and safe
   ---
-  duration_ms: 4.861037
-  type: 'test'
+  duration_ms: 1.3747
   ...
 # Subtest: plug-in (schema v2) projects export and import as v2
 ok 35 - plug-in (schema v2) projects export and import as v2
   ---
-  duration_ms: 3.08
-  type: 'test'
+  duration_ms: 7.9561
   ...
-# (node:3728) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:270420) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3728) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/recovery-journal.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:270420) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/recovery-journal.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: an unsaved edit newer than the saved revision is offered back
 ok 36 - an unsaved edit newer than the saved revision is offered back
   ---
-  duration_ms: 14.696415
-  type: 'test'
+  duration_ms: 12.3241
   ...
 # Subtest: an edit that did save is dropped silently
 ok 37 - an edit that did save is dropped silently
   ---
-  duration_ms: 0.376199
-  type: 'test'
+  duration_ms: 0.9057
   ...
 # Subtest: damaged or mismatched entries are discarded, and clearing works
 ok 38 - damaged or mismatched entries are discarded, and clearing works
   ---
-  duration_ms: 0.528278
-  type: 'test'
+  duration_ms: 1.1711
   ...
 # Subtest: a blocked or full journal never breaks editing
 ok 39 - a blocked or full journal never breaks editing
   ---
-  duration_ms: 0.386031
-  type: 'test'
+  duration_ms: 2.9256
   ...
 # Subtest: plug-in (schema v2) edits are recovered too
 ok 40 - plug-in (schema v2) edits are recovered too
   ---
-  duration_ms: 3.602528
-  type: 'test'
+  duration_ms: 24.6319
   ...
-# (node:3729) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272540) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3729) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/storage-health.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272540) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/storage-health.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: storage is ok, nearly full, or critical by share and by free space
 ok 41 - storage is ok, nearly full, or critical by share and by free space
   ---
-  duration_ms: 5.936575
-  type: 'test'
+  duration_ms: 10.1987
   ...
 # Subtest: estimates never throw when the browser API is missing or fails
 ok 42 - estimates never throw when the browser API is missing or fails
   ---
-  duration_ms: 0.462783
-  type: 'test'
+  duration_ms: 0.9232
   ...
 # Subtest: full storage is explained in plain words
 ok 43 - full storage is explained in plain words
   ---
-  duration_ms: 0.363728
-  type: 'test'
+  duration_ms: 0.566
   ...
-# (node:3750) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272568) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3750) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/editor/timeline-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272568) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/editor/timeline-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: timeline includes beat/tick offsets and clips beyond the original 16 bars
 ok 44 - timeline includes beat/tick offsets and clips beyond the original 16 bars
   ---
-  duration_ms: 6.296817
-  type: 'test'
+  duration_ms: 15.518
   ...
-# (node:3761) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272248) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3761) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/adaptive-authoring-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272248) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/adaptive-authoring-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: only completed project masters are eligible
 ok 45 - only completed project masters are eligible
   ---
-  duration_ms: 1.387045
-  type: 'test'
+  duration_ms: 2.8067
   ...
 # Subtest: builds a validated draft while keeping publication outside the authoring model
 ok 46 - builds a validated draft while keeping publication outside the authoring model
   ---
-  duration_ms: 3.109081
-  type: 'test'
+  duration_ms: 8.4743
   ...
 # Subtest: role tags round-trip and keep the author's own tags
 ok 47 - role tags round-trip and keep the author's own tags
   ---
-  duration_ms: 0.20741
-  type: 'test'
+  duration_ms: 0.4831
   ...
 # Subtest: stingers stay out of the default state and the transition chain
 ok 48 - stingers stay out of the default state and the transition chain
   ---
-  duration_ms: 0.876115
-  type: 'test'
+  duration_ms: 2.2365
   ...
 # Subtest: stinger drafts reject missing music, duplicate cues, and stinger transitions
 ok 49 - stinger drafts reject missing music, duplicate cues, and stinger transitions
   ---
-  duration_ms: 0.637363
-  type: 'test'
+  duration_ms: 6.101
   ...
-# (node:3767) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272460) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3767) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/adaptive-evidence.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272460) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/adaptive-evidence.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: certification rejects tampered bytes, wrong revisions, failed reports and missing artifact evidence
 ok 50 - certification rejects tampered bytes, wrong revisions, failed reports and missing artifact evidence
   ---
-  duration_ms: 46.510437
-  type: 'test'
+  duration_ms: 22.3711
   ...
 # Subtest: publication requires evidence and matching locations for every referenced artifact
 ok 51 - publication requires evidence and matching locations for every referenced artifact
   ---
-  duration_ms: 8.94657
-  type: 'test'
+  duration_ms: 6.4403
   ...
 # Subtest: adaptive draft validates loop bounds, duplicate IDs and source cues; metadata and previews are not masters
 ok 52 - adaptive draft validates loop bounds, duplicate IDs and source cues; metadata and previews are not masters
   ---
-  duration_ms: 2.355818
-  type: 'test'
+  duration_ms: 1.9183
   ...
-# (node:3775) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272376) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3775) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/adaptive-package-contract.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272376) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/adaptive-package-contract.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: publish outcomes accept the platform's .NET enum casing
 ok 53 - publish outcomes accept the platform's .NET enum casing
   ---
-  duration_ms: 2.176491
-  type: 'test'
+  duration_ms: 5.9076
   ...
 # Subtest: versions carry retention state and client-verifiable artifact descriptors without storage keys
 ok 54 - versions carry retention state and client-verifiable artifact descriptors without storage keys
   ---
-  duration_ms: 1.8208
-  type: 'test'
+  duration_ms: 14.81
   ...
 # Subtest: revoking the active version reports the restored version
 ok 55 - revoking the active version reports the restored version
   ---
-  duration_ms: 1.19467
-  type: 'test'
+  duration_ms: 2.6126
   ...
-# (node:3782) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:272056) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3782) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/frozen-audio-source.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:272056) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/generation-status-coalescer.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
-# Subtest: frozen audio comes from the player's completed freeze render, checksum-verified
-ok 56 - frozen audio comes from the player's completed freeze render, checksum-verified
-  ---
-  duration_ms: 60.091561
-  type: 'test'
-  ...
-# Subtest: anything that doesn't match the freeze reference is refused
-ok 57 - anything that doesn't match the freeze reference is refused
-  ---
-  duration_ms: 2.354401
-  type: 'test'
-  ...
-# (node:3793) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3793) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/generation-status-coalescer.test.ts is not specified and it doesn't parse as CommonJS.
-# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: selectNewestMeaningfulStatus prefers the newest transition
-ok 58 - selectNewestMeaningfulStatus prefers the newest transition
+ok 56 - selectNewestMeaningfulStatus prefers the newest transition
   ---
-  duration_ms: 0.690917
-  type: 'test'
+  duration_ms: 1.8774
   ...
 # Subtest: coalesceGenerationStatuses keeps one meaningful state per concurrent job
-ok 59 - coalesceGenerationStatuses keeps one meaningful state per concurrent job
+ok 57 - coalesceGenerationStatuses keeps one meaningful state per concurrent job
   ---
-  duration_ms: 9.83594
-  type: 'test'
+  duration_ms: 17.041
   ...
 # Subtest: AppliedGenerationJobSet prevents duplicate completed proposal application
-ok 60 - AppliedGenerationJobSet prevents duplicate completed proposal application
+ok 58 - AppliedGenerationJobSet prevents duplicate completed proposal application
   ---
-  duration_ms: 0.137413
-  type: 'test'
+  duration_ms: 0.2923
   ...
-# (node:3800) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271940) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3800) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/generation-workspace-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:271940) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/generation-workspace-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: presets build a valid idempotent platform request
-ok 61 - presets build a valid idempotent platform request
+ok 59 - presets build a valid idempotent platform request
   ---
-  duration_ms: 0.698605
-  type: 'test'
+  duration_ms: 1.9834
   ...
 # Subtest: creative briefs tune only supported structured controls
-ok 62 - creative briefs tune only supported structured controls
+ok 60 - creative briefs tune only supported structured controls
   ---
-  duration_ms: 0.915522
-  type: 'test'
+  duration_ms: 1.8657
   ...
 # Subtest: proposal summaries count tracks notes sections and duration
-ok 63 - proposal summaries count tracks notes sections and duration
+ok 61 - proposal summaries count tracks notes sections and duration
   ---
-  duration_ms: 1.077529
-  type: 'test'
+  duration_ms: 1.2428
   ...
 # Subtest: the creative brief is sent trimmed and only when present
-ok 64 - the creative brief is sent trimmed and only when present
+ok 62 - the creative brief is sent trimmed and only when present
   ---
-  duration_ms: 0.141738
-  type: 'test'
+  duration_ms: 0.2618
   ...
 # Subtest: previews say which composer wrote the arrangement
-ok 65 - previews say which composer wrote the arrangement
+ok 63 - previews say which composer wrote the arrangement
   ---
-  duration_ms: 0.107652
-  type: 'test'
+  duration_ms: 0.3488
   ...
 # Subtest: briefs choose a mode from their wording and keep the tonic
-ok 66 - briefs choose a mode from their wording and keep the tonic
+ok 64 - briefs choose a mode from their wording and keep the tonic
   ---
-  duration_ms: 3.329569
-  type: 'test'
+  duration_ms: 1.6569
   ...
 # Subtest: a key named in the brief is used exactly
-ok 67 - a key named in the brief is used exactly
+ok 65 - a key named in the brief is used exactly
   ---
-  duration_ms: 0.405007
-  type: 'test'
+  duration_ms: 3.5208
   ...
 # Subtest: major and harmonic-minor presets send their keys
-ok 68 - major and harmonic-minor presets send their keys
+ok 66 - major and harmonic-minor presets send their keys
   ---
-  duration_ms: 0.097382
-  type: 'test'
+  duration_ms: 0.7052
   ...
 # Subtest: an up-tempo brief asks for real speed
-ok 69 - an up-tempo brief asks for real speed
+ok 67 - an up-tempo brief asks for real speed
   ---
-  duration_ms: 0.266293
-  type: 'test'
+  duration_ms: 0.974
   ...
-# Subtest: prototype audio prompts combine the brief with the musical controls
-ok 70 - prototype audio prompts combine the brief with the musical controls
-  ---
-  duration_ms: 0.489977
-  type: 'test'
-  ...
-# (node:3812) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271968) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3812) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/platform-project-repository.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:271968) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/platform-project-repository.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: extracts the message field from a JSON error envelope
-ok 71 - extracts the message field from a JSON error envelope
+ok 68 - extracts the message field from a JSON error envelope
   ---
-  duration_ms: 0.608337
-  type: 'test'
+  duration_ms: 1.773
   ...
 # Subtest: falls back to the raw body when it is not a JSON error envelope
-ok 72 - falls back to the raw body when it is not a JSON error envelope
+ok 69 - falls back to the raw body when it is not a JSON error envelope
   ---
-  duration_ms: 0.117612
-  type: 'test'
+  duration_ms: 0.2624
   ...
 # Subtest: falls back to a generic status message when the body is empty
-ok 73 - falls back to a generic status message when the body is empty
+ok 70 - falls back to a generic status message when the body is empty
   ---
-  duration_ms: 0.127533
-  type: 'test'
+  duration_ms: 0.1728
   ...
 # Subtest: falls back to the raw body when the JSON has no usable message field
-ok 74 - falls back to the raw body when the JSON has no usable message field
+ok 71 - falls back to the raw body when the JSON has no usable message field
   ---
-  duration_ms: 0.095539
-  type: 'test'
+  duration_ms: 0.8346
   ...
-# (node:3813) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271788) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3813) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/platform-session.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:271788) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/platform-session.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: token expiry is read from the exp claim; damaged tokens have none
-ok 75 - token expiry is read from the exp claim; damaged tokens have none
+ok 72 - token expiry is read from the exp claim; damaged tokens have none
   ---
-  duration_ms: 5.053525
-  type: 'test'
+  duration_ms: 2.3745
   ...
 # Subtest: the session cookie becomes a bearer header; an explicit header wins
-ok 76 - the session cookie becomes a bearer header; an explicit header wins
+ok 73 - the session cookie becomes a bearer header; an explicit header wins
   ---
-  duration_ms: 72.645494
-  type: 'test'
+  duration_ms: 36.9027
   ...
 # Subtest: expired or missing sessions send no credentials, and other cookies never count
-ok 77 - expired or missing sessions send no credentials, and other cookies never count
+ok 74 - expired or missing sessions send no credentials, and other cookies never count
   ---
-  duration_ms: 0.157471
-  type: 'test'
+  duration_ms: 0.8462
   ...
 # Subtest: profiles are read defensively
-ok 78 - profiles are read defensively
+ok 75 - profiles are read defensively
   ---
-  duration_ms: 1.069364
-  type: 'test'
+  duration_ms: 1.3933
   ...
 # Subtest: session cookies are HttpOnly and Secure behind HTTPS
-ok 79 - session cookies are HttpOnly and Secure behind HTTPS
+ok 76 - session cookies are HttpOnly and Secure behind HTTPS
   ---
-  duration_ms: 0.282395
-  type: 'test'
+  duration_ms: 0.4535
   ...
-# (node:3827) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271516) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3827) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/plugin-freeze-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:271516) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/project-sync-coordinator.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
-# Subtest: only first-party plug-ins without automation can be frozen
-ok 80 - only first-party plug-ins without automation can be frozen
-  ---
-  duration_ms: 0.638378
-  type: 'test'
-  ...
-# Subtest: freezes render from the stored v2 revision and refuse anything else
-ok 81 - freezes render from the stored v2 revision and refuse anything else
-  ---
-  duration_ms: 29.0043
-  type: 'test'
-  ...
-# Subtest: an attached freeze is current until the plug-in or its input changes
-ok 82 - an attached freeze is current until the plug-in or its input changes
-  ---
-  duration_ms: 3.829744
-  type: 'test'
-  ...
-# (node:3838) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3838) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/project-sync-coordinator.test.ts is not specified and it doesn't parse as CommonJS.
-# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: a sync refused for lack of a sign-in is reported as signed out, not as an error
-ok 83 - a sync refused for lack of a sign-in is reported as signed out, not as an error
+ok 77 - a sync refused for lack of a sign-in is reported as signed out, not as an error
   ---
-  duration_ms: 17.12992
-  type: 'test'
+  duration_ms: 2.7132
   ...
 # Subtest: other sync failures stay errors with their message
-ok 84 - other sync failures stay errors with their message
+ok 78 - other sync failures stay errors with their message
   ---
-  duration_ms: 0.239932
-  type: 'test'
+  duration_ms: 1.786
   ...
-# (node:3848) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:254732) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3848) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/render-export-model.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:254732) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/lmxbl/Documents/synaptix-music/apps/music-studio/lib/platform/render-export-model.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
+# To eliminate this warning, add "type": "module" to C:\\Users\\lmxbl\\Documents\\synaptix-music\\apps\\music-studio\\package.json.
 # Subtest: export anchors the exact mixer-bearing project revision and validates stems
-ok 85 - export anchors the exact mixer-bearing project revision and validates stems
+ok 79 - export anchors the exact mixer-bearing project revision and validates stems
   ---
-  duration_ms: 27.359356
-  type: 'test'
+  duration_ms: 24.8419
   ...
 # Subtest: download links reject executable URLs and embedded credentials
-ok 86 - download links reject executable URLs and embedded credentials
+ok 80 - download links reject executable URLs and embedded credentials
   ---
-  duration_ms: 0.392086
-  type: 'test'
+  duration_ms: 0.335
   ...
 # Subtest: renders pin the checksum of the snapshot the platform stored, v1 or v2
-ok 87 - renders pin the checksum of the snapshot the platform stored, v1 or v2
+ok 81 - renders pin the checksum of the snapshot the platform stored, v1 or v2
   ---
-  duration_ms: 5.67417
-  type: 'test'
+  duration_ms: 6.4682
   ...
 # Subtest: pinning refuses other revisions, changed music, bad checksums and live plug-ins
-ok 88 - pinning refuses other revisions, changed music, bad checksums and live plug-ins
+ok 82 - pinning refuses other revisions, changed music, bad checksums and live plug-ins
   ---
-  duration_ms: 4.623569
-  type: 'test'
+  duration_ms: 3.8984
   ...
-# Subtest: plug-ins covered by a current freeze don't block rendering; stale freezes still do
-ok 89 - plug-ins covered by a current freeze don't block rendering; stale freezes still do
-  ---
-  duration_ms: 1.8729
-  type: 'test'
-  ...
-# (node:3855) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3855) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/platform/render-owner.test.ts is not specified and it doesn't parse as CommonJS.
-# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
-# Subtest: the owner is the platform's answer for the token, cached briefly
-ok 90 - the owner is the platform's answer for the token, cached briefly
-  ---
-  duration_ms: 45.026783
-  type: 'test'
-  ...
-# Subtest: rejected tokens are unauthenticated; platform trouble is unavailable and never cached
-ok 91 - rejected tokens are unauthenticated; platform trouble is unavailable and never cached
-  ---
-  duration_ms: 1.141296
-  type: 'test'
-  ...
-# (node:3863) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3863) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/player/cover-art.test.ts is not specified and it doesn't parse as CommonJS.
-# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
-# Subtest: covers are center-cropped to a square and never upscaled
-ok 92 - covers are center-cropped to a square and never upscaled
-  ---
-  duration_ms: 4.630087
-  type: 'test'
-  ...
-# Subtest: only reasonably sized PNG, JPEG, and WebP files are accepted
-ok 93 - only reasonably sized PNG, JPEG, and WebP files are accepted
-  ---
-  duration_ms: 0.27094
-  type: 'test'
-  ...
-# (node:3874) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3874) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/player/playback-model.test.ts is not specified and it doesn't parse as CommonJS.
-# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
-# Subtest: durations follow the arrangement length and tempo
-ok 94 - durations follow the arrangement length and tempo
-  ---
-  duration_ms: 13.068743
-  type: 'test'
-  ...
-# Subtest: listening copies play through once, or loop only for repeat-one, and can solo a track
-ok 95 - listening copies play through once, or loop only for repeat-one, and can solo a track
-  ---
-  duration_ms: 1.329725
-  type: 'test'
-  ...
-# Subtest: queue navigation handles repeat modes and restart-on-previous
-ok 96 - queue navigation handles repeat modes and restart-on-previous
-  ---
-  duration_ms: 0.253552
-  type: 'test'
-  ...
-# Subtest: track summaries, artwork palettes, and contours are deterministic
-ok 97 - track summaries, artwork palettes, and contours are deterministic
-  ---
-  duration_ms: 1.280227
-  type: 'test'
-  ...
-# (node:3887) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
-# (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:3887) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/Synaptix_Music/apps/music-studio/lib/pwa/service-worker.test.ts is not specified and it doesn't parse as CommonJS.
-# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /home/user/Synaptix_Music/apps/music-studio/package.json.
-# Subtest: routing leaves APIs, other origins, and non-GET requests alone
-ok 98 - routing leaves APIs, other origins, and non-GET requests alone
-  ---
-  duration_ms: 42.100912
-  type: 'test'
-  ...
-# Subtest: install saves the home page, Library and offline page with their assets
-ok 99 - install saves the home page, Library and offline page with their assets
-  ---
-  duration_ms: 6.288768
-  type: 'test'
-  ...
-# Subtest: pages are network-first, saved for offline, and fall back to the offline page
-ok 100 - pages are network-first, saved for offline, and fall back to the offline page
-  ---
-  duration_ms: 14.009737
-  type: 'test'
-  ...
-# Subtest: hashed static files are served from cache once seen
-ok 101 - hashed static files are served from cache once seen
-  ---
-  duration_ms: 1.143196
-  type: 'test'
-  ...
-# Subtest: activation removes older Synaptix caches only
-ok 102 - activation removes older Synaptix caches only
-  ---
-  duration_ms: 0.904162
-  type: 'test'
-  ...
-# Subtest: warming caches only same-origin static assets
-ok 103 - warming caches only same-origin static assets
-  ---
-  duration_ms: 0.770537
-  type: 'test'
-  ...
-1..103
-# tests 103
+1..82
+# tests 82
 # suites 0
-# pass 103
+# pass 82
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 5900.356778
+# duration_ms 988.4411

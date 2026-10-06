@@ -2,199 +2,167 @@
 > @synaptix/command-system@0.1.0 test
 > node --experimental-transform-types --test src/*.test.ts
 
+(node:270684) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
 TAP version 13
-# (node:3455) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271200) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: device enabled edits are reversible
 ok 1 - device enabled edits are reversible
   ---
-  duration_ms: 6.48509
-  type: 'test'
+  duration_ms: 221.2465
   ...
 # Subtest: device parameter edits add or update values and are reversible
 ok 2 - device parameter edits add or update values and are reversible
   ---
-  duration_ms: 6.961466
-  type: 'test'
+  duration_ms: 1.1668
   ...
 # Subtest: device parameter commands fail closed for non-finite values
 ok 3 - device parameter commands fail closed for non-finite values
   ---
-  duration_ms: 0.296936
-  type: 'test'
+  duration_ms: 0.5002
   ...
-# (node:3459) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271184) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: history enforces a bounded undo depth
 ok 4 - history enforces a bounded undo depth
   ---
-  duration_ms: 97.111534
-  type: 'test'
+  duration_ms: 108.5062
   ...
 # Subtest: new edits invalidate redo history
 ok 5 - new edits invalidate redo history
   ---
-  duration_ms: 12.314794
-  type: 'test'
+  duration_ms: 32.7776
   ...
 # Subtest: history must be reset before switching projects
 ok 6 - history must be reset before switching projects
   ---
-  duration_ms: 2.085007
-  type: 'test'
+  duration_ms: 3.8452
   ...
 # Subtest: failed command construction leaves history unchanged
 ok 7 - failed command construction leaves history unchanged
   ---
-  duration_ms: 0.230985
-  type: 'test'
+  duration_ms: 0.3624
   ...
-# Subtest: project rename is one undoable history entry on v1 and v2 projects
-ok 8 - project rename is one undoable history entry on v1 and v2 projects
-  ---
-  duration_ms: 37.889499
-  type: 'test'
-  ...
-# (node:3467) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271300) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: add and remove MIDI notes are reversible
-ok 9 - add and remove MIDI notes are reversible
+ok 8 - add and remove MIDI notes are reversible
   ---
-  duration_ms: 26.097558
-  type: 'test'
+  duration_ms: 231.1124
   ...
 # Subtest: multi-note movement resize velocity and transpose are reversible
-ok 10 - multi-note movement resize velocity and transpose are reversible
+ok 9 - multi-note movement resize velocity and transpose are reversible
   ---
-  duration_ms: 0.814518
-  type: 'test'
+  duration_ms: 1.267
   ...
 # Subtest: quantize and duplicate preserve deterministic batch behavior
-ok 11 - quantize and duplicate preserve deterministic batch behavior
+ok 10 - quantize and duplicate preserve deterministic batch behavior
   ---
-  duration_ms: 7.304758
-  type: 'test'
+  duration_ms: 0.6671
   ...
 # Subtest: drum step toggling and clearing are reversible
-ok 12 - drum step toggling and clearing are reversible
+ok 11 - drum step toggling and clearing are reversible
   ---
-  duration_ms: 0.586883
-  type: 'test'
+  duration_ms: 0.644
   ...
 # Subtest: invalid MIDI edits fail closed
-ok 13 - invalid MIDI edits fail closed
+ok 12 - invalid MIDI edits fail closed
   ---
-  duration_ms: 4.94712
-  type: 'test'
+  duration_ms: 121.2661
   ...
 # Subtest: adding several notes is one reversible step and fails closed as a whole
-ok 14 - adding several notes is one reversible step and fails closed as a whole
+ok 13 - adding several notes is one reversible step and fails closed as a whole
   ---
-  duration_ms: 0.468241
-  type: 'test'
+  duration_ms: 57.876
   ...
-# (node:3539) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271416) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: legacy projects retain checksums and mixer changes undo to an absent configuration
-ok 15 - legacy projects retain checksums and mixer changes undo to an absent configuration
+ok 14 - legacy projects retain checksums and mixer changes undo to an absent configuration
   ---
-  duration_ms: 38.737962
-  type: 'test'
+  duration_ms: 85.795
   ...
 # Subtest: routing and send edits validate and preserve the original optional fields on undo
-ok 16 - routing and send edits validate and preserve the original optional fields on undo
+ok 15 - routing and send edits validate and preserve the original optional fields on undo
   ---
-  duration_ms: 1.887257
-  type: 'test'
+  duration_ms: 4.028
   ...
-# (node:3574) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271436) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: a parameter gesture on a v2 plug-in is one history entry with exact undo/redo
-ok 17 - a parameter gesture on a v2 plug-in is one history entry with exact undo/redo
+ok 16 - a parameter gesture on a v2 plug-in is one history entry with exact undo/redo
   ---
-  duration_ms: 60.696059
-  type: 'test'
+  duration_ms: 59.0301
   ...
 # Subtest: bypass reuses the device enabled command on v2 projects
-ok 18 - bypass reuses the device enabled command on v2 projects
+ok 17 - bypass reuses the device enabled command on v2 projects
   ---
-  duration_ms: 0.580044
-  type: 'test'
+  duration_ms: 1.43
   ...
 # Subtest: inserting and removing plug-in devices is reversible and order-preserving
-ok 19 - inserting and removing plug-in devices is reversible and order-preserving
+ok 18 - inserting and removing plug-in devices is reversible and order-preserving
   ---
-  duration_ms: 1.00392
-  type: 'test'
+  duration_ms: 2.4575
   ...
 # Subtest: state replacement is atomic, reversible, and rejects tampered envelopes
-ok 20 - state replacement is atomic, reversible, and rejects tampered envelopes
+ok 19 - state replacement is atomic, reversible, and rejects tampered envelopes
   ---
-  duration_ms: 14.598261
-  type: 'test'
+  duration_ms: 3.6304
   ...
 # Subtest: automation lanes are normalized, replaced as one command, and removable
-ok 21 - automation lanes are normalized, replaced as one command, and removable
+ok 20 - automation lanes are normalized, replaced as one command, and removable
   ---
-  duration_ms: 1.159177
-  type: 'test'
+  duration_ms: 2.2636
   ...
 # Subtest: frozen evidence attachment is reversible and bound to its device
-ok 22 - frozen evidence attachment is reversible and bound to its device
+ok 21 - frozen evidence attachment is reversible and bound to its device
   ---
-  duration_ms: 1.057274
-  type: 'test'
+  duration_ms: 2.33
   ...
 # Subtest: lifted v1 commands edit v2 projects without dropping plug-in data
-ok 23 - lifted v1 commands edit v2 projects without dropping plug-in data
+ok 22 - lifted v1 commands edit v2 projects without dropping plug-in data
   ---
-  duration_ms: 7.404218
-  type: 'test'
+  duration_ms: 12.6762
   ...
 # Subtest: undoing a lifted command that removed a plug-in track restores the plug-in intact
-ok 24 - undoing a lifted command that removed a plug-in track restores the plug-in intact
+ok 23 - undoing a lifted command that removed a plug-in track restores the plug-in intact
   ---
-  duration_ms: 1.372226
-  type: 'test'
+  duration_ms: 3.1588
   ...
-# (node:3580) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (node:271500) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: adding a device track is undoable
-ok 25 - adding a device track is undoable
+ok 24 - adding a device track is undoable
   ---
-  duration_ms: 12.049379
-  type: 'test'
+  duration_ms: 35.0108
   ...
 # Subtest: duplicate track insertion fails closed
-ok 26 - duplicate track insertion fails closed
+ok 25 - duplicate track insertion fails closed
   ---
-  duration_ms: 0.541302
-  type: 'test'
+  duration_ms: 0.9744
   ...
 # Subtest: removing a track is undoable and restores its position
-ok 27 - removing a track is undoable and restores its position
+ok 26 - removing a track is undoable and restores its position
   ---
-  duration_ms: 9.401363
-  type: 'test'
+  duration_ms: 4.7025
   ...
 # Subtest: removing a missing track fails closed
-ok 28 - removing a missing track fails closed
+ok 27 - removing a missing track fails closed
   ---
-  duration_ms: 0.262762
-  type: 'test'
+  duration_ms: 0.6325
   ...
 # Subtest: adding a clip is undoable and rejects duplicates
-ok 29 - adding a clip is undoable and rejects duplicates
+ok 28 - adding a clip is undoable and rejects duplicates
   ---
-  duration_ms: 0.54892
-  type: 'test'
+  duration_ms: 1.6325
   ...
-1..29
-# tests 29
+1..28
+# tests 28
 # suites 0
-# pass 29
+# pass 28
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 2807.105349
+# duration_ms 3810.9136
