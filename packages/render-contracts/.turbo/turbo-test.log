@@ -2,202 +2,236 @@
 > @synaptix/render-contracts@0.1.0 test
 > node --experimental-transform-types --test src/*.test.ts
 
-(node:264968) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
 TAP version 13
-# (node:271148) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3354) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: adaptive device mappings validate persisted targets
 ok 1 - adaptive device mappings validate persisted targets
   ---
-  duration_ms: 2.132
+  duration_ms: 2.588624
+  type: 'test'
   ...
 # Subtest: adaptive interpolation clamps intensity
 ok 2 - adaptive interpolation clamps intensity
   ---
-  duration_ms: 0.1442
+  duration_ms: 0.166558
+  type: 'test'
   ...
-# (node:271152) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3364) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: accepts a deterministic adaptive package manifest
 ok 3 - accepts a deterministic adaptive package manifest
   ---
-  duration_ms: 592.4808
+  duration_ms: 7.328213
+  type: 'test'
   ...
 # Subtest: rejects transitions that reference unknown states
 ok 4 - rejects transitions that reference unknown states
   ---
-  duration_ms: 136.5146
+  duration_ms: 0.600932
+  type: 'test'
   ...
 # Subtest: rejects invalid loop ranges and duplicate states
 ok 5 - rejects invalid loop ranges and duplicate states
   ---
-  duration_ms: 28.2334
+  duration_ms: 8.592947
+  type: 'test'
   ...
 # Subtest: validates runtime state, intensity, and stinger events
 ok 6 - validates runtime state, intensity, and stinger events
   ---
-  duration_ms: 1.4536
+  duration_ms: 0.672335
+  type: 'test'
   ...
-# (node:271424) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3381) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: builds a deterministic adaptive package from certified artifacts
 ok 7 - builds a deterministic adaptive package from certified artifacts
   ---
-  duration_ms: 9.3141
+  duration_ms: 88.684563
+  type: 'test'
   ...
 # Subtest: selects the nearest intensity and respects tags
 ok 8 - selects the nearest intensity and respects tags
   ---
-  duration_ms: 1.0241
+  duration_ms: 0.437559
+  type: 'test'
   ...
 # Subtest: finds declared transitions
 ok 9 - finds declared transitions
   ---
-  duration_ms: 0.5091
+  duration_ms: 0.261647
+  type: 'test'
   ...
 # Subtest: plans bar-quantized transitions
 ok 10 - plans bar-quantized transitions
   ---
-  duration_ms: 0.5279
+  duration_ms: 47.141093
+  type: 'test'
   ...
 # Subtest: rejects invalid certified artifact duration
 ok 11 - rejects invalid certified artifact duration
   ---
-  duration_ms: 0.7194
+  duration_ms: 25.102452
+  type: 'test'
   ...
 # Subtest: published manifests carry the authored musical clock when provided
 ok 12 - published manifests carry the authored musical clock when provided
   ---
-  duration_ms: 2.816
+  duration_ms: 16.667742
+  type: 'test'
   ...
-# (node:271492) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3569) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: render manifest applies deterministic output defaults
 ok 13 - render manifest applies deterministic output defaults
   ---
-  duration_ms: 6.5335
+  duration_ms: 3.160218
+  type: 'test'
   ...
 # Subtest: render range and completed-result evidence fail closed
 ok 14 - render range and completed-result evidence fail closed
   ---
-  duration_ms: 2.5311
+  duration_ms: 1.336492
+  type: 'test'
   ...
 # Subtest: artifact manifests bind previews and artifacts to one immutable render
 ok 15 - artifact manifests bind previews and artifacts to one immutable render
   ---
-  duration_ms: 4.24
+  duration_ms: 1.22946
+  type: 'test'
   ...
-# (node:271532) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3592) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: frozen references verify against the Stage 12 manifest they point to
 ok 16 - frozen references verify against the Stage 12 manifest they point to
   ---
-  duration_ms: 213.1159
+  duration_ms: 117.243259
+  type: 'test'
   ...
 # Subtest: production certification blocks browser-only plug-ins without frozen evidence
 ok 17 - production certification blocks browser-only plug-ins without frozen evidence
   ---
-  duration_ms: 13.1521
+  duration_ms: 3.132782
+  type: 'test'
   ...
 # Subtest: production certification accepts current verified freezes and rejects stale or unverifiable ones
 ok 18 - production certification accepts current verified freezes and rejects stale or unverifiable ones
   ---
-  duration_ms: 19.6282
+  duration_ms: 42.272932
+  type: 'test'
   ...
 # Subtest: device ids shared across tracks are judged by their own track's freeze evidence
 ok 19 - device ids shared across tracks are judged by their own track's freeze evidence
   ---
-  duration_ms: 6.6799
+  duration_ms: 5.001318
+  type: 'test'
   ...
-# (node:271660) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3596) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: submitting the same idempotency key and render twice returns the same job
 ok 20 - submitting the same idempotency key and render twice returns the same job
   ---
-  duration_ms: 64.9397
+  duration_ms: 12.659733
+  type: 'test'
   ...
 # Subtest: reusing an idempotency key for a different render is rejected
 ok 21 - reusing an idempotency key for a different render is rejected
   ---
-  duration_ms: 3.3395
+  duration_ms: 0.66017
+  type: 'test'
   ...
 # Subtest: newly submitted jobs are queued and unleased
 ok 22 - newly submitted jobs are queued and unleased
   ---
-  duration_ms: 5.1137
+  duration_ms: 0.237084
+  type: 'test'
   ...
 # Subtest: lease assigns the oldest eligible job in submission order and increments the attempt
 ok 23 - lease assigns the oldest eligible job in submission order and increments the attempt
   ---
-  duration_ms: 16.6157
+  duration_ms: 8.702652
+  type: 'test'
   ...
 # Subtest: lease returns null when no job is eligible
 ok 24 - lease returns null when no job is eligible
   ---
-  duration_ms: 0.3359
+  duration_ms: 9.239691
+  type: 'test'
   ...
 # Subtest: heartbeat extends the lease only for the owning worker on a running job
 ok 25 - heartbeat extends the lease only for the owning worker on a running job
   ---
-  duration_ms: 0.9057
+  duration_ms: 0.482753
+  type: 'test'
   ...
 # Subtest: reporting a completed result finishes the job and releases the lease
 ok 26 - reporting a completed result finishes the job and releases the lease
   ---
-  duration_ms: 3.4638
+  duration_ms: 1.809323
+  type: 'test'
   ...
 # Subtest: reporting a result with a mismatched renderId is rejected
 ok 27 - reporting a result with a mismatched renderId is rejected
   ---
-  duration_ms: 1.1149
+  duration_ms: 17.225112
+  type: 'test'
   ...
 # Subtest: a failed result is retried with exponential backoff until attempts are exhausted
 ok 28 - a failed result is retried with exponential backoff until attempts are exhausted
   ---
-  duration_ms: 1.3941
+  duration_ms: 0.694782
+  type: 'test'
   ...
 # Subtest: lease skips jobs scheduled for a future retry
 ok 29 - lease skips jobs scheduled for a future retry
   ---
-  duration_ms: 1.5434
+  duration_ms: 0.567836
+  type: 'test'
   ...
 # Subtest: cancel stops a queued or running job but not a terminal one
 ok 30 - cancel stops a queued or running job but not a terminal one
   ---
-  duration_ms: 0.7156
+  duration_ms: 0.291725
+  type: 'test'
   ...
 # Subtest: expired leases are reclaimed and rescheduled for retry
 ok 31 - expired leases are reclaimed and rescheduled for retry
   ---
-  duration_ms: 0.7151
+  duration_ms: 0.222172
+  type: 'test'
   ...
 # Subtest: operations on an unknown job id fail closed
 ok 32 - operations on an unknown job id fail closed
   ---
-  duration_ms: 0.259
+  duration_ms: 0.104764
+  type: 'test'
   ...
 # Subtest: list filters by status and events records the full job lifecycle
 ok 33 - list filters by status and events records the full job lifecycle
   ---
-  duration_ms: 1.7189
+  duration_ms: 1.36969
+  type: 'test'
   ...
-# (node:271792) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (node:3669) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: retry delay grows exponentially with attempt number
 ok 34 - retry delay grows exponentially with attempt number
   ---
-  duration_ms: 1.7469
+  duration_ms: 0.618291
+  type: 'test'
   ...
 # Subtest: retry delay is capped at the configured maximum
 ok 35 - retry delay is capped at the configured maximum
   ---
-  duration_ms: 0.2411
+  duration_ms: 0.135033
+  type: 'test'
   ...
 # Subtest: retry delay rejects non-positive attempt numbers
 ok 36 - retry delay rejects non-positive attempt numbers
   ---
-  duration_ms: 0.5483
+  duration_ms: 0.282799
+  type: 'test'
   ...
 1..36
 # tests 36
@@ -207,4 +241,4 @@ ok 36 - retry delay rejects non-positive attempt numbers
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 3993.5073
+# duration_ms 3565.664422

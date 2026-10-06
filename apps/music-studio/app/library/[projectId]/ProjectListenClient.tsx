@@ -16,6 +16,7 @@ import { formatClock, playbackItemKey, summarizeTracks, type PlaybackItem } from
 import { removeProjectCover, setProjectCover, useCoverUrl } from "../../../lib/player/covers";
 import { formatBytes, useOfflineRenders } from "../../../lib/player/offline-renders";
 import { currentItem, usePlayer } from "../../../lib/player/player-store";
+import { useOnline } from "../../../lib/pwa/use-online";
 import { mixItem, projectSubtitle, useLibrary } from "../../../lib/player/use-library";
 import styles from "../library.module.css";
 
@@ -56,6 +57,7 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
   const nowPlaying = currentItem(player);
   const playing = player.status === "playing";
   const coverUrl = useCoverUrl(projectId);
+  const online = useOnline();
   const coverInput = useRef<HTMLInputElement>(null);
   const [coverMessage, setCoverMessage] = useState<string | null>(null);
 
@@ -165,7 +167,8 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
                       Remove download
                     </button>
                     : render.state === "ready" && (
-                      <button type="button" className={styles.linkButton} disabled={pending === "downloading"}
+                      <button type="button" className={styles.linkButton} disabled={pending === "downloading" || !online}
+                        title={online ? undefined : "Connect to download this mix"}
                         onClick={() => void offline.download(render.job, render.artifact)}>
                         {pending === "downloading" ? "Downloading…" : "Download for offline"}
                       </button>
