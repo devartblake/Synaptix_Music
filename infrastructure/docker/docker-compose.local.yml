@@ -90,6 +90,11 @@ services:
       MUSICGEN_MODEL: ${MUSICGEN_MODEL:-facebook/musicgen-small}
       # Download and load the model at startup so the first request doesn't time out.
       MUSICGEN_PRELOAD: ${MUSICGEN_PRELOAD:-true}
+      # Queued jobs and their progress live in Redis, so they survive a service restart.
+      REDIS_URL: ${AUDIO_GENERATION_REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "127.0.0.1:${AUDIO_GENERATION_PORT:-8400}:8400"
     volumes:

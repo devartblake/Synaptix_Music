@@ -280,11 +280,25 @@ docker compose --project-name synaptix-music --env-file .env.docker   -f infrast
 The studio's **Generate** workspace then shows a **Prototype audio** panel. Its prompt follows
 the generator's mood, tempo, key and brief until you edit it. When the service starts it downloads
 the model (about 2 GB, kept in the `synaptix-hf-models` volume) and loads it onto the GPU, which
-takes a few minutes (`MUSICGEN_PRELOAD=false` defers this to the first request). Until it's
-ready, requests answer "still loading"; after that, clips take roughly their own length to
-generate on a laptop GPU. One clip generates at a time; a busy GPU
-answers 429. Set `MUSICGEN_MODEL=facebook/musicgen-medium` for higher quality if you have the
+takes a few minutes (`MUSICGEN_PRELOAD=false` defers this to the first request). After that,
+clips take roughly their own length to generate on a laptop GPU. Set `MUSICGEN_MODEL=facebook/musicgen-medium` for higher quality if you have the
 VRAM, and stop Ollama first if both won't fit on the GPU together.
+
+#### Queued jobs and live progress
+
+Each **Generate prototype audio** click submits a job instead of holding one long request open:
+
+- **Queue.** Jobs wait in a first-in, first-out queue and run one at a time, because the model needs the whole GPU. The panel shows the queue position (and can cancel a clip that hasn't started), "Loading the model" while it loads, and a progress bar while generating. Progress comes from the number of audio tokens MusicGen has produced.
+- **Live updates.** The studio follows `/api/audio-prototype/jobs/{id}/events`, a server-sent event stream passed through from the service. If the stream drops, the panel falls back to polling the job's status. Reloading the studio mid-job picks the progress back up.
+- **Storage.** With `REDIS_URL` set (the Compose stack points it at the `redis` service), jobs and finished clips are kept in Redis under `synaptix:audio-jobs:*`. Finished jobs expire after an hour. Queued jobs survive a service restart, and a job whose worker stopped reporting for two minutes is retried once. Without `REDIS_URL`, jobs live in the service's memory.
+- **Service API:**
+  - `POST /audio/jobs` submits a job (202).
+  - `GET /audio/jobs/{id}` returns its status.
+  - `GET /audio/jobs/{id}/events` streams status changes.
+  - `GET /audio/jobs/{id}/audio` returns the WAV.
+  - `DELETE /audio/jobs/{id}` cancels a queued job.
+  - `POST /audio/generations` still generates synchronously (429 when the GPU is busy).
+  - `AUDIO_JOBS_WORKER=false` runs an API-only process that queues jobs without running them.
 
 ## Start PostgreSQL and Redis
 

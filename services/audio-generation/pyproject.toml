@@ -7,6 +7,7 @@ dependencies = [
   "fastapi==0.116.1",
   "numpy>=1.26,<3",
   "pydantic==2.11.7",
+  "redis==5.2.1",
   "uvicorn[standard]==0.35.0",
 ]
 
@@ -17,6 +18,7 @@ model = [
   "transformers==4.46.3",
 ]
 dev = [
+  "fakeredis==2.26.2",
   "httpx==0.28.1",
   "pytest==8.4.1",
   "ruff==0.12.7",
