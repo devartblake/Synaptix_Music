@@ -15,7 +15,7 @@ import { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
 const connectionString = process.env.RENDER_WORKER_TEST_DATABASE_URL;
 
-function manifest(renderId: string): RenderManifest {
+function manifest(renderId: string, scope: RenderManifest["scope"] = { kind: "master" }): RenderManifest {
   return {
     contractVersion: RENDER_CONTRACT_VERSION,
     renderId,
@@ -24,7 +24,7 @@ function manifest(renderId: string): RenderManifest {
     projectChecksumSha256: "a".repeat(64),
     engineVersion: "1.0.0",
     seed: 42,
-    scope: { kind: "master" },
+    scope,
     range: { startTick: 0, endTick: 3840 },
     output: {
       format: "wav",
@@ -181,8 +181,13 @@ if (!connectionString) {
     assert.equal((await missing.json()).code, "render_artifact_not_found");
   });
 
-  async function completedRender(renderId: string, artifactId: string, manifestArtifactId: string) {
-    const submitted = await store.submit(manifest(renderId), `evidence-${renderId}`);
+  async function completedRender(
+    renderId: string,
+    artifactId: string,
+    manifestArtifactId: string,
+    scope: RenderManifest["scope"] = { kind: "master" }
+  ) {
+    const submitted = await store.submit(manifest(renderId, scope), `evidence-${renderId}`);
     await store.lease("worker-a");
     const artifact = (id: string, fileName: string, checksum: string) => ({
       artifactId: id, renderId, trackId: null, fileName,
@@ -215,12 +220,25 @@ if (!connectionString) {
     const body = await response.json();
     assert.deepEqual(body.renders, [{
       renderId, projectId: "project-a", revisionId: "revision-a", projectChecksumSha256: "a".repeat(64),
-      jobId, status: "completed", artifactManifestChecksumSha256: "c".repeat(64)
+      scopeKind: "master", jobId, status: "completed", artifactManifestChecksumSha256: "c".repeat(64)
     }]);
     assert.deepEqual(body.artifacts, [{
       renderId, projectId: "project-a", revisionId: "revision-a", projectChecksumSha256: "a".repeat(64),
-      jobId, status: "completed", artifactId, fileName: "master.wav", checksumSha256: "b".repeat(64), byteLength: 44
+      scopeKind: "master", jobId, status: "completed", artifactId, fileName: "master.wav", checksumSha256: "b".repeat(64), byteLength: 44
     }], "unknown artifacts are simply absent");
+  });
+
+  test("render evidence names a plug-in freeze, so the backend can refuse it as package audio", async () => {
+    // A freeze is one track through its plug-ins. The studio keeps freezes out of adaptive
+    // states, but only the scope kind lets the backend refuse one published directly.
+    const renderId = "10000000-0000-4000-8000-00000000000c";
+    const artifactId = "20000000-0000-4000-8000-00000000000c";
+    await completedRender(renderId, artifactId, "20000000-0000-4000-8000-00000000000d",
+      { kind: "plugin-freeze", trackId: "track-1", deviceId: "device-1" });
+
+    const body = await (await evidence({ renderIds: [renderId], artifactIds: [artifactId] })).json();
+    assert.equal(body.renders[0].scopeKind, "plugin-freeze");
+    assert.equal(body.artifacts[0].scopeKind, "plugin-freeze");
   });
 
   test("render evidence requires the service token and valid ids", async () => {

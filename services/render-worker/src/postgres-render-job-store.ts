@@ -85,7 +85,9 @@ export class PostgresRenderJobStore {
 
   /**
    * Evidence the SynaptixPlay backend checks before publishing an adaptive package: which render
-   * produced each artifact, whether it completed, and for which exact project revision.
+   * produced each artifact, whether it completed, for which exact project revision, and its scope
+   * kind (the backend accepts only master and stems renders as package audio, never a plug-in
+   * freeze of one track).
    */
   async renderEvidence(renderIds: readonly string[], artifactIds: readonly string[]): Promise<RenderEvidence> {
     const renders = await this.pool.query<{ job_id: string; status: RenderJobStatus; manifest: RenderManifest; result: RenderResult | null }>(
@@ -108,7 +110,8 @@ export class PostgresRenderJobStore {
       renderId: manifest.renderId,
       projectId: manifest.projectId,
       revisionId: manifest.revisionId,
-      projectChecksumSha256: manifest.projectChecksumSha256
+      projectChecksumSha256: manifest.projectChecksumSha256,
+      scopeKind: manifest.scope.kind
     });
     return {
       renders: renders.rows.map((row) => ({
@@ -462,6 +465,7 @@ interface EvidenceSource {
   projectId: string;
   revisionId: string;
   projectChecksumSha256: string;
+  scopeKind: RenderManifest["scope"]["kind"];
   jobId: string;
   status: RenderJobStatus;
 }
