@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { productRegistrationId, refreshPlatformSession } from "../../../../lib/platform/platform-refresh";
+import { refreshPlatformSession, studioRefusal, studioServiceToken } from "../../../../lib/platform/platform-refresh";
 import {
   PLATFORM_DEVICE_COOKIE,
   PLATFORM_PROFILE_COOKIE,
@@ -58,6 +58,8 @@ export function GET(request: NextRequest): NextResponse {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const base = platformBaseUrl();
   if (!base) return error("The SynaptixPlay platform isn't configured for this studio.", 503);
+  const serviceToken = studioServiceToken();
+  if (!serviceToken) return error("Sign-in isn't configured for this studio (SYNAPTIX_PLATFORM_SERVICE_TOKEN).", 503);
 
   const parsed = SignInSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return error("Enter your email address and password.", 400);
@@ -65,20 +67,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const deviceId = request.cookies.get(PLATFORM_DEVICE_COOKIE)?.value || `music-studio-${crypto.randomUUID()}`;
   let response: Response;
   try {
-    response = await fetch(`${base}/api/v1/auth/login`, {
+    response = await fetch(`${base}/api/v1/auth/studio/login`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: parsed.data.email,
-        password: parsed.data.password,
-        deviceId,
-        productRegistrationId: productRegistrationId()
-      }),
+      headers: { "content-type": "application/json", "x-service-token": serviceToken },
+      body: JSON.stringify({ email: parsed.data.email, password: parsed.data.password, deviceId }),
       cache: "no-store"
     });
   } catch {
     return error("SynaptixPlay couldn't be reached. Check that the platform is running, then try again.", 502);
   }
+  const refusal = await studioRefusal(response);
+  if (refusal) return error(refusal, 502);
   if (response.status === 401 || response.status === 400)
     return error("That email and password don't match a SynaptixPlay account.", 401);
   if (response.status === 429) return error("Too many sign-in attempts. Wait a minute, then try again.", 429);
@@ -111,7 +110,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
   const outcome = await refreshPlatformSession({
     baseUrl: platformBaseUrl(),
-    serviceToken: process.env.SYNAPTIX_PLATFORM_SERVICE_TOKEN?.trim() || null,
+    serviceToken: studioServiceToken(),
     refreshToken
   });
   if (outcome.kind === "unavailable") return error(outcome.message, outcome.status);

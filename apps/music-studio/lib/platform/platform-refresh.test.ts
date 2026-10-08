@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { productRegistrationId, refreshPlatformSession } from "./platform-refresh.ts";
+import { refreshPlatformSession, studioServiceToken } from "./platform-refresh.ts";
 
 function jwt(payload: object): string {
   const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -20,7 +20,7 @@ function fakeFetch(response: Response | Error) {
 
 const base = { baseUrl: "https://platform.test", serviceToken: "studio-token", refreshToken: "refresh-1" };
 
-test("a renewal sends the refresh token with the studio's service token and rotates both tokens", async () => {
+test("a renewal goes to the studio route with the studio's service token and rotates both tokens", async () => {
   const access = jwt({ exp: 2_000_000_000 });
   const { impl, calls } = fakeFetch(
     Response.json({ accessToken: access, refreshToken: "refresh-2", expiresIn: 480, user: { handle: "composer", email: "c@example.com" } })
@@ -29,7 +29,7 @@ test("a renewal sends the refresh token with the studio's service token and rota
   const outcome = await refreshPlatformSession({ ...base, fetchImpl: impl });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0]!.url, "https://platform.test/api/v1/auth/refresh");
+  assert.equal(calls[0]!.url, "https://platform.test/api/v1/auth/studio/refresh");
   assert.equal(new Headers(calls[0]!.init.headers).get("x-service-token"), "studio-token");
   assert.deepEqual(JSON.parse(String(calls[0]!.init.body)), { refreshToken: "refresh-1" });
   assert.deepEqual(outcome, {
@@ -57,8 +57,19 @@ test("without the platform URL or the service token nothing is sent", async () =
   }
 });
 
-test("the studio signs in as the General product unless configured otherwise", () => {
-  // The platform refuses sign-in without a recognized product registration.
-  assert.equal(productRegistrationId({}), "synaptix-play-general");
-  assert.equal(productRegistrationId({ SYNAPTIX_PLATFORM_PRODUCT_REGISTRATION_ID: " studio-reg " }), "studio-reg");
+test("a refused studio token or studio sign-in turned off never signs the player out", async () => {
+  // These are configuration problems on the studio or the platform, not the player's session.
+  for (const response of [
+    Response.json({ error: { code: "service_authentication_required" } }, { status: 401 }),
+    Response.json({ error: { code: "studio_auth_unavailable" } }, { status: 503 })
+  ]) {
+    const outcome = await refreshPlatformSession({ ...base, fetchImpl: fakeFetch(response).impl });
+    assert.equal(outcome.kind, "unavailable");
+  }
+});
+
+test("the service token comes from SYNAPTIX_PLATFORM_SERVICE_TOKEN; blank means none", () => {
+  assert.equal(studioServiceToken({ SYNAPTIX_PLATFORM_SERVICE_TOKEN: " t " }), "t");
+  assert.equal(studioServiceToken({ SYNAPTIX_PLATFORM_SERVICE_TOKEN: " " }), null);
+  assert.equal(studioServiceToken({}), null);
 });

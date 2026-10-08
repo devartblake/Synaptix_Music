@@ -1,12 +1,13 @@
 import { tokenExpiresAt, type PlatformProfile } from "./platform-session.ts";
 
 /**
- * Renews the studio's SynaptixPlay session with the refresh token the studio's server keeps.
+ * The studio's own SynaptixPlay sign-in, separate from the game clients.
  *
- * The platform's `/auth/refresh` normally needs its KMS secure channel, which only the game
- * clients speak. It accepts plain JSON from this server when the request carries the studio's
- * service token (`ServiceTokens:MusicStudio` on the platform, `SYNAPTIX_PLATFORM_SERVICE_TOKEN`
- * here), so a studio session no longer ends with its 8-minute access token.
+ * Only the studio's server calls the platform's studio routes (`/api/v1/auth/studio/login` and
+ * `/studio/refresh`), with the studio's service token (`SYNAPTIX_PLATFORM_SERVICE_TOKEN` here,
+ * `ServiceTokens:MusicStudio` on the platform). The platform assigns the studio identity, so the
+ * studio sends no product registration, and the session renews instead of ending with its
+ * 8-minute access token.
  */
 
 export interface RefreshedSession {
@@ -32,9 +33,22 @@ export interface RefreshOptions {
   nowSeconds?: () => number;
 }
 
-/** The product registration the studio signs in under; the platform requires one. */
-export function productRegistrationId(env: Record<string, string | undefined> = process.env): string {
-  return env.SYNAPTIX_PLATFORM_PRODUCT_REGISTRATION_ID?.trim() || "synaptix-play-general";
+/** The studio's service token; without it the studio can't sign anyone in. */
+export function studioServiceToken(env: Record<string, string | undefined> = process.env): string | null {
+  return env.SYNAPTIX_PLATFORM_SERVICE_TOKEN?.trim() || null;
+}
+
+/**
+ * The platform refused the studio itself (wrong service token) or hasn't turned studio sign-in
+ * on. That is a configuration problem, never the player's credentials or session.
+ */
+export async function studioRefusal(response: Response): Promise<string | null> {
+  if (response.status === 503) return "SynaptixPlay hasn't turned on Music Studio sign-in.";
+  if (response.status !== 401) return null;
+  const body = (await response.clone().json().catch(() => null)) as { error?: { code?: unknown } } | null;
+  return body?.error?.code === "service_authentication_required"
+    ? "SynaptixPlay didn't accept this studio's service token."
+    : null;
 }
 
 export async function refreshPlatformSession(options: RefreshOptions): Promise<RefreshOutcome> {
@@ -48,7 +62,7 @@ export async function refreshPlatformSession(options: RefreshOptions): Promise<R
 
   let response: Response;
   try {
-    response = await fetchImpl(`${baseUrl}/api/v1/auth/refresh`, {
+    response = await fetchImpl(`${baseUrl}/api/v1/auth/studio/refresh`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-service-token": serviceToken },
       body: JSON.stringify({ refreshToken }),
@@ -58,6 +72,8 @@ export async function refreshPlatformSession(options: RefreshOptions): Promise<R
     return { kind: "unavailable", status: 502, message: "SynaptixPlay couldn't be reached." };
   }
 
+  const refusal = await studioRefusal(response);
+  if (refusal) return { kind: "unavailable", status: 502, message: refusal };
   if (response.status === 401) return { kind: "signed-out" };
   if (!response.ok) return { kind: "unavailable", status: 502, message: `SynaptixPlay couldn't renew the session (error ${response.status}).` };
 

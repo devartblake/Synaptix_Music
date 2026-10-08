@@ -7,10 +7,8 @@ services:
     init: true
     environment:
       SYNAPTIX_PLATFORM_API_URL: ${SYNAPTIX_PLATFORM_API_URL:-}
-      # Renews studio sessions; must equal the backend's ServiceTokens:MusicStudio. Empty: sessions
-      # end with their access token, as before.
+      # The studio's own sign-in; must equal the backend's ServiceTokens:MusicStudio. Empty: sign-in off.
       SYNAPTIX_PLATFORM_SERVICE_TOKEN: ${SYNAPTIX_PLATFORM_SERVICE_TOKEN:-}
-      SYNAPTIX_PLATFORM_PRODUCT_REGISTRATION_ID: ${SYNAPTIX_PLATFORM_PRODUCT_REGISTRATION_ID:-}
       NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL: ${NEXT_PUBLIC_SYNAPTIX_SIGNALR_HUB_URL:-}
       # Project Schema v2 cutover step D: upload plug-in projects as v2. The local backend validates
       # v2 uploads (backend 7a24915e+); set 1 only against an older platform.
