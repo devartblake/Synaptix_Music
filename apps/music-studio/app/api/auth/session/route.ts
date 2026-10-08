@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { productRegistrationId, refreshPlatformSession } from "../../../../lib/platform/platform-refresh";
 import {
   PLATFORM_DEVICE_COOKIE,
   PLATFORM_PROFILE_COOKIE,
+  PLATFORM_REFRESH_COOKIE,
   PLATFORM_SESSION_COOKIE,
+  REFRESH_COOKIE_MAX_AGE,
   sessionCookieOptions,
   sessionProfile,
+  sessionRefreshToken,
   sessionToken,
   tokenExpiresAt
 } from "../../../../lib/platform/platform-session";
@@ -22,6 +26,7 @@ const SignInSchema = z.object({
 
 const LoginResponseSchema = z.object({
   accessToken: z.string().min(1),
+  refreshToken: z.string().min(1).optional(),
   expiresIn: z.number().positive(),
   user: z.object({ handle: z.string(), email: z.string() }).passthrough()
 });
@@ -34,8 +39,11 @@ function platformBaseUrl(): string | null {
 function status(request: NextRequest) {
   const token = sessionToken(request);
   const profile = sessionProfile(request);
-  return token && profile
-    ? { signedIn: true as const, profile, expiresAt: new Date(tokenExpiresAt(token)! * 1000).toISOString() }
+  if (token && profile)
+    return { signedIn: true as const, profile, expiresAt: new Date(tokenExpiresAt(token)! * 1000).toISOString() };
+  // The access token ended but the session can still be renewed (PUT).
+  return profile && sessionRefreshToken(request)
+    ? { signedIn: false as const, refreshable: true as const }
     : { signedIn: false as const };
 }
 
@@ -60,7 +68,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     response = await fetch(`${base}/api/v1/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: parsed.data.email, password: parsed.data.password, deviceId }),
+      body: JSON.stringify({
+        email: parsed.data.email,
+        password: parsed.data.password,
+        deviceId,
+        productRegistrationId: productRegistrationId()
+      }),
       cache: "no-store"
     });
   } catch {
@@ -82,8 +95,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     { headers: { "cache-control": "no-store" } }
   );
   result.cookies.set(PLATFORM_SESSION_COOKIE, login.data.accessToken, sessionCookieOptions(request, maxAge));
-  result.cookies.set(PLATFORM_PROFILE_COOKIE, JSON.stringify(profile), sessionCookieOptions(request, maxAge));
+  // With a refresh token the profile outlives the access token, so an ended session can renew.
+  const profileMaxAge = login.data.refreshToken ? REFRESH_COOKIE_MAX_AGE : maxAge;
+  result.cookies.set(PLATFORM_PROFILE_COOKIE, JSON.stringify(profile), sessionCookieOptions(request, profileMaxAge));
   result.cookies.set(PLATFORM_DEVICE_COOKIE, deviceId, sessionCookieOptions(request, DEVICE_COOKIE_MAX_AGE));
+  if (login.data.refreshToken)
+    result.cookies.set(PLATFORM_REFRESH_COOKIE, login.data.refreshToken, sessionCookieOptions(request, REFRESH_COOKIE_MAX_AGE));
+  return result;
+}
+
+/** Renews the session with the refresh token before (or after) the access token ends. */
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+  const refreshToken = sessionRefreshToken(request);
+  if (!refreshToken) return error("Sign in to SynaptixPlay again.", 401);
+
+  const outcome = await refreshPlatformSession({
+    baseUrl: platformBaseUrl(),
+    serviceToken: process.env.SYNAPTIX_PLATFORM_SERVICE_TOKEN?.trim() || null,
+    refreshToken
+  });
+  if (outcome.kind === "unavailable") return error(outcome.message, outcome.status);
+  if (outcome.kind === "signed-out") {
+    const result = error("Your SynaptixPlay session ended. Sign in again.", 401);
+    for (const name of [PLATFORM_SESSION_COOKIE, PLATFORM_PROFILE_COOKIE, PLATFORM_REFRESH_COOKIE])
+      result.cookies.set(name, "", sessionCookieOptions(request, 0));
+    return result;
+  }
+
+  const { session } = outcome;
+  const result = NextResponse.json(
+    { signedIn: true, profile: session.profile, expiresAt: new Date(session.expiresAt * 1000).toISOString() },
+    { headers: { "cache-control": "no-store" } }
+  );
+  const maxAge = session.expiresAt - Date.now() / 1000;
+  result.cookies.set(PLATFORM_SESSION_COOKIE, session.accessToken, sessionCookieOptions(request, maxAge));
+  result.cookies.set(PLATFORM_PROFILE_COOKIE, JSON.stringify(session.profile), sessionCookieOptions(request, REFRESH_COOKIE_MAX_AGE));
+  result.cookies.set(PLATFORM_REFRESH_COOKIE, session.refreshToken, sessionCookieOptions(request, REFRESH_COOKIE_MAX_AGE));
   return result;
 }
 
@@ -103,5 +150,6 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const result = NextResponse.json({ signedIn: false });
   result.cookies.set(PLATFORM_SESSION_COOKIE, "", sessionCookieOptions(request, 0));
   result.cookies.set(PLATFORM_PROFILE_COOKIE, "", sessionCookieOptions(request, 0));
+  result.cookies.set(PLATFORM_REFRESH_COOKIE, "", sessionCookieOptions(request, 0));
   return result;
 }

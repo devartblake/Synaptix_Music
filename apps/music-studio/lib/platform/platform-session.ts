@@ -10,6 +10,10 @@
 export const PLATFORM_SESSION_COOKIE = "synaptix_platform_session";
 export const PLATFORM_PROFILE_COOKIE = "synaptix_platform_profile";
 export const PLATFORM_DEVICE_COOKIE = "synaptix_platform_device";
+/** The platform refresh token. Only the studio's server reads it, to renew the session. */
+export const PLATFORM_REFRESH_COOKIE = "synaptix_platform_refresh";
+/** The platform's refresh tokens last 30 days (`Jwt:RefreshTokenExpirationDays`). */
+export const REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 /** Leeway so a token isn't sent moments before it expires mid-request. */
 const EXPIRY_LEEWAY_SECONDS = 15;
@@ -60,6 +64,11 @@ export function platformAuthorization(request: RequestLike): string | null {
   if (explicit) return explicit;
   const token = sessionToken(request);
   return token ? `Bearer ${token}` : null;
+}
+
+/** The refresh token, if the studio's server holds one for this browser. */
+export function sessionRefreshToken(request: RequestLike): string | null {
+  return request.cookies.get(PLATFORM_REFRESH_COOKIE)?.value || null;
 }
 
 export function sessionProfile(request: RequestLike): PlatformProfile | null {

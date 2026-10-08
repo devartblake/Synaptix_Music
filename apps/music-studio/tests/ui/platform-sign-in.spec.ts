@@ -40,12 +40,41 @@ test("signing in to SynaptixPlay shows the player, explains failures, and signs 
 
 test("an expired session asks to sign in again", async ({ page }) => {
   await page.route("**/api/auth/session", (route) =>
-    route.fulfill({
-      json: { signedIn: true, profile: { handle: "composer", email: "c@example.com" }, expiresAt: new Date(Date.now() + 1_500).toISOString() }
-    })
+    route.request().method() === "PUT"
+      ? route.fulfill({ status: 401, json: { signedIn: false, message: "Your SynaptixPlay session ended. Sign in again." } })
+      : route.fulfill({
+          json: { signedIn: true, profile: { handle: "composer", email: "c@example.com" }, expiresAt: new Date(Date.now() + 1_500).toISOString() }
+        })
   );
   await page.goto("/");
   await expect(page.getByText("composer", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in again" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("status").filter({ hasText: "Session ended" })).toBeVisible();
+});
+
+test("a session is renewed before its access token ends, so it never asks to sign in again", async ({ page }) => {
+  let renewals = 0;
+  await page.route("**/api/auth/session", (route) => {
+    if (route.request().method() === "PUT") renewals += 1;
+    // Each token lasts 1.5 seconds, so the studio renews straight away and keeps doing so.
+    return route.fulfill({
+      json: { signedIn: true, profile: { handle: "composer", email: "c@example.com" }, expiresAt: new Date(Date.now() + 1_500).toISOString() }
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByText("composer", { exact: true })).toBeVisible();
+  await expect.poll(() => renewals, { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole("button", { name: "Sign in again" })).toHaveCount(0);
+});
+
+test("opening the studio after the access token ended renews the session instead of signing out", async ({ page }) => {
+  await page.route("**/api/auth/session", (route) =>
+    route.request().method() === "PUT"
+      ? route.fulfill({
+          json: { signedIn: true, profile: { handle: "composer", email: "c@example.com" }, expiresAt: new Date(Date.now() + 480_000).toISOString() }
+        })
+      : route.fulfill({ json: { signedIn: false, refreshable: true } })
+  );
+  await page.goto("/");
+  await expect(page.getByText("composer", { exact: true })).toBeVisible();
 });

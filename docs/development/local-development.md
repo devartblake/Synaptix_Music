@@ -162,6 +162,8 @@ REDIS_URL=redis://localhost:6379/0
 
 `SYNAPTIX_PLATFORM_API_URL` is server-only. Do not expose platform credentials or privileged internal URLs through `NEXT_PUBLIC_*` variables.
 
+Studio sign-in sends the product registration `SYNAPTIX_PLATFORM_PRODUCT_REGISTRATION_ID` (default `synaptix-play-general`); the platform refuses sign-in without a recognized one. To keep studio sessions past the platform's 8-minute access token, set `SYNAPTIX_PLATFORM_SERVICE_TOKEN` to the backend's `ServiceTokens:MusicStudio` value. The studio's server then renews the session with the refresh token it keeps in an HttpOnly cookie, a minute before the access token ends and when the studio is reopened. Without it, the session ends with the access token, as before.
+
 The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete `RENDER_WORKER_MINIO_*` configuration before its polling loop starts. Use `RENDER_WORKER_FFMPEG_PATH` only when FFmpeg is not on `PATH`.
 
 ## Install TypeScript Dependencies
