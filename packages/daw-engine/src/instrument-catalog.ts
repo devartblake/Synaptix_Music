@@ -213,6 +213,40 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
       filterFrequency: 1200, resonance: 0.25, lfoRate: 0.25, lfoCutoffOctaves: 1.2, vibratoCents: 6,
       reverbSend: 0.35, destinationBus: "music" },
     starterPattern: [[0, 53, 4], [0, 57, 4], [0, 60, 4], [0, 64, 4]]
+  },
+  // Slice 3: instruments made only from existing kernel features (no new synthesis code).
+  {
+    deviceType: "synaptix-wobble", label: "Wobble Bass", description: "Resonant saw whose filter wobbles: the dubstep wub.",
+    keywords: ["wobble", "dubstep"],
+    profile: { kind: "bass", oscillator: "sawtooth", attack: 0.005, decay: 0.2, sustain: 0.85, release: 0.12,
+      filterFrequency: 260, resonance: 0.55, lfoRate: 2, lfoCutoffOctaves: 2.5,
+      reverbSend: 0.06, destinationBus: "music" },
+    starterPattern: [[0, 33, 1.5], [1.5, 33, 0.5], [2, 36, 1], [3, 31, 1]]
+  },
+  {
+    deviceType: "synaptix-reese", label: "Reese Bass", description: "Detuned saws with a slowly drifting filter: dark, moving bass.",
+    keywords: ["reese"],
+    profile: { kind: "bass", oscillator: "supersaw", attack: 0.01, decay: 0.3, sustain: 0.9, release: 0.2,
+      filterFrequency: 650, resonance: 0.2, lfoRate: 0.3, lfoCutoffOctaves: 1,
+      reverbSend: 0.06, destinationBus: "music" },
+    starterPattern: [[0, 31, 2], [2, 34, 1], [3, 29, 1]]
+  },
+  {
+    deviceType: "synaptix-ensemble", label: "Ensemble Strings", description: "Wide, singing string section with gentle vibrato.",
+    keywords: ["ensemble"],
+    profile: { kind: "strings", oscillator: "supersaw", attack: 0.35, decay: 0.5, sustain: 0.85, release: 0.9,
+      filterFrequency: 4200, lfoRate: 5, vibratoCents: 8,
+      reverbSend: 0.3, destinationBus: "music" },
+    starterPattern: [[0, 55, 2], [0, 59, 2], [0, 62, 2], [2, 57, 2], [2, 60, 2], [2, 64, 2]]
+  },
+  {
+    // "trance" and "pluck" are other instruments' keywords, so the device type avoids both.
+    deviceType: "synaptix-uplift", label: "Trance Pluck", description: "Short, bright supersaw stab with a snappy filter.",
+    keywords: ["uplift"],
+    profile: { kind: "pluck", oscillator: "supersaw", attack: 0.002, decay: 0.25, sustain: 0, release: 0.2,
+      filterFrequency: 700, resonance: 0.3, filterEnvOctaves: 4, filterEnvDecay: 0.12,
+      reverbSend: 0.25, destinationBus: "music" },
+    starterPattern: [[0, 69, 0.25], [0.5, 72, 0.25], [1, 76, 0.25], [1.5, 72, 0.25], [2, 69, 0.25], [2.5, 76, 0.25], [3, 74, 0.5]]
   }
 ];
 

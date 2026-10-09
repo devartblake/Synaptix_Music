@@ -141,6 +141,16 @@ existing sound changes: Drum Kit is added alongside Drum Synth, which stays byte
 **Second slice complete.** Three new instruments (Drum Kit, 808 Bass, Chiptune Lead), all through
 the same kernel in preview and export, with no change to any existing sound.
 
+## Third slice
+
+Decided order: settings-only instruments, then Riser and Sweep FX, then FM Marimba and FM
+Vibraphone, then the NES Pack. Alongside: let the generator use the new instruments, and tidy the
+device panel.
+
+- Step 1, settings only: **done.** **Wobble Bass** (`synaptix-wobble`), **Reese Bass**
+  (`synaptix-reese`), **Ensemble Strings** (`synaptix-ensemble`) and **Trance Pluck**
+  (`synaptix-uplift`), built from the existing oscillators, resonant filter, LFO and filter envelope.
+
 ## Quick wins (days each)
 
 These reuse the voice model (oscillator → filter → envelope) with small additions. None needs

@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Slice 3, settings-only instruments** (26 in all): **Wobble Bass** (resonant saw with an LFO on the cutoff, the dubstep wub), **Reese Bass** (low supersaw with a slowly drifting filter), **Ensemble Strings** (wide supersaw strings with gentle vibrato) and **Trance Pluck** (short supersaw stab with a snappy filter envelope). They combine existing kernel features, so they need no new synthesis code. Each has its own icon and is in the generation API's instrument list. Existing instruments render byte-identical.
 - **Rust synthesis kernel: preview and export now sound the same** (#58, #59). Every instrument note is synthesized by `crates/dsp`, compiled to WebAssembly and embedded in `packages/dsp-kernel/src/kernel-wasm.ts`. It is a plain module with no JavaScript glue, so the same code runs in the render worker for exports and in an AudioWorklet for the studio preview.
   - **Preview matches export sample for sample.** It replaces the Tone.js synths and their 12 dB filter, so preview tone moved slightly towards the export. Checked by running the shipped worklet in 128-frame blocks against the export path, and in Chromium's audio thread.
   - **Saw and square waves are band-limited (PolyBLEP),** so exports of Bass Synth, Lead Synth, Pluck, Organ, String Ensemble and Brass Section changed on purpose: less harsh aliasing. Sine and triangle instruments render byte-identical to before.
