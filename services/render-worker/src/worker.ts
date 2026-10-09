@@ -3,6 +3,7 @@ import type { MusicProjectV2 } from "@synaptix/project-model/v2";
 import type { RenderJob } from "@synaptix/render-contracts";
 
 import { packageRenderArtifacts } from "./artifact-packager.ts";
+import { assertWorkerEngine } from "./engine-version.ts";
 import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
 import { renderPluginFreeze, renderProjectOffline, type RenderedArtifact } from "./offline-renderer.ts";
 import type { FrozenArtifactSource } from "./frozen-playback.ts";
@@ -60,6 +61,9 @@ export async function processNextJob(
   }, heartbeatIntervalMs);
 
   try {
+    // Jobs queued for another engine (e.g. before a deploy) are retried, so a worker running
+    // that engine can still pick them up during a rolling deploy.
+    assertWorkerEngine(job.manifest);
     const project = await dependencies.loader.loadProject(
       job.manifest.projectId,
       job.manifest.revisionId

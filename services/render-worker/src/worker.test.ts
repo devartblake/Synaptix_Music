@@ -3,7 +3,7 @@ import { after, before, beforeEach, test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { createEmptyProject, type MusicProject, type Track } from "@synaptix/project-model";
-import { RENDER_CONTRACT_VERSION, type RenderManifest } from "@synaptix/render-contracts";
+import { RENDER_CONTRACT_VERSION, RENDER_ENGINE_VERSION, type RenderManifest } from "@synaptix/render-contracts";
 import { Pool } from "pg";
 
 import { applyMigrations } from "./migrate.ts";
@@ -62,7 +62,7 @@ function manifest(renderId: string, projectId: string, revisionId: string): Rend
     projectId,
     revisionId,
     projectChecksumSha256: "a".repeat(64),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: 42,
     scope: { kind: "master" },
     range: { startTick: 0, endTick: PPQ * 4 },
@@ -168,6 +168,24 @@ if (!connectionString) {
     assert.equal(outcome?.status, "dead_letter");
     assert.equal(outcome?.lastError, "Project revision could not be loaded.");
     assert.equal(sink.stored.length, 0);
+  });
+
+  test("a job queued for another engine is retried, not rendered with this one", async () => {
+    // Queued before a deploy: during a rolling deploy a worker still on that engine can take
+    // the retry; otherwise it dead-letters with a clear reason.
+    const renderId = "10000000-0000-4000-8000-0000000000e2";
+    await store.submit({ ...manifest(renderId, "project-a", "revision-a"), engineVersion: "1.0.0" }, "key-old", 2);
+
+    const sink = new RecordingArtifactSink();
+    const outcome = await processNextJob(
+      store,
+      { loader: new FixtureProjectLoader(testProject("project-a", "revision-a")), sink },
+      "worker-1"
+    );
+
+    assert.equal(outcome?.status, "queued");
+    assert.match(outcome?.lastError ?? "", /runs engine .* asked for engine 1\.0\.0/);
+    assert.equal(sink.stored.length, 0, "nothing was rendered or stored");
   });
 
   test("a renderer failure (manifest/project mismatch) fails the job", async () => {
