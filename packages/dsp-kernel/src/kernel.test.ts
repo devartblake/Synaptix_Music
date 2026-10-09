@@ -28,6 +28,8 @@ const SUPERSAW_PHASES = [0.37, 0.71, 0.13, 0.0, 0.53, 0.89, 0.29];
 const SUPERSAW_LEVELS = [0.6, 0.6, 0.6, 1.0, 0.6, 0.6, 0.6];
 const SUPERSAW_GAIN = 0.405;
 
+const softClip = (x: number) => x / (1 + Math.abs(x));
+
 // crates/dsp FM_BELL and FM_PIANO.
 const FM = {
   "fm-bell": { ratio: 3.5, start: 5, end: 0.5, fall: 4 },
@@ -81,13 +83,19 @@ function referenceVoice(
   const supersawFrequencies = SUPERSAW_RATIOS.map((ratio) => p.frequency * ratio);
   const supersawDts = supersawFrequencies.map((frequency) => frequency / p.sampleRate);
   const string = referenceString(p.frequency, p.sampleRate, p.seed);
+  let sweepPhase = 0;
   let filtered = 0;
   for (let i = first; i < end; i++) {
     const time = i / p.sampleRate;
     const phase = time * p.frequency;
     const cycle = phase - Math.floor(phase);
     let raw: number;
-    if (p.oscillator === "fm-bell" || p.oscillator === "fm-piano") {
+    if (p.oscillator === "808-bass") {
+      raw =
+        softClip(Math.sin(2 * Math.PI * (sweepPhase - Math.floor(sweepPhase))) * 2.2) /
+        softClip(2.2);
+      sweepPhase += (p.frequency * (1 + 1.5 / (1 + time * 35))) / p.sampleRate;
+    } else if (p.oscillator === "fm-bell" || p.oscillator === "fm-piano") {
       const fm = FM[p.oscillator];
       const modulatorPhase = time * (p.frequency * fm.ratio);
       const modulator = Math.sin(2 * Math.PI * (modulatorPhase - Math.floor(modulatorPhase)));
@@ -138,7 +146,8 @@ const OSCILLATORS: KernelOscillator[] = [
   "supersaw",
   "plucked-string",
   "fm-bell",
-  "fm-piano"
+  "fm-piano",
+  "808-bass"
   // "drum-kit" has no TypeScript reference: its arithmetic is the same kinds of operation these
   // already prove identical, and voice-processor.test.ts checks preview against export for it.
 ];
@@ -179,7 +188,12 @@ for (const oscillator of OSCILLATORS) {
 
     assert.equal(actual.length, length);
     assert.ok(actual.some((s) => s !== 0));
-    if (oscillator === "sine" || oscillator === "fm-bell" || oscillator === "fm-piano") {
+    if (
+      oscillator === "sine" ||
+      oscillator === "fm-bell" ||
+      oscillator === "fm-piano" ||
+      oscillator === "808-bass"
+    ) {
       // Rounding differences between the kernel's sine and Math.sin; FM phase-modulates them,
       // so allow a little more there.
       const worst = actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);

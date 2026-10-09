@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -167,6 +167,14 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
       filterFrequency: 16000, reverbSend: 0.1, destinationBus: "drums" },
     starterPattern: [[0, 36, 0.25], [0, 42, 0.25], [0.5, 42, 0.25], [1, 38, 0.25], [1, 42, 0.25], [1.5, 42, 0.25],
       [2, 36, 0.25], [2.5, 36, 0.25], [2.5, 42, 0.25], [3, 38, 0.25], [3, 42, 0.25], [3.5, 46, 0.5]]
+  },
+  {
+    // "808" and "bass" are Sub Bass / Bass Synth keywords, so the device type avoids both.
+    deviceType: "synaptix-boom", label: "808 Bass", description: "Long, boomy sine bass that drops onto its note, with soft saturation.",
+    keywords: ["synaptix-boom", "boom"],
+    profile: { kind: "bass", oscillator: "808-bass", attack: 0.002, decay: 2, sustain: 0.3, release: 0.4,
+      filterFrequency: 5000, reverbSend: 0.05, destinationBus: "music" },
+    starterPattern: [[0, 33, 1.5], [1.5, 33, 0.5], [2, 36, 1], [3, 31, 1]]
   }
 ];
 

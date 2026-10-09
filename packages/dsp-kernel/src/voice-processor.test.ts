@@ -122,7 +122,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     // Kick, snare and closed hat (General MIDI 36, 38, 42).
     { oscillator: "drum-kit", frequency: 65.40639132514966, time: 0.36, noteDuration: 0.1 },
     { oscillator: "drum-kit", frequency: 73.41619197935188, time: 0.38, noteDuration: 0.1 },
-    { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 }
+    { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 },
+    { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();

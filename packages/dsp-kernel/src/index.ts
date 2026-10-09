@@ -46,7 +46,8 @@ export const OSCILLATOR_CODES = {
   "plucked-string": 5,
   "fm-bell": 6,
   "fm-piano": 7,
-  "drum-kit": 8
+  "drum-kit": 8,
+  "808-bass": 9
 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;
 

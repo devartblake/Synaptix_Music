@@ -29,7 +29,12 @@ pub enum Oscillator {
     /// A drum kit: the note picks the drum (General MIDI drum map), each synthesized from
     /// pitched sines and seeded noise.
     DrumKit,
+    /// 808 bass: a sine that drops from 2.5× the note's pitch onto it, softly saturated.
+    Bass808,
 }
+
+/// How hard the 808 drives its soft clipper (higher is grittier).
+pub const BASS_808_DRIVE: f64 = 2.2;
 
 /// A two-operator FM preset: a sine modulator at `ratio` × the note frequency phase-modulates a
 /// sine carrier. The index (brightness) falls from `start` towards `end` as
@@ -80,6 +85,7 @@ impl Oscillator {
             6 => Some(Self::FmBell),
             7 => Some(Self::FmPiano),
             8 => Some(Self::DrumKit),
+            9 => Some(Self::Bass808),
             _ => None,
         }
     }
@@ -184,6 +190,8 @@ pub struct VoiceState {
     /// The next sample of the note to render.
     next: i64,
     filtered: f64,
+    /// Phase of an oscillator whose pitch moves (808), integrated sample by sample.
+    sweep_phase: f64,
     string: Option<PluckedString>,
     drum: Option<Drum>,
 }
@@ -196,6 +204,7 @@ impl VoiceState {
             total,
             next: 0,
             filtered: 0.0,
+            sweep_phase: 0.0,
             string: (voice.oscillator == Oscillator::PluckedString)
                 .then(|| PluckedString::new(voice.frequency, voice.sample_rate, voice.seed)),
             drum: (voice.oscillator == Oscillator::DrumKit)
@@ -245,6 +254,7 @@ impl VoiceState {
         let mut filtered = self.filtered;
         let mut string = self.string.take();
         let mut drum = self.drum.take();
+        let mut sweep_phase = self.sweep_phase;
         for sample_index in first..end {
             let time = sample_index as f64 / voice.sample_rate;
             let phase = time * voice.frequency;
@@ -252,6 +262,12 @@ impl VoiceState {
             let raw = match voice.oscillator {
                 Oscillator::PluckedString => string.as_mut().map_or(0.0, PluckedString::next),
                 Oscillator::DrumKit => drum.as_mut().map_or(0.0, |drum| drum.next(time)),
+                Oscillator::Bass808 => {
+                    let tone = sine_cycle(sweep_phase - sweep_phase.floor());
+                    let pitch = voice.frequency * (1.0 + 1.5 / (1.0 + time * 35.0));
+                    sweep_phase += pitch / voice.sample_rate;
+                    soft_clip(tone * BASS_808_DRIVE) / soft_clip(BASS_808_DRIVE)
+                }
                 Oscillator::FmBell | Oscillator::FmPiano => {
                     let modulator_phase = time * modulator_frequency;
                     let modulator = sine_cycle(modulator_phase - modulator_phase.floor());
@@ -322,6 +338,7 @@ impl VoiceState {
         self.string = string;
         self.drum = drum;
         if end > first {
+            self.sweep_phase = sweep_phase;
             self.filtered = filtered;
             self.next = end;
         }
@@ -395,6 +412,11 @@ fn cos_poly(x: f64) -> f64 {
                                 + x2 * (-1.0 / 87_178_291_200.0
                                     + x2 * (1.0 / 20_922_789_888_000.0
                                         + x2 * (-1.0 / 6_402_373_705_728_000.0)))))))))
+}
+
+/// Saturation by division, `x / (1 + |x|)`: smooth, odd, and the same on every platform.
+pub fn soft_clip(x: f64) -> f64 {
+    x / (1.0 + x.abs())
 }
 
 /// The MIDI note nearest `frequency` (A4 = 440 Hz), found by comparison only so every platform
@@ -663,6 +685,7 @@ mod tests {
             Oscillator::FmBell,
             Oscillator::FmPiano,
             Oscillator::DrumKit,
+            Oscillator::Bass808,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -761,6 +784,33 @@ mod tests {
 
     fn midi_frequency(note: i32) -> f64 {
         440.0 * 2f64.powf((note - 69) as f64 / 12.0)
+    }
+
+    #[test]
+    fn an_808_drops_onto_its_note_and_stays_in_range() {
+        // Rising zero crossings per 0.1 s: well above the note at the start, at the note later.
+        let params = Voice {
+            frequency: 55.0,
+            ..voice(Oscillator::Bass808)
+        };
+        let mut out = vec![0.0; 48_000];
+        render_voice(&mut out, &params, 0, 48_000);
+        let crossings = |range: &[f64]| {
+            range
+                .windows(2)
+                .filter(|w| w[0] < 0.0 && w[1] >= 0.0)
+                .count()
+        };
+        let early = crossings(&out[..4_800]);
+        let late = crossings(&out[38_400..43_200]);
+        assert!(early > late + 2, "early {early}, late {late}");
+        assert!(
+            (5..=6).contains(&late),
+            "{late} crossings in 0.1 s at 55 Hz"
+        );
+        // Saturated but normalised: peaks reach 1 and never pass it.
+        let peak = out.iter().fold(0.0_f64, |max, s| max.max(s.abs()));
+        assert!(peak > 0.95 && peak <= 1.0, "peak {peak}");
     }
 
     #[test]
