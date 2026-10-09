@@ -30,10 +30,12 @@ const SUPERSAW_GAIN = 0.405;
 
 const softClip = (x: number) => x / (1 + Math.abs(x));
 
-// crates/dsp FM_BELL and FM_PIANO.
+// crates/dsp FM_BELL, FM_PIANO, FM_MARIMBA and FM_VIBRAPHONE.
 const FM = {
   "fm-bell": { ratio: 3.5, start: 5, end: 0.5, fall: 4 },
-  "fm-piano": { ratio: 1, start: 2.5, end: 0.3, fall: 12 }
+  "fm-piano": { ratio: 1, start: 2.5, end: 0.3, fall: 12 },
+  "fm-marimba": { ratio: 4, start: 3.5, end: 0, fall: 40 },
+  "fm-vibraphone": { ratio: 4, start: 2, end: 0.15, fall: 8 }
 } as const;
 const FRAC_1_2PI = 0.15915494309189535;
 
@@ -130,8 +132,8 @@ function referenceVoice(
         softClip(Math.sin(2 * Math.PI * (sweepPhase - Math.floor(sweepPhase))) * 2.2) /
         softClip(2.2);
       sweepPhase += (p.frequency * (1 + 1.5 / (1 + time * 35))) / p.sampleRate;
-    } else if (p.oscillator === "fm-bell" || p.oscillator === "fm-piano") {
-      const fm = FM[p.oscillator];
+    } else if (p.oscillator in FM) {
+      const fm = FM[p.oscillator as keyof typeof FM];
       const modulatorPhase = time * (p.frequency * fm.ratio);
       const modulator = Math.sin(2 * Math.PI * (modulatorPhase - Math.floor(modulatorPhase)));
       const index = fm.end + (fm.start - fm.end) / (1 + time * fm.fall);
@@ -219,7 +221,9 @@ const OSCILLATORS: KernelOscillator[] = [
   "fm-piano",
   "808-bass",
   "pulse-25",
-  "noise"
+  "noise",
+  "fm-marimba",
+  "fm-vibraphone"
   // "drum-kit" has no TypeScript reference: its arithmetic is the same kinds of operation these
   // already prove identical, and voice-processor.test.ts checks preview against export for it.
 ];
@@ -266,6 +270,8 @@ for (const oscillator of OSCILLATORS) {
       oscillator === "sine" ||
       oscillator === "fm-bell" ||
       oscillator === "fm-piano" ||
+      oscillator === "fm-marimba" ||
+      oscillator === "fm-vibraphone" ||
       oscillator === "808-bass" ||
       oscillator === "supersaw"
     ) {

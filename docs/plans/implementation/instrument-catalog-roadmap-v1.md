@@ -153,6 +153,9 @@ device panel.
 - Step 2, Riser and Sweep FX: **done.** Kernel oscillator `noise` (seeded, independent per side),
   Filter Envelope extended to ±6 octaves (negative rises), and **Riser FX** (`synaptix-riser`) and
   **Downsweep FX** (`synaptix-downsweep`) in a new "fx" family.
+- Step 3, FM mallets: **done.** Kernel FM presets `fm-marimba` (4:1, index falls in tens of
+  milliseconds) and `fm-vibraphone` (4:1, gentler fall), as **FM Marimba** (`synaptix-marimba`) and
+  **FM Vibraphone** (`synaptix-vibes`, with a 5 Hz tremolo).
 
 ## Quick wins (days each)
 

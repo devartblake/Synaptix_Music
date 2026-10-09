@@ -146,6 +146,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "plucked-string", frequency: 196, time: 0.25, noteDuration: 0.25 },
     { oscillator: "fm-bell", frequency: 784, time: 0.3, noteDuration: 0.15 },
     { oscillator: "fm-piano", frequency: 261.63, time: 0.33, noteDuration: 0.2 },
+    { oscillator: "fm-marimba", frequency: 523.25, time: 0.34, noteDuration: 0.1 },
+    { oscillator: "fm-vibraphone", frequency: 349.23, time: 0.35, noteDuration: 0.2 },
     // Kick, snare and closed hat (General MIDI 36, 38, 42).
     { oscillator: "drum-kit", frequency: 65.40639132514966, time: 0.36, noteDuration: 0.1 },
     { oscillator: "drum-kit", frequency: 73.41619197935188, time: 0.38, noteDuration: 0.1 },

@@ -46,6 +46,8 @@ INSTRUMENTS: dict[str, str] = {
     "synaptix-uplift": "Trance Pluck",
     "synaptix-riser": "Riser FX",
     "synaptix-downsweep": "Downsweep FX",
+    "synaptix-marimba": "FM Marimba",
+    "synaptix-vibes": "FM Vibraphone",
 }
 
 ROLES: tuple[TrackRole, ...] = get_args(TrackRole)
