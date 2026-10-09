@@ -407,7 +407,8 @@ test("the Resonance control reaches the export, and 0 renders exactly as before"
 // FM Bell, FM Electric Piano, Drum Kit, 808 Bass and Chiptune Lead were added.
 // Stereo voice path: Supersaw Lead and Unison Pad now spread their saws across the stereo field.
 // Modulation system: Acid Bass and Motion Pad were added.
-// Slice 3: Wobble Bass, Reese Bass, Ensemble Strings and Trance Pluck were added.
+// Slice 3: Wobble Bass, Reese Bass, Ensemble Strings and Trance Pluck,
+// Riser FX and Downsweep FX were added.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -434,9 +435,11 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-wobble": "09e3cffa2f59244287c38da643327c2fdef6976a1403ee4a2ecd724381cf5a39",
   "synaptix-reese": "c06b7d36df6248426493f0735023fff21ce3dfb80191944838a9ee1310aad150",
   "synaptix-ensemble": "c358469268330cdae6b244dd0f706d648757397f39c0fa6a8e8a57e9a3e700f5",
-  "synaptix-uplift": "2e009bdcf7deb972470fc2c7a50ad1a849ae271cb2f5ee091c862b5cb0b31d96"
+  "synaptix-uplift": "2e009bdcf7deb972470fc2c7a50ad1a849ae271cb2f5ee091c862b5cb0b31d96",
+  "synaptix-riser": "def128d2be1421edd5d99d3ff722a1354f4ea039a4ffae3b6c49224b4e4f1cf1",
+  "synaptix-downsweep": "9368463bca5df9381d205a7c9204c29d249289209dc83ff40db8188db1bf31c7"
 };
-const GOLDEN_MASTER = "68c72f97ab4bcbf712c6b784afd5a292c52395891f73a2d8418fcd6ddd52f4fe";
+const GOLDEN_MASTER = "64a445ad327e1eeb113f93aa5828b26c3a6fb6b6905faf9d709975a558854808";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {

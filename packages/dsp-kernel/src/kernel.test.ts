@@ -71,6 +71,15 @@ function referenceString(frequency: number, sampleRate: number, seed: number): (
   };
 }
 
+function whiteNoise(generator: { state: number }): number {
+  let state = generator.state;
+  state = (state ^ (state << 13)) >>> 0;
+  state = (state ^ (state >>> 17)) >>> 0;
+  state = (state ^ (state << 5)) >>> 0;
+  generator.state = state;
+  return state / 2_147_483_648 - 1;
+}
+
 function worstDifference(actual: Float64Array, expected: Float64Array): number {
   return actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
 }
@@ -89,6 +98,10 @@ function referenceVoice(
   const panLeft = SUPERSAW_PANS.map((pan) => Math.SQRT2 * Math.cos(((pan + 1) * Math.PI) / 4));
   const panRight = SUPERSAW_PANS.map((pan) => Math.SQRT2 * Math.sin(((pan + 1) * Math.PI) / 4));
   let rawRight = 0;
+  // crates/dsp noise_left / noise_right.
+  const noiseLeft = { state: p.seed === 0 ? 0x9e3779b9 : p.seed >>> 0 };
+  const rightSeed = (p.seed ^ 0x5bd1e995) >>> 0;
+  const noiseRight = { state: rightSeed === 0 ? 0x9e3779b9 : rightSeed };
   let filteredRight = 0;
   let icRight1 = 0;
   let icRight2 = 0;
@@ -125,7 +138,10 @@ function referenceVoice(
       const carrier = cycle + index * modulator * FRAC_1_2PI;
       raw = Math.sin(2 * Math.PI * (carrier - Math.floor(carrier)));
     } else if (p.oscillator === "plucked-string") raw = string();
-    else if (p.oscillator === "supersaw") {
+    else if (p.oscillator === "noise") {
+      rawRight = whiteNoise(noiseRight);
+      raw = whiteNoise(noiseLeft);
+    } else if (p.oscillator === "supersaw") {
       let sumLeft = 0;
       let sumRight = 0;
       for (let k = 0; k < 7; k++) {
@@ -160,7 +176,7 @@ function referenceVoice(
       ic2 = 2 * v2 - ic2;
       filtered = v2;
     } else filtered += p.alpha * (raw - filtered);
-    const stereo = p.oscillator === "supersaw";
+    const stereo = p.oscillator === "supersaw" || p.oscillator === "noise";
     if (stereo) {
       if (p.resonance > 0) {
         const v3 = rawRight - icRight2;
@@ -202,7 +218,8 @@ const OSCILLATORS: KernelOscillator[] = [
   "fm-bell",
   "fm-piano",
   "808-bass",
-  "pulse-25"
+  "pulse-25",
+  "noise"
   // "drum-kit" has no TypeScript reference: its arithmetic is the same kinds of operation these
   // already prove identical, and voice-processor.test.ts checks preview against export for it.
 ];

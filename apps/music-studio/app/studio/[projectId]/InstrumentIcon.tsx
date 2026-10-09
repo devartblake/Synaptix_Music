@@ -13,7 +13,8 @@ export const INSTRUMENT_ACCENTS: Record<InstrumentProfileKind, string> = {
   strings: "#e0915a",
   brass: "#f2c94c",
   bell: "#7ee3ff",
-  poly: "#8994ff"
+  poly: "#8994ff",
+  fx: "#b0f06a"
 };
 
 // 48×48 line drawings: stroke is currentColor, fills use the accent at low opacity.
@@ -103,6 +104,9 @@ const ARTWORK: Record<InstrumentProfileKind, React.ReactNode> = {
     <rect x="30" y="16" width="11" height="6" rx="1" fill="var(--instrument-accent)" fillOpacity="0.5" />
     <rect x="6" y="26" width="36" height="7" rx="1" />
     <path d="M10.5 26v7M15 26v7M19.5 26v7M24 26v7M28.5 26v7M33 26v7M37.5 26v7" strokeWidth="1" />
+  </>,
+  fx: <>
+    <path d="M4 24h6l4-12 6 24 6-18 4 10 4-4h10" stroke="var(--instrument-accent)" strokeWidth="2.5" />
   </>
 };
 
@@ -213,6 +217,19 @@ const SLICE_3_ARTWORK: Record<string, React.ReactNode> = {
     <ellipse cx="24" cy="38" rx="5" ry="6" fill="var(--instrument-accent)" fillOpacity="0.35" />
     <ellipse cx="36" cy="38" rx="5" ry="6" fill="var(--instrument-accent)" fillOpacity="0.25" />
     <path d="M4 20q3-4 6 0t6 0 6 0 6 0 6 0 6 0 6 0" stroke="var(--instrument-accent)" strokeWidth="1.8" />
+  </>,
+  // Noise swelling upwards into an arrow.
+  "synaptix-riser": <>
+    <path d="M4 40c10 0 18-4 24-14s10-18 16-22" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M44 4l-7 1M44 4l-1 7" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M6 38v-3M10 37v-5M14 36v-7M18 34v-9M22 31v-11M26 27v-13" strokeOpacity="0.5" strokeWidth="1.5" />
+  </>,
+  // A noise burst falling away, with an impact mark.
+  "synaptix-downsweep": <>
+    <path d="M4 6c6 4 10 12 16 22s14 14 24 14" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M44 42l-7-3M44 42l-4 6" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M8 4l2 3M3 10l3 1M13 3l-1 3" strokeOpacity="0.7" />
+    <path d="M18 24v4M22 28v5M26 31v5M30 34v5" strokeOpacity="0.5" strokeWidth="1.5" />
   </>,
   // A sharp stab: instant attack, fast decay, with sparks.
   "synaptix-uplift": <>
