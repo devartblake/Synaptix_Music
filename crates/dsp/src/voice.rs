@@ -26,6 +26,9 @@ pub enum Oscillator {
     FmBell,
     /// Two-operator FM with a harmonic ratio and a fast-falling index: DX-style electric piano.
     FmPiano,
+    /// A drum kit: the note picks the drum (General MIDI drum map), each synthesized from
+    /// pitched sines and seeded noise.
+    DrumKit,
 }
 
 /// A two-operator FM preset: a sine modulator at `ratio` × the note frequency phase-modulates a
@@ -76,6 +79,7 @@ impl Oscillator {
             5 => Some(Self::PluckedString),
             6 => Some(Self::FmBell),
             7 => Some(Self::FmPiano),
+            8 => Some(Self::DrumKit),
             _ => None,
         }
     }
@@ -181,6 +185,7 @@ pub struct VoiceState {
     next: i64,
     filtered: f64,
     string: Option<PluckedString>,
+    drum: Option<Drum>,
 }
 
 impl VoiceState {
@@ -193,6 +198,8 @@ impl VoiceState {
             filtered: 0.0,
             string: (voice.oscillator == Oscillator::PluckedString)
                 .then(|| PluckedString::new(voice.frequency, voice.sample_rate, voice.seed)),
+            drum: (voice.oscillator == Oscillator::DrumKit)
+                .then(|| Drum::new(voice.frequency, voice.sample_rate, voice.seed)),
         }
     }
 
@@ -237,12 +244,14 @@ impl VoiceState {
         let modulator_frequency = voice.frequency * fm.ratio;
         let mut filtered = self.filtered;
         let mut string = self.string.take();
+        let mut drum = self.drum.take();
         for sample_index in first..end {
             let time = sample_index as f64 / voice.sample_rate;
             let phase = time * voice.frequency;
             let cycle = phase - phase.floor();
             let raw = match voice.oscillator {
                 Oscillator::PluckedString => string.as_mut().map_or(0.0, PluckedString::next),
+                Oscillator::DrumKit => drum.as_mut().map_or(0.0, |drum| drum.next(time)),
                 Oscillator::FmBell | Oscillator::FmPiano => {
                     let modulator_phase = time * modulator_frequency;
                     let modulator = sine_cycle(modulator_phase - modulator_phase.floor());
@@ -311,6 +320,7 @@ impl VoiceState {
                 filtered * envelope * voice.velocity_gain;
         }
         self.string = string;
+        self.drum = drum;
         if end > first {
             self.filtered = filtered;
             self.next = end;
@@ -385,6 +395,178 @@ fn cos_poly(x: f64) -> f64 {
                                 + x2 * (-1.0 / 87_178_291_200.0
                                     + x2 * (1.0 / 20_922_789_888_000.0
                                         + x2 * (-1.0 / 6_402_373_705_728_000.0)))))))))
+}
+
+/// The MIDI note nearest `frequency` (A4 = 440 Hz), found by comparison only so every platform
+/// agrees. Notes are half a semitone from the boundaries, far beyond any rounding.
+pub fn midi_note(frequency: f64) -> i32 {
+    const SEMITONE: f64 = 1.059_463_094_359_295_3; // 2^(1/12)
+    const HALF_SEMITONE: f64 = 1.029_302_236_643_492; // 2^(1/24)
+    let (mut note, mut reference) = (69, 440.0);
+    while frequency > reference * HALF_SEMITONE {
+        reference *= SEMITONE;
+        note += 1;
+    }
+    while frequency < reference / HALF_SEMITONE && note > 0 {
+        reference /= SEMITONE;
+        note -= 1;
+    }
+    note
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DrumPiece {
+    Kick,
+    Rim,
+    Snare,
+    Clap,
+    ClosedHat,
+    OpenHat,
+    Crash,
+    Ride,
+    /// Any other note: a tom tuned to the note.
+    Tom,
+}
+
+impl DrumPiece {
+    /// General MIDI drum map, with the low end all kick and unmapped notes as tuned toms.
+    pub fn for_note(note: i32) -> Self {
+        match note {
+            ..=36 => Self::Kick,
+            37 => Self::Rim,
+            38 | 40 => Self::Snare,
+            39 => Self::Clap,
+            42 | 44 => Self::ClosedHat,
+            46 => Self::OpenHat,
+            49 | 52 | 55 | 57 => Self::Crash,
+            51 | 53 | 59 => Self::Ride,
+            _ => Self::Tom,
+        }
+    }
+}
+
+/// `1 / (1 + rate·t)²`: a fast-then-slow decay from 1, by division (no `exp`).
+fn decay(time: f64, rate: f64) -> f64 {
+    let d = 1.0 / (1.0 + rate * time);
+    d * d
+}
+
+/// One drum hit. Its pitched parts integrate their frequency sample by sample (pitch drops), and
+/// its noise is xorshift32 seeded from the note, through one-pole high- and low-pass filters.
+#[derive(Clone, Debug)]
+struct Drum {
+    piece: DrumPiece,
+    frequency: f64,
+    sample_rate: f64,
+    phase: f64,
+    noise: u32,
+    high_pass: f64,
+    high_pass_input: f64,
+    high_pass_output: f64,
+    high_pass_2_input: f64,
+    high_pass_2_output: f64,
+    low_pass: f64,
+    low_pass_output: f64,
+}
+
+impl Drum {
+    fn new(frequency: f64, sample_rate: f64, seed: u32) -> Self {
+        let piece = DrumPiece::for_note(midi_note(frequency));
+        let (high_pass_hz, low_pass_hz) = match piece {
+            DrumPiece::Kick => (60.0, 4_000.0),
+            DrumPiece::Rim => (2_000.0, 12_000.0),
+            DrumPiece::Snare => (1_500.0, 9_000.0),
+            DrumPiece::Clap => (900.0, 2_600.0),
+            DrumPiece::ClosedHat | DrumPiece::OpenHat => (7_000.0, 20_000.0),
+            DrumPiece::Crash => (4_500.0, 20_000.0),
+            DrumPiece::Ride => (6_000.0, 20_000.0),
+            DrumPiece::Tom => (200.0, 3_000.0),
+        };
+        // One-pole coefficients from the cutoff, by division: w = 2π·fc / sample rate.
+        let w = |hz: f64| 2.0 * core::f64::consts::PI * hz / sample_rate;
+        Self {
+            piece,
+            frequency,
+            sample_rate,
+            phase: 0.0,
+            noise: if seed == 0 { 0x9E37_79B9 } else { seed },
+            high_pass: 1.0 / (1.0 + w(high_pass_hz)),
+            high_pass_input: 0.0,
+            high_pass_output: 0.0,
+            high_pass_2_input: 0.0,
+            high_pass_2_output: 0.0,
+            low_pass: w(low_pass_hz) / (1.0 + w(low_pass_hz)),
+            low_pass_output: 0.0,
+        }
+    }
+
+    /// White noise through the drum's high-pass (twice, for cymbals) and low-pass.
+    fn noise(&mut self, twice: bool) -> f64 {
+        self.noise ^= self.noise << 13;
+        self.noise ^= self.noise >> 17;
+        self.noise ^= self.noise << 5;
+        let white = self.noise as f64 / 2_147_483_648.0 - 1.0;
+        let high = self.high_pass * (self.high_pass_output + white - self.high_pass_input);
+        self.high_pass_input = white;
+        self.high_pass_output = high;
+        let mut out = high;
+        if twice {
+            let high_2 = self.high_pass * (self.high_pass_2_output + high - self.high_pass_2_input);
+            self.high_pass_2_input = high;
+            self.high_pass_2_output = high_2;
+            out = high_2;
+        }
+        self.low_pass_output += self.low_pass * (out - self.low_pass_output);
+        self.low_pass_output
+    }
+
+    /// Advances a pitched part at `frequency` and returns its sine.
+    fn tone(&mut self, frequency: f64) -> f64 {
+        let value = sine_cycle(self.phase - self.phase.floor());
+        self.phase += frequency / self.sample_rate;
+        value
+    }
+
+    fn next(&mut self, time: f64) -> f64 {
+        match self.piece {
+            DrumPiece::Kick => {
+                let body = self.tone(48.0 + 112.0 / (1.0 + time * 35.0)) * decay(time, 9.0);
+                body + 0.3 * self.noise(false) * decay(time, 400.0)
+            }
+            DrumPiece::Snare => {
+                let body = self.tone(175.0 + 60.0 / (1.0 + time * 60.0)) * decay(time, 25.0);
+                0.5 * body + 0.9 * self.noise(false) * decay(time, 14.0)
+            }
+            DrumPiece::Clap => {
+                // Three quick bursts, then a short room tail.
+                let mut level = 0.0;
+                for offset in [0.0, 0.011, 0.022] {
+                    if time >= offset {
+                        level += decay(time - offset, 180.0);
+                    }
+                }
+                if time >= 0.022 {
+                    level += 0.5 * decay(time - 0.022, 12.0);
+                }
+                1.6 * self.noise(false) * level
+            }
+            DrumPiece::ClosedHat => 2.4 * self.noise(true) * decay(time, 70.0),
+            DrumPiece::OpenHat => 2.0 * self.noise(true) * decay(time, 7.0),
+            DrumPiece::Crash => 1.4 * self.noise(true) * decay(time, 1.5),
+            DrumPiece::Ride => {
+                let ping = self.tone(3_150.0) * decay(time, 6.0);
+                0.9 * self.noise(true) * decay(time, 3.0) + 0.15 * ping
+            }
+            DrumPiece::Rim => {
+                let click = self.tone(1_700.0) * decay(time, 220.0);
+                0.6 * click + 0.4 * self.noise(false) * decay(time, 300.0)
+            }
+            DrumPiece::Tom => {
+                let frequency = self.frequency;
+                self.tone(frequency + 0.5 * frequency / (1.0 + time * 25.0)) * decay(time, 7.0)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -480,6 +662,7 @@ mod tests {
             Oscillator::PluckedString,
             Oscillator::FmBell,
             Oscillator::FmPiano,
+            Oscillator::DrumKit,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -574,6 +757,79 @@ mod tests {
                 "{oscillator:?}: early {early}, late {late}"
             );
         }
+    }
+
+    fn midi_frequency(note: i32) -> f64 {
+        440.0 * 2f64.powf((note - 69) as f64 / 12.0)
+    }
+
+    #[test]
+    fn every_midi_note_is_recognised_from_its_frequency() {
+        for note in 0..=127 {
+            assert_eq!(midi_note(midi_frequency(note)), note);
+        }
+    }
+
+    #[test]
+    fn the_drum_map_follows_general_midi() {
+        assert_eq!(DrumPiece::for_note(36), DrumPiece::Kick);
+        assert_eq!(DrumPiece::for_note(38), DrumPiece::Snare);
+        assert_eq!(DrumPiece::for_note(39), DrumPiece::Clap);
+        assert_eq!(DrumPiece::for_note(42), DrumPiece::ClosedHat);
+        assert_eq!(DrumPiece::for_note(46), DrumPiece::OpenHat);
+        assert_eq!(DrumPiece::for_note(49), DrumPiece::Crash);
+        assert_eq!(DrumPiece::for_note(45), DrumPiece::Tom);
+    }
+
+    fn drum_hit(note: i32) -> Vec<f64> {
+        let params = Voice {
+            frequency: midi_frequency(note),
+            ..voice(Oscillator::DrumKit)
+        };
+        let mut out = vec![0.0; 24_000];
+        render_voice(&mut out, &params, 0, 24_000);
+        out
+    }
+
+    /// Share of sample-to-sample change: high for hats, low for a kick.
+    fn brightness(samples: &[f64]) -> f64 {
+        let change: f64 = samples.windows(2).map(|w| (w[1] - w[0]).abs()).sum();
+        change / samples.iter().map(|s| s.abs()).sum::<f64>()
+    }
+
+    fn energy(samples: &[f64]) -> f64 {
+        samples.iter().map(|s| s * s).sum()
+    }
+
+    #[test]
+    fn drums_sound_like_their_kind() {
+        let (kick, snare, hat, open_hat) = (drum_hit(36), drum_hit(38), drum_hit(42), drum_hit(46));
+        // A kick is a low thump; hats are bright noise; a snare sits between.
+        assert!(brightness(&kick) < brightness(&snare));
+        assert!(brightness(&snare) < brightness(&hat));
+        // A closed hat is short, an open hat rings: compare what's left after 0.1 s.
+        let tail = |s: &[f64]| energy(&s[4_800..]) / energy(s);
+        assert!(tail(&hat) < tail(&open_hat) / 5.0);
+        // Every hit is audible and starts near its peak.
+        for hit in [&kick, &snare, &hat, &open_hat] {
+            assert!(energy(&hit[..2_400]) > energy(&hit[12_000..]));
+        }
+    }
+
+    #[test]
+    fn noise_drums_follow_the_seed() {
+        let hit = |seed| {
+            let params = Voice {
+                frequency: midi_frequency(38),
+                seed,
+                ..voice(Oscillator::DrumKit)
+            };
+            let mut out = vec![0.0; 2_000];
+            render_voice(&mut out, &params, 0, 2_000);
+            out
+        };
+        assert_eq!(hit(3), hit(3));
+        assert_ne!(hit(3), hit(4));
     }
 
     #[test]

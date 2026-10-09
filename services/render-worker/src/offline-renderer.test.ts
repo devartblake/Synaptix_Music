@@ -380,7 +380,7 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
 // only update the expected values for an intended sound change, and say so in the changelog.
 // Intended changes so far: band-limited (PolyBLEP) saw and square in the Rust kernel changed the
 // six saw/square instruments; Supersaw Lead, Unison Pad, Plucked String,
-// FM Bell and FM Electric Piano were added.
+// FM Bell, FM Electric Piano and Drum Kit were added.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -398,9 +398,10 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-unison": "0cf154540b68ff8f61a82dc872237cb1d6b5091f0eacefdbb46525dc46646bdc",
   "synaptix-guitar": "ae489fee1eb8737c62a2928eb40d1a3085bdb3b27797be4bce4b34b48137a8c8",
   "synaptix-fm-glass": "7a0b9b7eb136c82e815f53ee428e96242627419998e87bd2108907bf664bf958",
-  "synaptix-fm-ep": "12c06005b9ccd593f7784ef1ea501853b3755c2553f800e19ab96e9524404b0a"
+  "synaptix-fm-ep": "12c06005b9ccd593f7784ef1ea501853b3755c2553f800e19ab96e9524404b0a",
+  "synaptix-beat-kit": "e4fbd3f7eba650803560ebded6013010bcdf33bb6fe333ec9fd090de6197f97f"
 };
-const GOLDEN_MASTER = "3901642eff4a453bac61028540370fac590c5982a82b07ea9865c302b7ea83f7";
+const GOLDEN_MASTER = "2b0bc4c042a877efc664c9bb0e2d07c187e268c67bcf2ba2797f1fcd1b3a790f";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {
@@ -442,4 +443,42 @@ test("every catalog instrument renders the same bytes as before (golden checksum
 
   assert.deepEqual(stemChecksums, GOLDEN_STEMS);
   assert.equal(master.artifacts[0]!.metadata.checksumSha256, GOLDEN_MASTER);
+});
+
+// The catalog golden project plays each instrument at rising pitches, which on the Drum Kit are
+// all toms. This pins one hit of every drum on the General MIDI map.
+test("every Drum Kit piece renders the same bytes as before (golden checksum)", () => {
+  const value = createEmptyProject("golden-kit", { revisionId: "golden-kit-r1" });
+  const kit = createInstrumentTrack("synaptix-beat-kit", { id: "golden-kit" });
+  // kick, rim, snare, clap, closed hat, open hat, crash, ride, tom
+  const pieces = [36, 37, 38, 39, 42, 46, 49, 51, 45];
+  kit.clips = [
+    {
+      id: "golden-kit-clip",
+      kind: "midi",
+      name: "Every drum",
+      range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: PPQ * pieces.length },
+      loop: false,
+      notes: pieces.map((pitch, n) => ({
+        id: `golden-kit-${pitch}`,
+        pitch,
+        velocity: 100,
+        startTick: n * PPQ,
+        durationTicks: PPQ / 2
+      }))
+    }
+  ];
+  value.tracks = [kit];
+  const stem = renderProjectOffline(
+    value,
+    manifest({
+      projectId: "golden-kit",
+      revisionId: "golden-kit-r1",
+      scope: { kind: "stems", trackIds: [kit.id] },
+      range: { startTick: 0, endTick: PPQ * pieces.length },
+      output: { format: "wav", sampleRate: 48000, bitDepth: 24, normalizePeakDbfs: null, includeTailSeconds: 2 }
+    })
+  );
+
+  assert.equal(stem.artifacts[0]!.metadata.checksumSha256, "2686043118c1d10bed74ae40fd7a21095a5fbb02fa4881b31b0d6024491f9be8");
 });

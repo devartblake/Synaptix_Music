@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** first slice done · **Created:** 2026-10-09 · **First slice:** steps 1–4 done (see below)
+**Status:** second slice in progress · **Created:** 2026-10-09 · **First slice:** done · **Second slice:** step 1 done
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -113,6 +113,23 @@ Plucked String, FM Bell, FM Electric Piano). No asset work was needed. Next cand
 
 Result: the kernel proven in both places, six existing instruments improved, three to five new
 instruments, and no asset work.
+
+## Second slice: rhythm and retro
+
+Decided order: **Drum Kit**, then **808 Bass**, then **Chiptune Lead**. No asset work, and no
+existing sound changes: Drum Kit is added alongside Drum Synth, which stays byte-identical.
+
+- Step 1, Drum Kit: **done.** Kernel oscillator `drum-kit` (`synaptix-beat-kit`). The note picks
+  the drum from the General MIDI map: 36 and below kick, 37 rim, 38/40 snare, 39 clap, 42/44
+  closed hat, 46 open hat, 49/52/55/57 crash, 51/53/59 ride, any other note a tom tuned to the
+  note. The kernel finds the note from the frequency by comparison only. Each drum combines a
+  sine with a pitch drop (integrated sample by sample) and seeded noise through one-pole high-
+  and low-pass filters; envelopes are `1 / (1 + rate·t)²`, so there is no `exp`. Peak levels:
+  kick, snare, clap and tom about 0.9–1.0; hats and cymbals 0.45–0.65. A second golden test pins
+  one hit of every drum, because the catalog golden project only reaches the toms. Cost: about
+  the same as Drum Synth (typical project 7.3× real time master, 6.7× stems).
+- Step 2, 808 Bass: next.
+- Step 3, Chiptune Lead: after that. The arpeggio belongs in the editor, not the voice.
 
 ## Quick wins (days each)
 
