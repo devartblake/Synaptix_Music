@@ -4,6 +4,11 @@
 
 ### Added
 
+- Added an offline app shell (#49): a service worker precaches Home, Library and an offline page, saves Library and Studio pages for offline use, and never touches `/api/*`. The studio is installable (manifest and icon); the Library shows an offline banner and disables **Download for offline** without a connection. Turn the worker off with `NEXT_PUBLIC_SERVICE_WORKER=off`; `next dev` never registers it.
+- Added studio handoff from the player (#49): "Open in Studio" and "Edit in Studio" pass the listening position (`?t=`), and the studio opens at that point, snapped to the beat.
+- Changed prototype audio to queued jobs with live progress (#49): the MusicGen service runs jobs first-in first-out on one GPU worker (Redis when `REDIS_URL` is set), with `POST /audio/jobs`, status, a server-sent event stream, audio and cancel. The studio's panel shows the queue position, model loading and a progress bar, and resumes a job after a reload.
+- Recorded the SynaptixPlay backend side of Stage 13.6 and 13.7 (TycoonTycoon_Backend #571–#573, trivia_tycoon #399): the game's `adaptive_audio_*` runtime events are now ingested as metrics with a dashboard, alerts and a runbook; a staging preflight script checks the music setup end to end; and the kill switch reaches sessions already playing.
+
 - Added switchable arrangement composers to the generation API (`SYNAPTIX_COMPOSER=procedural|claude|local`). The Claude composer (default model `claude-opus-5`, structured output, adaptive thinking, server-side refusal fallbacks) writes a compact arrangement plan: per-section chords, 16-step drum and bass patterns, and melody phrases in scale degrees. The service renders it into in-key, in-bounds notes. The studio now sends the creative brief, and previews name the composer. Any AI failure falls back to the procedural composer with a plain-language warning. The backend dispatch timeout is configurable (`Music:DispatchTimeoutSeconds`, default 180 s).
 - Added a piano-roll velocity lane: drag a note's bar (or the whole selection) or use arrow keys, with each change a single undo step.
 - Added browser storage monitoring (usage on the home page, warnings when storage is nearly full, and plain-language errors when a save fails for lack of space) and a crash-recovery journal that offers unsaved edits back after a crash or closed tab.

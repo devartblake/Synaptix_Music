@@ -20,7 +20,7 @@ The Stage 13 runtime is implemented and unit-tested. This runbook turns the Slic
 | `Music:AdaptiveArtifactSigningKey`, `Music:AdaptiveArtifactBaseUrl` | Backend secrets/config | Signed delivery. The signing key must be at least 32 characters. |
 | `Music:RenderWorkerApiUrl` (+ `ServiceTokens:RenderWorker`) | Backend config | Publication verification: the backend checks every package artifact against the render worker's records (`POST /internal/render-evidence`). Missing or unreachable, publication fails closed with 503. Only master and stem renders are publishable; the worker must report each render's scope kind. |
 
-**Flags are read when the app starts.** Changing a flag affects new sessions, not sessions already running. To stop music in running sessions, revoke the package version (see *Kill switch*).
+**Running sessions pick up flag changes on resume or reconnect** (trivia_tycoon #399). While music plays, the app re-reads `/app/config` when it returns to the foreground and when the device reconnects; turning `adaptive_music_enabled` off stops the music then. Turning it back on takes effect on the next app start. Revoking the version (see *Kill switch*) is still the fastest way to stop a bad package.
 
 **Admin flag updates replace the whole flag set.** `PATCH /admin/config` stores the dictionary it receives as the complete set of flags. Always `GET /admin/config` first, change only the adaptive keys, and send the full dictionary back. Sending only the adaptive keys resets every omitted flag to its built-in default, undoing any operator overrides (for example, re-enabling a feature that moderation had switched off). Admin calls need the `X-Admin-Ops-Key` header and an admin-role bearer token.
 
@@ -83,13 +83,13 @@ The tester also fails the row if the device shows a thermal warning or throttlin
 | 1 | Production with the flag on, stems **off** (`adaptive_music_stems_enabled=false`) | 48 h with playback-failure and underrun rates at or below staging, and no crash-rate change |
 | 2 | Production, stems **on** | 7 days within thresholds; master-fallback rate stays low (layer budget is sufficient) |
 
-The flags are global: there is no per-player percentage targeting. Rollout is staged by environment and by stems on/off. Watch the `adaptive_audio_*` analytics events at each stage. Dashboards and alerts are a Slice 13.6 follow-up that needs staging data.
+The flags are global: there is no per-player percentage targeting. Rollout is staged by environment and by stems on/off. Watch the platform's adaptive-music dashboard (`ops/dashboards/adaptive-audio-observability.json` in TycoonTycoon_Backend) and its `adaptive-audio` alerts at each stage. Before the first stage, run the backend's `scripts/music-staging-preflight.py`.
 
 ## Kill switch and rollback
 
 **Rollback a bad package (immediate for reconnecting players):** in the studio's version history, enter a reason and select **Revoke version N**. Players are rolled back to the newest unexpired superseded version. With no earlier version, the package becomes unavailable and music stops. Running sessions pick this up when they reconnect or next load, and delivery grants for the revoked version stop working immediately.
 
-**Stop adaptive music everywhere (new sessions):** set `adaptive_music_enabled=false` using the full-dictionary PATCH described above. Sessions started after the change never start adaptive music. Combine it with a revoke to also stop sessions already running.
+**Stop adaptive music everywhere:** set `adaptive_music_enabled=false` using the full-dictionary PATCH described above. New sessions never start adaptive music, and running sessions stop it the next time they resume or reconnect. Combine it with a revoke to stop running sessions at their next package check as well.
 
 **Reduce risk without turning music off:** set `adaptive_music_stems_enabled=false` to play master mixes only.
 
