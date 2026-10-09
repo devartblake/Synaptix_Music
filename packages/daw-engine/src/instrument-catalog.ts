@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -121,6 +121,21 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "poly", oscillator: "triangle", attack: 0.015, decay: 0.18, sustain: 0.4, release: 0.3,
       filterFrequency: 5000, reverbSend: DEFAULT_REVERB_SEND, destinationBus: "music" },
     starterPattern: [[0, 57, 1], [1, 60, 1], [2, 64, 1], [3, 67, 1]]
+  },
+  // Device types avoid other entries' keywords ("lead", "pad") so they match themselves.
+  {
+    deviceType: "synaptix-supersaw", label: "Supersaw Lead", description: "Seven detuned saws: a wide, bright trance lead.",
+    keywords: ["supersaw", "trance"],
+    profile: { kind: "lead", oscillator: "supersaw", attack: 0.01, decay: 0.25, sustain: 0.7, release: 0.3,
+      filterFrequency: 6500, reverbSend: 0.25, destinationBus: "music" },
+    starterPattern: [[0, 72, 0.75], [1, 74, 0.75], [2, 76, 0.75], [3, 79, 0.75]]
+  },
+  {
+    deviceType: "synaptix-unison", label: "Unison Pad", description: "Slow, lush pad of seven detuned saws.",
+    keywords: ["unison"],
+    profile: { kind: "pad", oscillator: "supersaw", attack: 0.45, decay: 0.7, sustain: 0.8, release: 1.2,
+      filterFrequency: 3200, reverbSend: 0.35, destinationBus: "music" },
+    starterPattern: [[0, 57, 4], [0, 60, 4], [0, 64, 4], [0, 69, 4]]
   }
 ];
 

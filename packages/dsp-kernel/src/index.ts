@@ -26,7 +26,7 @@ export function onePoleAlpha(filterFrequency: number, sampleRate: number): numbe
   return 1 - Math.exp((-2 * Math.PI * filterFrequency) / sampleRate);
 }
 
-export const OSCILLATOR_CODES = { sine: 0, square: 1, sawtooth: 2, triangle: 3 } as const;
+export const OSCILLATOR_CODES = { sine: 0, square: 1, sawtooth: 2, triangle: 3, supersaw: 4 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;
 
 export interface VoiceParams {

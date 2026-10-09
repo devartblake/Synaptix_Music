@@ -112,7 +112,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "sawtooth", frequency: 220, time: 0.00031, noteDuration: 0.2 },
     { oscillator: "square", frequency: 329.63, time: 0.05, noteDuration: 0.15 },
     { oscillator: "sine", frequency: 880, time: 0.1, noteDuration: 0.05 },
-    { oscillator: "triangle", frequency: 110, time: 0.12, noteDuration: 0.3 }
+    { oscillator: "triangle", frequency: 110, time: 0.12, noteDuration: 0.3 },
+    { oscillator: "supersaw", frequency: 440, time: 0.2, noteDuration: 0.2 }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();
