@@ -166,7 +166,7 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "drums", oscillator: "drum-kit", attack: 0.001, decay: 0.01, sustain: 1, release: 0.6,
       filterFrequency: 16000, reverbSend: 0.1, destinationBus: "drums" },
     starterPattern: [[0, 36, 0.25], [0, 42, 0.25], [0.5, 42, 0.25], [1, 38, 0.25], [1, 42, 0.25], [1.5, 42, 0.25],
-      [2, 36, 0.25], [2.5, 36, 0.25], [2.5, 42, 0.25], [3, 38, 0.25], [3, 42, 0.25], [3.5, 46, 0.5]]
+      [2, 36, 0.25], [2, 42, 0.25], [2.5, 36, 0.25], [2.5, 42, 0.25], [3, 38, 0.25], [3, 42, 0.25], [3.5, 46, 0.5]]
   },
   {
     // "808" and "bass" are Sub Bass / Bass Synth keywords, so the device type avoids both.
