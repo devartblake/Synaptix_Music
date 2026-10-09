@@ -42,6 +42,7 @@ pub extern "C" fn render_voice(
     release: f64,
     note_duration: f64,
     velocity_gain: f64,
+    seed: u32,
     note_start: f64,
     note_total: f64,
 ) -> u32 {
@@ -56,6 +57,7 @@ pub extern "C" fn render_voice(
         release,
         note_duration,
         velocity_gain,
+        seed,
     ) else {
         return 0;
     };
@@ -80,6 +82,7 @@ pub extern "C" fn start_voice(
     release: f64,
     note_duration: f64,
     velocity_gain: f64,
+    seed: u32,
     start: f64,
     total: f64,
 ) -> u32 {
@@ -94,6 +97,7 @@ pub extern "C" fn start_voice(
         release,
         note_duration,
         velocity_gain,
+        seed,
     ) else {
         return 0;
     };
@@ -147,6 +151,7 @@ fn voice_params(
     release: f64,
     note_duration: f64,
     velocity_gain: f64,
+    seed: u32,
 ) -> Option<Voice> {
     Some(Voice {
         oscillator: Oscillator::from_code(oscillator)?,
@@ -159,5 +164,6 @@ fn voice_params(
         release,
         note_duration,
         velocity_gain,
+        seed,
     })
 }

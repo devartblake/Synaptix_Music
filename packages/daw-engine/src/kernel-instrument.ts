@@ -1,5 +1,6 @@
 import {
   kernelWasmBytes,
+  noteSeed,
   onePoleAlpha,
   OSCILLATOR_CODES,
   VOICE_PROCESSOR_NAME,
@@ -59,7 +60,14 @@ export class KernelInstrument {
     );
   }
 
-  triggerAttackRelease(frequency: number, duration: Tone.Unit.Time, time?: Tone.Unit.Time, velocity = 1): void {
+  /** `noteId` seeds the plucked string's noise; pass the note's id so it matches exports. */
+  triggerAttackRelease(
+    frequency: number,
+    duration: Tone.Unit.Time,
+    time?: Tone.Unit.Time,
+    velocity = 1,
+    noteId = ""
+  ): void {
     const { settings } = this;
     this.send({
       type: "note",
@@ -72,6 +80,7 @@ export class KernelInstrument {
       release: settings.release,
       noteDuration: Tone.Time(duration).toSeconds(),
       velocityGain: velocity,
+      seed: noteSeed(noteId),
       time: time === undefined ? Tone.now() : Tone.Time(time).toSeconds()
     });
   }

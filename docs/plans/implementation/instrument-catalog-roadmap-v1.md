@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** in progress · **Created:** 2026-10-09 · **First slice:** steps 1–2 done (see below)
+**Status:** in progress · **Created:** 2026-10-09 · **First slice:** steps 1–3 done (see below)
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -91,6 +91,13 @@ deliberately).
   voice path and comes later. Cost: a dense all-supersaw project exports at 5.0× real time
   (master) and 3.5× (stems).
 
+- Step 3, Karplus–Strong: **done.** Kernel oscillator `plucked-string`: a delay line one period
+  long, filled with a seeded noise burst (mean removed), fed back through a two-point average and
+  a first-order all-pass that tunes the fractional period (in tune to within about 1%), with
+  feedback 0.996. Catalog instrument **Plucked String** (`synaptix-guitar`). The noise seed comes
+  from the note's id, so the preview and every export pluck the same string. Cost: about the
+  same as the default synths (dense project, 9.4× real time master, 5.4× stems).
+
 Result: the kernel proven in both places, six existing instruments improved, three to five new
 instruments, and no asset work.
 
@@ -133,8 +140,9 @@ recorded audio.
 ## Rules every new instrument follows
 
 - **Same sound in preview and export:** one kernel implementation, run in both places.
-- **Deterministic:** any randomness (noise, detune drift) comes from the render manifest's seed,
-  so a render is reproducible byte for byte.
+- **Deterministic:** any randomness (noise, detune drift) comes from a seed derived from the note
+  (`noteSeed(note.id)` in `packages/dsp-kernel`), so a render is reproducible byte for byte and the
+  studio preview, which never sees a render manifest, makes the same sound as the export.
 - **Golden test:** a new instrument joins the catalog, so the golden-checksum project covers it
   automatically; its checksum is reviewed when added.
 - **Profiled:** each slice reruns `npm run profile -w @synaptix/render-worker` and records the

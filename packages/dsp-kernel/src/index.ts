@@ -21,6 +21,17 @@ export function kernelWasmBytes(): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+/**
+ * A note's noise seed, from its id (FNV-1a), so the studio preview and every export of the same
+ * project pluck the same string. Render seeds are per render request, which the preview never
+ * sees.
+ */
+export function noteSeed(noteId: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < noteId.length; i++) hash = Math.imul(hash ^ noteId.charCodeAt(i), 0x01000193);
+  return hash >>> 0;
+}
+
 /** The one-pole low-pass coefficient for a cutoff, shared by exports and preview. */
 export function onePoleAlpha(filterFrequency: number, sampleRate: number): number {
   return 1 - Math.exp((-2 * Math.PI * filterFrequency) / sampleRate);
@@ -31,7 +42,8 @@ export const OSCILLATOR_CODES = {
   square: 1,
   sawtooth: 2,
   triangle: 3,
-  supersaw: 4
+  supersaw: 4,
+  "plucked-string": 5
 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;
 
@@ -48,6 +60,8 @@ export interface VoiceParams {
   /** Seconds from note start to note off; the release follows. */
   noteDuration: number;
   velocityGain: number;
+  /** Seeds the plucked string's noise burst; see noteSeed. */
+  seed: number;
 }
 
 interface KernelExports {
@@ -64,6 +78,7 @@ interface KernelExports {
     release: number,
     noteDuration: number,
     velocityGain: number,
+    seed: number,
     noteStart: number,
     noteTotal: number
   ): number;
@@ -95,6 +110,7 @@ export class DspKernel {
       params.release,
       params.noteDuration,
       params.velocityGain,
+      params.seed,
       noteStart,
       noteTotal
     );

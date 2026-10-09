@@ -20,7 +20,7 @@ import {
 
 import { projectV2BuiltinView, type MusicProjectV2 } from "@synaptix/project-model/v2";
 
-import { onePoleAlpha } from "@synaptix/dsp-kernel";
+import { noteSeed, onePoleAlpha } from "@synaptix/dsp-kernel";
 import { createNodeDspKernel } from "@synaptix/dsp-kernel/node";
 
 import { applyCompressor } from "./compressor.ts";
@@ -132,7 +132,8 @@ function renderTrackBuffer(
           sustain: settings.sustain,
           release: settings.release,
           noteDuration: noteDurationSeconds,
-          velocityGain
+          velocityGain,
+          seed: noteSeed(note.id)
         },
         noteStartSample,
         noteTotalSamples
