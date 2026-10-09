@@ -28,6 +28,8 @@ The Stage 13 runtime is implemented and unit-tested. This runbook turns the Slic
 
 Run every **required** row. Record the device model, OS version, app build, and package version for each.
 
+**Use a game build from trivia_tycoon #418 or later.** The game's audio engine moved from flutter_soloud 3.5.4 to 5.1.6 (trivia_tycoon #408, #418) on Flutter 3.47.7, so evidence from earlier builds doesn't carry over. Since #408 a failed play throws instead of returning a silent handle: a stem start that fails now falls back to the master mix (recorded as `stem-activation-failed`), a master start that fails marks playback failed, and the transition's layers are released. Before, both played silence. The minimum supported OS is iOS 15 and Android 7.0 (API 24).
+
 | # | Class | Example devices | Audio route | Required |
 | --- | --- | --- | --- | --- |
 | 1 | Android flagship | Pixel 8 / Galaxy S23 | Speaker | Yes |
@@ -37,7 +39,7 @@ Run every **required** row. Record the device model, OS version, app build, and 
 | 5 | iPhone current | iPhone 15 | Speaker | Yes |
 | 6 | iPhone older supported | iPhone 11 / SE (2nd gen) | AirPods (Bluetooth) | Yes |
 | 7 | iPad | iPad (10th gen) | Speaker | Yes |
-| 8 | Any | Oldest supported OS version | Speaker | Recommended |
+| 8 | Any | Oldest supported OS: iOS 15 / Android 7.0 (API 24) | Speaker | Recommended |
 
 Bluetooth rows exist to surface output latency: transitions should still land on musical boundaries as heard.
 
