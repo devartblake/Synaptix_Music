@@ -174,6 +174,8 @@ Adaptive package contracts, deterministic package assembly, transition planning,
 
 ### 7. Operational hardening
 
+Started 2026-10-09: each player may have at most `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` (default 10) queued-or-running render jobs; more answer 429 `render_quota_exceeded`.
+
 - Render telemetry and dashboards
 - Capacity and cost limits
 - Abuse controls and quotas

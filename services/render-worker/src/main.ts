@@ -2,7 +2,7 @@ import { hostname } from "node:os";
 
 import { Pool } from "pg";
 
-import { createRenderJobHttpServer } from "./http-server.ts";
+import { createRenderJobHttpServer, maxActiveJobsPerOwnerFromEnv } from "./http-server.ts";
 import { httpProjectLoaderFromEnv } from "./http-project-loader.ts";
 import { applyMigrations } from "./migrate.ts";
 import { minioArtifactStoreFromEnv } from "./minio-artifact-store.ts";
@@ -26,7 +26,8 @@ async function main(): Promise<void> {
     throw new Error("MinIO artifact storage must be configured before the render worker can run.");
   }
   const server = createRenderJobHttpServer(store, artifactStore ?? undefined, {
-    serviceToken: process.env.RENDER_WORKER_SERVICE_TOKEN?.trim() || undefined
+    serviceToken: process.env.RENDER_WORKER_SERVICE_TOKEN?.trim() || undefined,
+    maxActiveJobsPerOwner: maxActiveJobsPerOwnerFromEnv(process.env.RENDER_MAX_ACTIVE_JOBS_PER_OWNER)
   });
   const workerAbort = new AbortController();
 

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added a per-player render-job limit (operational hardening): a signed-in player may have at most `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` (default 10, `0` = off) queued or running render jobs, and a submission over it answers 429 `render_quota_exceeded`. One dense stems render can hold a worker for minutes, so a single player could otherwise fill the queue. Submissions are serialized per player so concurrent requests can't overshoot; replaying an accepted request is never refused; private callers aren't limited.
 - Profiled the offline renderer (Stage 12, step 9): `npm run profile -w @synaptix/render-worker` renders typical, dense and worst-case projects and times each stage. No DSP kernel is a bottleneck (effects and encoding run 40–160× real time; synthesis dominates), so Rust/WASM stays deferred. The WAV encoder no longer allocates per frame: byte-identical output, 2× faster at 24-bit. Results and the revisit criteria are in `docs/development/dsp-profiling.md`.
 - Added an offline app shell (#49): a service worker precaches Home, Library and an offline page, saves Library and Studio pages for offline use, and never touches `/api/*`. The studio is installable (manifest and icon); the Library shows an offline banner and disables **Download for offline** without a connection. Turn the worker off with `NEXT_PUBLIC_SERVICE_WORKER=off`; `next dev` never registers it.
 - Added studio handoff from the player (#49): "Open in Studio" and "Edit in Studio" pass the listening position (`?t=`), and the studio opens at that point, snapped to the beat.
