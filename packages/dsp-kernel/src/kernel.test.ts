@@ -139,6 +139,8 @@ const OSCILLATORS: KernelOscillator[] = [
   "plucked-string",
   "fm-bell",
   "fm-piano"
+  // "drum-kit" has no TypeScript reference: its arithmetic is the same kinds of operation these
+  // already prove identical, and voice-processor.test.ts checks preview against export for it.
 ];
 
 for (const oscillator of OSCILLATORS) {

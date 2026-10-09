@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -157,6 +157,16 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "keys", oscillator: "fm-piano", attack: 0.002, decay: 1.2, sustain: 0.35, release: 0.4,
       filterFrequency: 9000, reverbSend: 0.18, destinationBus: "music" },
     starterPattern: [[0, 60, 1.5], [0, 64, 1.5], [0, 67, 1.5], [2, 62, 1.5], [2, 65, 1.5], [2, 69, 1.5]]
+  },
+  {
+    // The note picks the drum (General MIDI): 36 kick, 37 rim, 38 snare, 39 clap, 42 closed hat,
+    // 46 open hat, 49 crash, 51 ride; other notes are toms tuned to the note.
+    deviceType: "synaptix-beat-kit", label: "Drum Kit", description: "Kick, snare, clap, hats, cymbals and toms on the General MIDI drum map.",
+    keywords: ["beat-kit", "beat kit"],
+    profile: { kind: "drums", oscillator: "drum-kit", attack: 0.001, decay: 0.01, sustain: 1, release: 0.6,
+      filterFrequency: 16000, reverbSend: 0.1, destinationBus: "drums" },
+    starterPattern: [[0, 36, 0.25], [0, 42, 0.25], [0.5, 42, 0.25], [1, 38, 0.25], [1, 42, 0.25], [1.5, 42, 0.25],
+      [2, 36, 0.25], [2.5, 36, 0.25], [2.5, 42, 0.25], [3, 38, 0.25], [3, 42, 0.25], [3.5, 46, 0.5]]
   }
 ];
 
