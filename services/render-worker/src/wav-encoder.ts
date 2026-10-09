@@ -5,13 +5,6 @@ export interface StereoBuffer {
 
 export type WavBitDepth = 16 | 24 | 32;
 
-function writeInt24LE(buffer: Buffer, value: number, offset: number): void {
-  const unsigned = value < 0 ? value + 0x1000000 : value;
-  buffer[offset] = unsigned & 0xff;
-  buffer[offset + 1] = (unsigned >> 8) & 0xff;
-  buffer[offset + 2] = (unsigned >> 16) & 0xff;
-}
-
 // Standard 44-byte RIFF/WAVE PCM header followed by interleaved little-endian
 // signed-integer samples. 32-bit output is PCM (AudioFormat 1), not IEEE float.
 export function encodeWav(buffer: StereoBuffer, sampleRate: number, bitDepth: WavBitDepth): Buffer {
@@ -43,26 +36,25 @@ export function encodeWav(buffer: StereoBuffer, sampleRate: number, bitDepth: Wa
   out.write("data", 36, "ascii");
   out.writeUInt32LE(dataSize, 40);
 
-  const maxInt = 2 ** (bitDepth - 1) - 1;
-  const minInt = -(2 ** (bitDepth - 1));
+  // Profiling put this loop at about a fifth of a render (docs/development/dsp-profiling.md):
+  // it allocated a two-element array per frame and wrote through bounds-checked Buffer
+  // methods. It now writes the little-endian bytes directly with no per-frame allocation.
+  // Output is byte-identical: values are clamped to [-1, 1], rounded, and NaN writes 0.
+  const positiveScale = 2 ** (bitDepth - 1) - 1;
+  const negativeScale = 2 ** (bitDepth - 1);
+  const { left, right } = buffer;
   let offset = headerSize;
 
   for (let frame = 0; frame < numFrames; frame++) {
-    const left = buffer.left[frame] ?? 0;
-    const right = buffer.right[frame] ?? 0;
-    for (const channelValue of [left, right]) {
-      const clamped = Math.max(-1, Math.min(1, channelValue));
-      const intValue = Math.round(clamped * (clamped < 0 ? -minInt : maxInt));
-      if (bitDepth === 16) {
-        out.writeInt16LE(intValue, offset);
-        offset += 2;
-      } else if (bitDepth === 24) {
-        writeInt24LE(out, intValue, offset);
-        offset += 3;
-      } else {
-        out.writeInt32LE(intValue, offset);
-        offset += 4;
-      }
+    for (let channel = 0; channel < 2; channel++) {
+      const value = channel === 0 ? left[frame]! : right[frame]!;
+      const clamped = value < -1 ? -1 : value > 1 ? 1 : value;
+      const sample = Math.round(clamped * (clamped < 0 ? negativeScale : positiveScale));
+      out[offset] = sample & 0xff;
+      out[offset + 1] = (sample >> 8) & 0xff;
+      if (bytesPerSample > 2) out[offset + 2] = (sample >> 16) & 0xff;
+      if (bytesPerSample > 3) out[offset + 3] = (sample >> 24) & 0xff;
+      offset += bytesPerSample;
     }
   }
 
