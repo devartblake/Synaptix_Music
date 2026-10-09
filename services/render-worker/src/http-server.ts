@@ -5,7 +5,7 @@ import { RenderManifestSchema, type RenderJobStatus } from "@synaptix/render-con
 import { z, ZodError } from "zod";
 
 import type { ArtifactDelivery } from "./minio-artifact-store.ts";
-import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
+import { RenderQuotaExceededError, type PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
 interface ErrorEnvelope {
   code: string;
@@ -60,6 +60,24 @@ export interface RenderJobHttpServerOptions {
    * /internal routes the backend calls; they answer 503 without it.
    */
   serviceToken?: string;
+  /**
+   * Most queued-or-running jobs one player may have (RENDER_MAX_ACTIVE_JOBS_PER_OWNER). A
+   * submission over it answers 429 render_quota_exceeded. Private callers are not limited.
+   */
+  maxActiveJobsPerOwner?: number;
+}
+
+/**
+ * Most queued-or-running render jobs one player may have. Default 10 (a package export is a
+ * master and its stems per state); 0 turns the limit off.
+ */
+export function maxActiveJobsPerOwnerFromEnv(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw.trim() === "") return 10;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error("RENDER_MAX_ACTIVE_JOBS_PER_OWNER must be a whole number (0 turns the limit off).");
+  }
+  return value === 0 ? undefined : value;
 }
 
 export function createRenderJobHttpServer(
@@ -125,7 +143,7 @@ async function handleRequest(
       return sendJson(res, 200, await store.renderEvidence(request.renderIds, request.artifactIds));
     }
     if (req.method === "POST" && segments.length === 1 && segments[0] === "render-jobs") {
-      await handleSubmit(store, req, res, correlationId, owner ?? null);
+      await handleSubmit(store, req, res, correlationId, owner ?? null, options.maxActiveJobsPerOwner);
       return;
     }
     if (req.method === "GET" && segments.length === 1 && segments[0] === "render-jobs") {
@@ -239,7 +257,8 @@ async function handleSubmit(
   req: IncomingMessage,
   res: ServerResponse,
   correlationId: string,
-  owner: string | null
+  owner: string | null,
+  maxActiveJobsPerOwner: number | undefined
 ): Promise<void> {
   const idempotencyKey = req.headers["idempotency-key"]?.toString();
   if (!idempotencyKey) {
@@ -264,7 +283,7 @@ async function handleSubmit(
   }
 
   const manifest = RenderManifestSchema.parse(body.manifest);
-  const job = await store.submit(manifest, idempotencyKey, body.maxAttempts, owner);
+  const job = await store.submit(manifest, idempotencyKey, body.maxAttempts, owner, maxActiveJobsPerOwner);
   sendJson(res, 201, job);
 }
 
@@ -272,6 +291,9 @@ async function handleSubmit(
 // (matching the render-job store's existing error-handling convention); Zod
 // parse failures and JSON syntax errors are client input errors (400).
 function handleError(res: ServerResponse, error: unknown, correlationId: string): void {
+  if (error instanceof RenderQuotaExceededError) {
+    return sendError(res, 429, "render_quota_exceeded", error.message, correlationId);
+  }
   if (error instanceof ZodError) {
     return sendError(
       res,

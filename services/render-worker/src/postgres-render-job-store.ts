@@ -17,6 +17,14 @@ import {
   type RenderResult
 } from "@synaptix/render-contracts";
 
+/** A player already has the maximum number of queued or running render jobs. */
+export class RenderQuotaExceededError extends Error {
+  constructor(readonly limit: number) {
+    super(`You already have ${limit} renders queued or running. Wait for one to finish, then try again.`);
+    this.name = "RenderQuotaExceededError";
+  }
+}
+
 interface RenderJobRow {
   job_id: string;
   idempotency_key: string;
@@ -166,12 +174,18 @@ export class PostgresRenderJobStore {
   /**
    * Queue a render. `ownerId` is the signed-in player the studio submitted it for (null for
    * private callers); an idempotency key can't be reused across owners.
+   *
+   * With `maxActiveJobsPerOwner`, a player who already has that many queued or running jobs
+   * is refused with {@link RenderQuotaExceededError}: one dense stems render can hold a worker
+   * for minutes, so a single player must not be able to fill the queue. Private callers are
+   * not limited, and replaying an accepted request (same idempotency key) is never refused.
    */
   async submit(
     manifest: RenderManifest,
     idempotencyKey: string,
     maxAttempts = DEFAULT_MAX_ATTEMPTS,
-    ownerId: string | null = null
+    ownerId: string | null = null,
+    maxActiveJobsPerOwner?: number
   ): Promise<RenderJob> {
     if (idempotencyKey.length === 0) throw new Error("idempotencyKey must not be empty.");
     const validatedManifest = RenderManifestSchema.parse(manifest);
@@ -179,39 +193,80 @@ export class PostgresRenderJobStore {
       throw new RangeError("maxAttempts must be a positive integer.");
     }
 
-    const jobId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Serialize one owner's submissions so two concurrent requests can't both pass the limit.
+      if (ownerId !== null) await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [ownerId]);
 
-    const inserted = await this.pool.query<RenderJobRow>(
-      `INSERT INTO render_jobs (
-         job_id, idempotency_key, contract_version, manifest, status, attempt,
-         max_attempts, submitted_at, updated_at, owner_id
-       ) VALUES ($1, $2, $3, $4, 'queued', 0, $5, $6, $6, $7)
-       ON CONFLICT (idempotency_key) DO NOTHING
-       RETURNING *`,
-      [jobId, idempotencyKey, RENDER_JOB_CONTRACT_VERSION, JSON.stringify(validatedManifest), maxAttempts, timestamp, ownerId]
-    );
+      const replay = await this.existingForKey(client, idempotencyKey, validatedManifest, ownerId);
+      if (replay) {
+        await client.query("COMMIT");
+        return replay;
+      }
 
-    if (inserted.rows[0]) {
+      if (ownerId !== null && maxActiveJobsPerOwner !== undefined) {
+        const active = await client.query<{ count: string }>(
+          `SELECT count(*) FROM render_jobs WHERE owner_id = $1 AND status IN ('queued', 'running')`,
+          [ownerId]
+        );
+        if (Number(active.rows[0]!.count) >= maxActiveJobsPerOwner) {
+          throw new RenderQuotaExceededError(maxActiveJobsPerOwner);
+        }
+      }
+
+      const jobId = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+      const inserted = await client.query<RenderJobRow>(
+        `INSERT INTO render_jobs (
+           job_id, idempotency_key, contract_version, manifest, status, attempt,
+           max_attempts, submitted_at, updated_at, owner_id
+         ) VALUES ($1, $2, $3, $4, 'queued', 0, $5, $6, $6, $7)
+         ON CONFLICT (idempotency_key) DO NOTHING
+         RETURNING *`,
+        [jobId, idempotencyKey, RENDER_JOB_CONTRACT_VERSION, JSON.stringify(validatedManifest), maxAttempts, timestamp, ownerId]
+      );
+      if (!inserted.rows[0]) {
+        // Another caller inserted the same key between the lookup and the insert.
+        const raced = await this.existingForKey(client, idempotencyKey, validatedManifest, ownerId);
+        await client.query("COMMIT");
+        return raced!;
+      }
       const job = mapRow(inserted.rows[0]);
-      await this.recordEvent(this.pool, job.jobId, "submitted", job.attempt, null, timestamp);
+      await this.recordEvent(client, job.jobId, "submitted", job.attempt, null, timestamp);
+      await client.query("COMMIT");
       return job;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
     }
+  }
 
-    const existing = await this.pool.query<RenderJobRow>(
+  /** The job an idempotency key already created, after checking it is the same caller's same render. */
+  private async existingForKey(
+    client: PoolClient,
+    idempotencyKey: string,
+    manifest: RenderManifest,
+    ownerId: string | null
+  ): Promise<RenderJob | undefined> {
+    const existing = await client.query<RenderJobRow>(
       `SELECT * FROM render_jobs WHERE idempotency_key = $1`,
       [idempotencyKey]
     );
-    const existingJob = mapRow(existing.rows[0]!);
-    if (existing.rows[0]!.owner_id !== ownerId) {
+    const row = existing.rows[0];
+    if (!row) return undefined;
+    if (row.owner_id !== ownerId) {
       throw new Error(`idempotencyKey '${idempotencyKey}' was already used by another caller.`);
     }
-    if (existingJob.manifest.renderId !== validatedManifest.renderId) {
+    const job = mapRow(row);
+    if (job.manifest.renderId !== manifest.renderId) {
       throw new Error(
-        `idempotencyKey '${idempotencyKey}' was already used for a different render (${existingJob.manifest.renderId}).`
+        `idempotencyKey '${idempotencyKey}' was already used for a different render (${job.manifest.renderId}).`
       );
     }
-    return existingJob;
+    return job;
   }
 
   async lease(workerId: string, leaseDurationMs = DEFAULT_LEASE_DURATION_MS): Promise<RenderJob | null> {

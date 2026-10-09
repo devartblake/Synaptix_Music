@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added a per-player render-job limit (operational hardening): a signed-in player may have at most `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` (default 10, `0` = off) queued or running render jobs, and a submission over it answers 429 `render_quota_exceeded`. One dense stems render can hold a worker for minutes, so a single player could otherwise fill the queue. Submissions are serialized per player so concurrent requests can't overshoot; replaying an accepted request is never refused; private callers aren't limited.
 - Added an offline app shell (#49): a service worker precaches Home, Library and an offline page, saves Library and Studio pages for offline use, and never touches `/api/*`. The studio is installable (manifest and icon); the Library shows an offline banner and disables **Download for offline** without a connection. Turn the worker off with `NEXT_PUBLIC_SERVICE_WORKER=off`; `next dev` never registers it.
 - Added studio handoff from the player (#49): "Open in Studio" and "Edit in Studio" pass the listening position (`?t=`), and the studio opens at that point, snapped to the beat.
 - Changed prototype audio to queued jobs with live progress (#49): the MusicGen service runs jobs first-in first-out on one GPU worker (Redis when `REDIS_URL` is set), with `POST /audio/jobs`, status, a server-sent event stream, audio and cancel. The studio's panel shows the queue position, model loading and a progress bar, and resumes a job after a reload.

@@ -35,7 +35,7 @@ export {
   type OfflineRenderOutcome,
   type RenderedArtifact
 } from "./offline-renderer.ts";
-export { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
+export { PostgresRenderJobStore, RenderQuotaExceededError } from "./postgres-render-job-store.ts";
 export { applyReverb } from "./reverb.ts";
 export { encodeWav, type StereoBuffer, type WavBitDepth } from "./wav-encoder.ts";
 export {
