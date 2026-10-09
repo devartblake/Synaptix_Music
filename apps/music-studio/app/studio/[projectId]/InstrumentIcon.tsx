@@ -106,17 +106,104 @@ const ARTWORK: Record<InstrumentProfileKind, React.ReactNode> = {
   </>
 };
 
+// Instruments that share a family with an older one get their own drawing, so the picker and
+// device panel tell them apart (the family accent colour stays).
+const DEVICE_ARTWORK: Record<string, React.ReactNode> = {
+  // Three detuned saws, stacked and offset.
+  "synaptix-supersaw": <>
+    <path d="M4 18L12 8v10l8-10v10l8-10v10l8-10v10l8-10" strokeOpacity="0.4" />
+    <path d="M4 28L12 18v10l8-10v10l8-10v10l8-10v10l8-10" strokeOpacity="0.7" />
+    <path d="M4 38L12 28v10l8-10v10l8-10v10l8-10v10l8-10" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+  </>,
+  // Layered saws spreading left and right.
+  "synaptix-unison": <>
+    <path d="M10 22l6-8v8l6-8v8l6-8v8l6-8v8" strokeOpacity="0.5" />
+    <path d="M10 30l6-8v8l6-8v8l6-8v8l6-8v8" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M4 40h40M4 40l4-3M4 40l4 3M44 40l-4-3M44 40l-4 3" strokeOpacity="0.7" />
+  </>,
+  // An acoustic guitar, upright: headstock, neck, figure-eight body, sound hole.
+  "synaptix-guitar": <>
+    <rect x="20.5" y="2" width="7" height="6" rx="1.5" />
+    <path d="M22 8h4v13h-4z" />
+    <path d="M24 21c-6 0-9 3-9 7 0 2 1 3 1 4-3 1-6 3.5-6 7 0 4.5 6 7 14 7s14-2.5 14-7c0-3.5-3-6-6-7 0-1 1-2 1-4 0-4-3-7-9-7z"
+      fill="var(--instrument-accent)" fillOpacity="0.25" />
+    <circle cx="24" cy="32" r="3.5" />
+    <path d="M20 40h8" />
+  </>,
+  // A bell with a modulating sine inside it.
+  "synaptix-fm-glass": <>
+    <circle cx="24" cy="7" r="2" />
+    <path d="M10 36c4-2 4-6 4-10 0-10 4-16 10-16s10 6 10 16c0 4 0 8 4 10z"
+      fill="var(--instrument-accent)" fillOpacity="0.2" />
+    <path d="M15 25q2.25-5 4.5 0t4.5 0 4.5 0 4.5 0" stroke="var(--instrument-accent)" strokeWidth="2" />
+    <circle cx="24" cy="39.5" r="2.5" />
+  </>,
+  // Keys with a modulating sine above them.
+  "synaptix-fm-ep": <>
+    <path d="M6 12q4.5-7 9 0t9 0 9 0 9 0" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <rect x="4" y="20" width="40" height="20" rx="2" />
+    <path d="M9.7 20v20M15.4 20v20M21.1 20v20M26.9 20v20M32.6 20v20M38.3 20v20" strokeWidth="1.2" />
+    <g fill="currentColor" stroke="none">
+      <rect x="8" y="20" width="3.4" height="11" rx="0.6" />
+      <rect x="13.7" y="20" width="3.4" height="11" rx="0.6" />
+      <rect x="25.2" y="20" width="3.4" height="11" rx="0.6" />
+      <rect x="30.9" y="20" width="3.4" height="11" rx="0.6" />
+      <rect x="36.6" y="20" width="3.4" height="11" rx="0.6" />
+    </g>
+  </>,
+  // A kit: kick drum from the front, a snare, and a cymbal on its stand.
+  "synaptix-beat-kit": <>
+    <path d="M34 8l12 2M40 9v31M36 44l4-4 4 4" />
+    <circle cx="20" cy="31" r="11" fill="var(--instrument-accent)" fillOpacity="0.25" />
+    <circle cx="20" cy="31" r="4" />
+    <ellipse cx="9" cy="14" rx="7" ry="2.5" />
+    <path d="M2 14v5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-5" />
+  </>,
+  // A speaker cone thumping out, labelled 808.
+  "synaptix-boom": <>
+    <circle cx="20" cy="24" r="14" fill="var(--instrument-accent)" fillOpacity="0.2" />
+    <circle cx="20" cy="24" r="6" fill="var(--instrument-accent)" fillOpacity="0.55" />
+    <path d="M38 14c3 3 3 17 0 20M43 10c5 5 5 23 0 28" strokeOpacity="0.7" />
+    <text x="20" y="46" textAnchor="middle" fontSize="8" fontWeight="700" fill="currentColor" stroke="none"
+      fontFamily="system-ui, sans-serif">808</text>
+  </>,
+  // A game controller with a pixel pulse wave above it.
+  "synaptix-chiptune": <>
+    <path d="M4 14h6V6h6v8h6V6h6v8h6V6h6v8" stroke="var(--instrument-accent)" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter" />
+    <path d="M12 22h24c5 0 8 4 8 9s-3 9-6 9c-4 0-5-5-9-5H19c-4 0-5 5-9 5-3 0-6-4-6-9s3-9 8-9z"
+      fill="var(--instrument-accent)" fillOpacity="0.2" />
+    <path d="M12 28v6M9 31h6" />
+    <circle cx="33" cy="29" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="37" cy="33" r="1.6" fill="currentColor" stroke="none" />
+  </>,
+  // A filter curve with a resonant peak, swept down.
+  "synaptix-squelch": <>
+    <path d="M4 40h40M4 8v32" strokeOpacity="0.35" />
+    <path d="M4 26h16c4 0 5-16 8-16s4 10 6 18 4 12 10 12" stroke="var(--instrument-accent)" strokeWidth="2.5"
+      fill="var(--instrument-accent)" fillOpacity="0.15" />
+    <path d="M38 6l-8 0M30 6l3-3M30 6l3 3" strokeOpacity="0.8" />
+  </>,
+  // A slow wave circled by motion arrows.
+  "synaptix-motion": <>
+    <path d="M8 24q4-8 8 0t8 0 8 0 8 0" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M10 12a17 17 0 0 1 28 0M38 36a17 17 0 0 1-28 0" strokeOpacity="0.7" />
+    <path d="M38 12l-5-1M38 12l1-5M10 36l5 1M10 36l-1 5" strokeOpacity="0.7" />
+  </>
+};
+
 interface InstrumentIconProps {
   kind: InstrumentProfileKind;
+  /** Picks a dedicated drawing when the instrument has one; otherwise the family's. */
+  deviceType?: string;
   size?: number;
 }
 
-export function InstrumentIcon({ kind, size = 36 }: InstrumentIconProps) {
+export function InstrumentIcon({ kind, deviceType, size = 36 }: InstrumentIconProps) {
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" focusable="false"
       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
       style={{ "--instrument-accent": INSTRUMENT_ACCENTS[kind], flexShrink: 0 } as React.CSSProperties}>
-      {ARTWORK[kind]}
+      {(deviceType && DEVICE_ARTWORK[deviceType]) ?? ARTWORK[kind]}
     </svg>
   );
 }
