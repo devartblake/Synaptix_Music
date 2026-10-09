@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -175,6 +175,14 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "bass", oscillator: "808-bass", attack: 0.002, decay: 2, sustain: 0.3, release: 0.4,
       filterFrequency: 5000, reverbSend: 0.05, destinationBus: "music" },
     starterPattern: [[0, 33, 1.5], [1.5, 33, 0.5], [2, 36, 1], [3, 31, 1]]
+  },
+  {
+    deviceType: "synaptix-chiptune", label: "Chiptune Lead", description: "Band-limited 25% pulse: the bright, nasal lead of retro game music.",
+    keywords: ["chiptune", "8-bit", "retro"],
+    profile: { kind: "lead", oscillator: "pulse-25", attack: 0.001, decay: 0.08, sustain: 0.7, release: 0.04,
+      filterFrequency: 12000, reverbSend: 0.08, destinationBus: "music" },
+    starterPattern: [[0, 72, 0.25], [0.25, 76, 0.25], [0.5, 79, 0.25], [0.75, 84, 0.25], [1, 83, 0.5], [1.5, 79, 0.5],
+      [2, 81, 0.75], [3, 79, 0.5], [3.5, 76, 0.5]]
   }
 ];
 

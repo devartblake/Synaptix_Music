@@ -117,7 +117,14 @@ function referenceVoice(
       raw =
         (cycle < 0.5 ? 1 : -1) + polyBlep(cycle, dt) - polyBlep(half >= 1 ? half - 1 : half, dt);
     } else if (p.oscillator === "sawtooth") raw = 2 * cycle - 1 - polyBlep(cycle, dt);
-    else raw = cycle < 0.5 ? 4 * cycle - 1 : 3 - 4 * cycle;
+    else if (p.oscillator === "pulse-25") {
+      const fall = cycle + 0.75;
+      raw =
+        (cycle < 0.25 ? 1 : -1) +
+        polyBlep(cycle, dt) -
+        polyBlep(fall >= 1 ? fall - 1 : fall, dt) +
+        0.5;
+    } else raw = cycle < 0.5 ? 4 * cycle - 1 : 3 - 4 * cycle;
     filtered += p.alpha * (raw - filtered);
 
     let envelope: number;
@@ -147,7 +154,8 @@ const OSCILLATORS: KernelOscillator[] = [
   "plucked-string",
   "fm-bell",
   "fm-piano",
-  "808-bass"
+  "808-bass",
+  "pulse-25"
   // "drum-kit" has no TypeScript reference: its arithmetic is the same kinds of operation these
   // already prove identical, and voice-processor.test.ts checks preview against export for it.
 ];

@@ -123,7 +123,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "drum-kit", frequency: 65.40639132514966, time: 0.36, noteDuration: 0.1 },
     { oscillator: "drum-kit", frequency: 73.41619197935188, time: 0.38, noteDuration: 0.1 },
     { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 },
-    { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 }
+    { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 },
+    { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();

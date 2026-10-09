@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** second slice in progress · **Created:** 2026-10-09 · **First slice:** done · **Second slice:** steps 1–2 done
+**Status:** second slice done · **Created:** 2026-10-09 · **First slice:** done · **Second slice:** done
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -133,7 +133,15 @@ existing sound changes: Drum Kit is added alongside Drum Synth, which stays byte
   (`f · (1 + 1.5 / (1 + 35·t))`, integrated sample by sample), through the soft clipper
   `x / (1 + |x|)` at drive 2.2, normalized so peaks reach 1. Cost: typical project 7.7× real
   time master, 7.2× stems.
-- Step 3, Chiptune Lead: after that. The arpeggio belongs in the editor, not the voice.
+- Step 3, Chiptune Lead: **done.** Kernel oscillator `pulse-25` (`synaptix-chiptune`): a 25% pulse
+  with both edges band-limited (PolyBLEP) and its mean (−0.5) removed, so it sits centred on zero.
+  Its spectrum skips every fourth harmonic, which gives the hollow, nasal retro sound. The
+  arpeggio stays out of the voice: arpeggios are notes, and belong in the editor (a pattern or arp
+  tool), so the piano roll keeps showing what plays. A 12.5% pulse would be another small preset.
+  Cost: typical project 14.7× real time master, 12.7× stems.
+
+**Second slice complete.** Three new instruments (Drum Kit, 808 Bass, Chiptune Lead), all through
+the same kernel in preview and export, with no change to any existing sound.
 
 ## Quick wins (days each)
 

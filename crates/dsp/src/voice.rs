@@ -31,6 +31,8 @@ pub enum Oscillator {
     DrumKit,
     /// 808 bass: a sine that drops from 2.5× the note's pitch onto it, softly saturated.
     Bass808,
+    /// Band-limited 25% pulse, centred on zero: the classic retro game lead.
+    Pulse25,
 }
 
 /// How hard the 808 drives its soft clipper (higher is grittier).
@@ -86,6 +88,7 @@ impl Oscillator {
             7 => Some(Self::FmPiano),
             8 => Some(Self::DrumKit),
             9 => Some(Self::Bass808),
+            10 => Some(Self::Pulse25),
             _ => None,
         }
     }
@@ -294,6 +297,14 @@ impl VoiceState {
                     naive + poly_blep(cycle, dt) - poly_blep(shifted, dt)
                 }
                 Oscillator::Sawtooth => 2.0 * cycle - 1.0 - poly_blep(cycle, dt),
+                Oscillator::Pulse25 => {
+                    // High for the first quarter of each cycle; edges at 0 and 0.25 are
+                    // band-limited, and the mean (2·0.25 − 1 = −0.5) is removed.
+                    let naive = if cycle < 0.25 { 1.0 } else { -1.0 };
+                    let fall = cycle + 0.75;
+                    let shifted = if fall >= 1.0 { fall - 1.0 } else { fall };
+                    naive + poly_blep(cycle, dt) - poly_blep(shifted, dt) + 0.5
+                }
                 Oscillator::Triangle => {
                     if cycle < 0.5 {
                         4.0 * cycle - 1.0
@@ -686,6 +697,7 @@ mod tests {
             Oscillator::FmPiano,
             Oscillator::DrumKit,
             Oscillator::Bass808,
+            Oscillator::Pulse25,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -811,6 +823,34 @@ mod tests {
         // Saturated but normalised: peaks reach 1 and never pass it.
         let peak = out.iter().fold(0.0_f64, |max, s| max.max(s.abs()));
         assert!(peak > 0.95 && peak <= 1.0, "peak {peak}");
+    }
+
+    #[test]
+    fn a_25_percent_pulse_has_no_fourth_harmonic_and_no_offset() {
+        // A 25% pulse's spectrum skips every fourth harmonic; that hollow, nasal gap is its
+        // character. Measure harmonics 1 to 4 of 375 Hz (128 samples per cycle at 48 kHz).
+        let params = Voice {
+            frequency: 375.0,
+            ..voice(Oscillator::Pulse25)
+        };
+        let mut out = vec![0.0; 48_000];
+        render_voice(&mut out, &params, 0, 48_000);
+        let harmonic = |k: f64| {
+            let (mut re, mut im) = (0.0, 0.0);
+            for (i, s) in out.iter().enumerate() {
+                let angle = 2.0 * core::f64::consts::PI * k * 375.0 * i as f64 / 48_000.0;
+                re += s * angle.cos();
+                im += s * angle.sin();
+            }
+            (re * re + im * im).sqrt() / out.len() as f64
+        };
+        let (h1, h2, h3, h4) = (harmonic(1.0), harmonic(2.0), harmonic(3.0), harmonic(4.0));
+        assert!(
+            h4 < h1.min(h2).min(h3) / 50.0,
+            "h1 {h1} h2 {h2} h3 {h3} h4 {h4}"
+        );
+        let mean = out.iter().sum::<f64>() / out.len() as f64;
+        assert!(mean.abs() < 1e-3, "mean {mean}");
     }
 
     #[test]
