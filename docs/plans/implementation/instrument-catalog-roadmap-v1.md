@@ -86,9 +86,7 @@ deliberately).
 
 - Step 2, supersaw: **done.** Kernel oscillator `supersaw` (seven PolyBLEP saws at ratios
   0.989–1.011, fixed start phases, centre voice louder) and two catalog instruments, **Supersaw
-  Lead** (`synaptix-supersaw`) and **Unison Pad** (`synaptix-unison`). Stereo spread is not done:
-  voices are mono until the channel strip, in both preview and export; spreading needs a stereo
-  voice path and comes later. Cost: a dense all-supersaw project exports at 5.0× real time
+  Lead** (`synaptix-supersaw`) and **Unison Pad** (`synaptix-unison`). Stereo spread: **done** with the stereo voice path (saws panned −0.8 … 0.8, alternating sides). Cost: a dense all-supersaw project exports at 5.0× real time
   (master) and 3.5× (stems).
 
 - Step 3, Karplus–Strong: **done.** Kernel oscillator `plucked-string`: a delay line one period

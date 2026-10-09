@@ -391,6 +391,7 @@ test("the Resonance control reaches the export, and 0 renders exactly as before"
 // Intended changes so far: band-limited (PolyBLEP) saw and square in the Rust kernel changed the
 // six saw/square instruments; Supersaw Lead, Unison Pad, Plucked String,
 // FM Bell, FM Electric Piano, Drum Kit, 808 Bass and Chiptune Lead were added.
+// Stereo voice path: Supersaw Lead and Unison Pad now spread their saws across the stereo field.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -404,8 +405,8 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-brass": "48df5c86f7a86eba1553f971124eddda5a3ab46c83c76b561bd770106b49350b",
   "synaptix-bell": "d59fe591221738c0dc4208213f07e062332976fe01e421d32f61f865777bd748",
   "synaptix-poly-synth": "6961e425915149f4c87df542c8e13e3574de198603c905dc9dc0d962cc9b9a58",
-  "synaptix-supersaw": "e2acdc9199ea39648e814ddbbfd4f312adb4abd11690c62ec295434ce06ea005",
-  "synaptix-unison": "0cf154540b68ff8f61a82dc872237cb1d6b5091f0eacefdbb46525dc46646bdc",
+  "synaptix-supersaw": "94e8cfcbf80454fb74f4dbd4b2c95bbcb13213443c926fb93b5dacecac490b79",
+  "synaptix-unison": "aeb14fa9508df2654eafee89d0ac17a2301865d6c97b5826fc20e317509dcdac",
   "synaptix-guitar": "ae489fee1eb8737c62a2928eb40d1a3085bdb3b27797be4bce4b34b48137a8c8",
   "synaptix-fm-glass": "7a0b9b7eb136c82e815f53ee428e96242627419998e87bd2108907bf664bf958",
   "synaptix-fm-ep": "12c06005b9ccd593f7784ef1ea501853b3755c2553f800e19ab96e9524404b0a",
@@ -413,7 +414,7 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-boom": "618144ad6a9ce1fd7d3288db961c04f8739ae167cb2ea1c4ee0fa5f953c2e334",
   "synaptix-chiptune": "20b4876bdef0721c97d42d5bb1c6007fdfd68a5ec07b9a07013c34fd843bf4ef"
 };
-const GOLDEN_MASTER = "0a1887dcc1bfae410753414ab070c0bef5dfc55a8597b7852f0d1d6cec93fcd4";
+const GOLDEN_MASTER = "39c704f5631bce6d7ec9f3e5ecc22c1508f6bb4089dd086660b5f0f8103d7c59";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {

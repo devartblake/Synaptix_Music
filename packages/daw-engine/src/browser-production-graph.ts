@@ -54,6 +54,34 @@ function routeInserts(
   Tone.connect(tail, destination);
 }
 
+/**
+ * The export's pan law (the offline renderer's channel strip): left × cos θ and right × sin θ,
+ * θ = (pan + 1)·π/4, on each channel. Instrument tracks are stereo, and Tone's panner either
+ * downmixes to mono or pans stereo with a different law, so they pan here and keep their Tone
+ * channel centred (where it passes stereo through unchanged).
+ */
+function equalPowerPan(pan: number) {
+  const angle = ((pan + 1) * Math.PI) / 4;
+  const split = new Tone.Split(2);
+  const left = new Tone.Gain(Math.cos(angle));
+  const right = new Tone.Gain(Math.sin(angle));
+  const merge = new Tone.Merge(2);
+  split.connect(left, 0, 0);
+  split.connect(right, 1, 0);
+  left.connect(merge, 0, 0);
+  right.connect(merge, 0, 1);
+  return {
+    input: split,
+    output: merge,
+    dispose() {
+      split.dispose();
+      left.dispose();
+      right.dispose();
+      merge.dispose();
+    }
+  };
+}
+
 export type MasterMeterListener = (snapshot: MasterMeterSnapshot) => void;
 
 export class BrowserProductionAudioGraph {
@@ -171,11 +199,13 @@ export class BrowserProductionAudioGraph {
 
   createInstrument(track: Track): ProductionInstrumentRuntime {
     const settings = resolveEffectiveInstrumentSettings(track);
-    const channel = new Tone.Channel({ volume: track.volumeDb, pan: track.pan, mute: track.muted });
+    const channel = new Tone.Channel({ volume: track.volumeDb, pan: 0, mute: track.muted, channelCount: 2 });
     const synth = new KernelInstrument(settings);
+    const pan = equalPowerPan(track.pan);
     const reverbSend = new Tone.Gain(resolveTrackSend(track));
 
-    synth.output.connect(channel);
+    synth.output.connect(pan.input);
+    pan.output.connect(channel);
     channel.connect(this.destination(track));
     this.addMeter(`track:${track.id}`, channel);
     channel.connect(reverbSend);
@@ -187,13 +217,14 @@ export class BrowserProductionAudioGraph {
       channel,
       reverbSend,
       setInserts: (next) => {
-        routeInserts(synth.output, channel, inserts, next);
+        routeInserts(synth.output, pan.input, inserts, next);
         inserts = [...next];
       },
       dispose: () => {
         this.runtimes.delete(runtime);
         this.removeMeter(`track:${track.id}`);
         synth.dispose();
+        pan.dispose();
         channel.dispose();
         reverbSend.dispose();
       }
@@ -209,14 +240,17 @@ export class BrowserProductionAudioGraph {
    */
   auditionNote(track: Track, frequency: number, durationSeconds: number, velocity: number): void {
     const settings = resolveEffectiveInstrumentSettings(track);
-    const channel = new Tone.Channel({ volume: track.volumeDb, pan: track.pan });
+    const channel = new Tone.Channel({ volume: track.volumeDb, pan: 0, channelCount: 2 });
     const synth = new KernelInstrument(settings);
-    synth.output.connect(channel);
+    const pan = equalPowerPan(track.pan);
+    synth.output.connect(pan.input);
+    pan.output.connect(channel);
     channel.connect(this.destination(track));
     synth.triggerAttackRelease(frequency, durationSeconds, undefined, velocity);
 
     const release = () => {
       synth.dispose();
+      pan.dispose();
       channel.dispose();
     };
     const timer = setTimeout(() => {

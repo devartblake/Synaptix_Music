@@ -143,9 +143,7 @@ function renderTrackBuffer(
     }
   }
 
-  // Voices are mono until the channel strip pans them.
-  const left = kernel.trackSamples();
-  const right = left.slice();
+  const { left, right } = kernel.trackSamples();
 
   if (!applyChannel) return { left, right };
   const gainLinear = 10 ** (track.volumeDb / 20);

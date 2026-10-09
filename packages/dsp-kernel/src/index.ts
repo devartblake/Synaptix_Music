@@ -129,9 +129,13 @@ export class DspKernel {
     );
   }
 
-  /** A copy of the current track's samples. */
-  trackSamples(): Float64Array {
+  /** A copy of the current track's samples (mono voices are identical on both sides). */
+  trackSamples(): { left: Float64Array; right: Float64Array } {
     const { address, length } = this.#track;
-    return new Float64Array(this.#exports.memory.buffer, address, length).slice();
+    const { buffer } = this.#exports.memory;
+    return {
+      left: new Float64Array(buffer, address, length).slice(),
+      right: new Float64Array(buffer, address + 8 * length, length).slice()
+    };
   }
 }

@@ -73,6 +73,9 @@ pub const SUPERSAW_PHASES: [f64; 7] = [0.37, 0.71, 0.13, 0.0, 0.53, 0.89, 0.29];
 pub const SUPERSAW_LEVELS: [f64; 7] = [0.6, 0.6, 0.6, 1.0, 0.6, 0.6, 0.6];
 /// Brings the sum back to about one saw's loudness: 1 / (1 + 0.6·√6), rounded.
 pub const SUPERSAW_GAIN: f64 = 0.405;
+/// Where each supersaw saw sits in the stereo field (−1 left … 1 right). Alternating sides, so
+/// neither side gets all the flat or all the sharp saws.
+pub const SUPERSAW_PANS: [f64; 7] = [-0.8, 0.53, -0.27, 0.0, 0.27, -0.53, 0.8];
 
 impl Oscillator {
     /// Codes shared with the TypeScript side.
@@ -118,11 +121,18 @@ pub struct Voice {
     pub resonance: f64,
 }
 
-/// Adds one note into `out`, starting at sample `note_start` (may be negative) and lasting
-/// `note_total` samples. Samples outside `out` are skipped; the filter starts at the first
-/// sample inside it.
-pub fn render_voice(out: &mut [f64], voice: &Voice, note_start: i64, note_total: i64) {
-    VoiceState::new(*voice, note_start, note_total).render(out, 0);
+/// Adds one note into `left` and `right` (the same length), starting at sample `note_start`
+/// (may be negative) and lasting `note_total` samples. Samples outside the buffers are skipped;
+/// the filter starts at the first sample inside them. Most voices are mono and write the same
+/// samples to both channels; the supersaw spreads its saws across them.
+pub fn render_voice(
+    left: &mut [f64],
+    right: &mut [f64],
+    voice: &Voice,
+    note_start: i64,
+    note_total: i64,
+) {
+    VoiceState::new(*voice, note_start, note_total).render(left, right, 0);
 }
 
 /// A Karplus–Strong string: a delay line one period long, filled with noise, fed back through a
@@ -201,6 +211,10 @@ pub struct VoiceState {
     /// Resonant filter state (its two integrators).
     svf_1: f64,
     svf_2: f64,
+    /// The right channel's filter state, for stereo voices (mono voices filter once).
+    filtered_right: f64,
+    svf_right_1: f64,
+    svf_right_2: f64,
     /// Phase of an oscillator whose pitch moves (808), integrated sample by sample.
     sweep_phase: f64,
     string: Option<PluckedString>,
@@ -217,6 +231,9 @@ impl VoiceState {
             filtered: 0.0,
             svf_1: 0.0,
             svf_2: 0.0,
+            filtered_right: 0.0,
+            svf_right_1: 0.0,
+            svf_right_2: 0.0,
             sweep_phase: 0.0,
             string: (voice.oscillator == Oscillator::PluckedString)
                 .then(|| PluckedString::new(voice.frequency, voice.sample_rate, voice.seed)),
@@ -242,12 +259,12 @@ impl VoiceState {
         }
     }
 
-    /// Adds the note's samples for frames `block_start .. block_start + out.len()`. Frames the
+    /// Adds the note's samples for frames `block_start .. block_start + left.len()`. Frames the
     /// note already rendered are not rendered again; frames before the block that it never
     /// rendered are skipped without touching the filter.
-    pub fn render(&mut self, out: &mut [f64], block_start: i64) {
+    pub fn render(&mut self, left: &mut [f64], right: &mut [f64], block_start: i64) {
         let first = self.next.max(block_start - self.start);
-        let end = self.total.min(block_start + out.len() as i64 - self.start);
+        let end = self.total.min(block_start + left.len() as i64 - self.start);
         let voice = &self.voice;
         let dt = voice.frequency / voice.sample_rate;
         let Voice {
@@ -259,6 +276,12 @@ impl VoiceState {
         } = *voice;
         let supersaw_frequencies = SUPERSAW_RATIOS.map(|ratio| voice.frequency * ratio);
         let supersaw_dts = supersaw_frequencies.map(|frequency| frequency / voice.sample_rate);
+        let stereo = voice.oscillator == Oscillator::Supersaw;
+        // Equal-power pan per saw, scaled by √2 so a centred saw is at full level on both sides.
+        let pan_gain =
+            |pan: f64, side: f64| core::f64::consts::SQRT_2 * sine_cycle((pan + 1.0) / 8.0 + side);
+        let supersaw_left = SUPERSAW_PANS.map(|pan| pan_gain(pan, 0.25)); // cos
+        let supersaw_right = SUPERSAW_PANS.map(|pan| pan_gain(pan, 0.0)); // sin
         let fm = match voice.oscillator {
             Oscillator::FmPiano => FM_PIANO,
             _ => FM_BELL,
@@ -268,6 +291,8 @@ impl VoiceState {
         let resonant = voice.resonance > 0.0;
         let svf = ResonantLowPass::new(voice.cutoff, voice.sample_rate, voice.resonance);
         let (mut svf_1, mut svf_2) = (self.svf_1, self.svf_2);
+        let mut filtered_right = self.filtered_right;
+        let (mut svf_right_1, mut svf_right_2) = (self.svf_right_1, self.svf_right_2);
         let mut string = self.string.take();
         let mut drum = self.drum.take();
         let mut sweep_phase = self.sweep_phase;
@@ -275,6 +300,8 @@ impl VoiceState {
             let time = sample_index as f64 / voice.sample_rate;
             let phase = time * voice.frequency;
             let cycle = phase - phase.floor();
+            // The right channel's raw signal, for stereo voices.
+            let mut raw_right = 0.0;
             let raw = match voice.oscillator {
                 Oscillator::PluckedString => string.as_mut().map_or(0.0, PluckedString::next),
                 Oscillator::DrumKit => drum.as_mut().map_or(0.0, |drum| drum.next(time)),
@@ -293,14 +320,17 @@ impl VoiceState {
                     sine_cycle(carrier - carrier.floor())
                 }
                 Oscillator::Supersaw => {
-                    let mut sum = 0.0;
+                    let (mut sum_left, mut sum_right) = (0.0, 0.0);
                     for k in 0..7 {
                         let phase = time * supersaw_frequencies[k] + SUPERSAW_PHASES[k];
                         let cycle = phase - phase.floor();
-                        sum += SUPERSAW_LEVELS[k]
+                        let saw = SUPERSAW_LEVELS[k]
                             * (2.0 * cycle - 1.0 - poly_blep(cycle, supersaw_dts[k]));
+                        sum_left += saw * supersaw_left[k];
+                        sum_right += saw * supersaw_right[k];
                     }
-                    sum * SUPERSAW_GAIN
+                    raw_right = sum_right * SUPERSAW_GAIN;
+                    sum_left * SUPERSAW_GAIN
                 }
                 Oscillator::Sine => sine_cycle(cycle),
                 Oscillator::Square => {
@@ -331,6 +361,13 @@ impl VoiceState {
             } else {
                 filtered += voice.alpha * (raw - filtered);
             }
+            if stereo {
+                if resonant {
+                    filtered_right = svf.process(raw_right, &mut svf_right_1, &mut svf_right_2);
+                } else {
+                    filtered_right += voice.alpha * (raw_right - filtered_right);
+                }
+            }
 
             let envelope = if time < attack {
                 if attack > 0.0 {
@@ -360,8 +397,14 @@ impl VoiceState {
                 }
             };
 
-            out[(self.start + sample_index - block_start) as usize] +=
-                filtered * envelope * voice.velocity_gain;
+            let index = (self.start + sample_index - block_start) as usize;
+            let value = filtered * envelope * voice.velocity_gain;
+            left[index] += value;
+            right[index] += if stereo {
+                filtered_right * envelope * voice.velocity_gain
+            } else {
+                value
+            };
         }
         self.string = string;
         self.drum = drum;
@@ -370,6 +413,9 @@ impl VoiceState {
             self.filtered = filtered;
             self.svf_1 = svf_1;
             self.svf_2 = svf_2;
+            self.filtered_right = filtered_right;
+            self.svf_right_1 = svf_right_1;
+            self.svf_right_2 = svf_right_2;
             self.next = end;
         }
     }
@@ -656,6 +702,55 @@ impl Drum {
 mod tests {
     use super::*;
 
+    /// Renders into `out`, the left channel (mono voices write the same samples to both).
+    fn render_mono(out: &mut [f64], voice: &Voice, start: i64, total: i64) {
+        let mut right = vec![0.0; out.len()];
+        render_voice(out, &mut right, voice, start, total);
+    }
+
+    /// Rendering in 128-frame blocks must make exactly the samples of one whole render, on
+    /// both channels, and finish the note.
+    fn assert_blocks_match_whole(params: &Voice) {
+        let (mut whole_left, mut whole_right) = (vec![0.0; 2_000], vec![0.0; 2_000]);
+        render_voice(&mut whole_left, &mut whole_right, params, 37, 1_500);
+        let mut state = VoiceState::new(*params, 37, 1_500);
+        let (mut left, mut right) = (vec![0.0; 2_000], vec![0.0; 2_000]);
+        for (index, (l, r)) in left.chunks_mut(128).zip(right.chunks_mut(128)).enumerate() {
+            state.render(l, r, index as i64 * 128);
+        }
+        assert_eq!(whole_left, left, "{:?} left", params.oscillator);
+        assert_eq!(whole_right, right, "{:?} right", params.oscillator);
+        assert!(state.finished());
+    }
+
+    #[test]
+    fn mono_voices_are_identical_on_both_sides_and_the_supersaw_is_wide() {
+        let stereo = |oscillator| {
+            let (mut left, mut right) = (vec![0.0; 24_000], vec![0.0; 24_000]);
+            render_voice(&mut left, &mut right, &voice(oscillator), 0, 24_000);
+            (left, right)
+        };
+        for oscillator in [
+            Oscillator::Sawtooth,
+            Oscillator::DrumKit,
+            Oscillator::FmBell,
+        ] {
+            let (left, right) = stereo(oscillator);
+            assert_eq!(left, right, "{oscillator:?}");
+        }
+        // The saws sit at different places, so the sides differ but stay related: correlation
+        // well below 1 (mono) and well above 0 (unrelated), and balanced in level.
+        let (left, right) = stereo(Oscillator::Supersaw);
+        let dot = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f64>();
+        let correlation = dot(&left, &right) / (dot(&left, &left) * dot(&right, &right)).sqrt();
+        assert!(
+            (0.2..0.9).contains(&correlation),
+            "correlation {correlation}"
+        );
+        let balance = dot(&left, &left) / dot(&right, &right);
+        assert!((0.7..1.4).contains(&balance), "left/right energy {balance}");
+    }
+
     fn voice(oscillator: Oscillator) -> Voice {
         Voice {
             oscillator,
@@ -735,7 +830,7 @@ mod tests {
                 ..voice(Oscillator::Sawtooth)
             };
             let mut out = vec![0.0; 48_000];
-            render_voice(&mut out, &params, 0, 48_000);
+            render_mono(&mut out, &params, 0, 48_000);
             out
         };
         let level = |out: &[f64], hz: f64| {
@@ -767,7 +862,7 @@ mod tests {
                 ..voice(Oscillator::Sawtooth)
             };
             let mut out = vec![0.0; 4_800];
-            render_voice(&mut out, &params, 0, 4_800);
+            render_mono(&mut out, &params, 0, 4_800);
             out
         };
         assert_eq!(one_pole(500.0), one_pole(5_000.0));
@@ -781,25 +876,18 @@ mod tests {
             resonance: 0.7,
             ..voice(Oscillator::Supersaw)
         };
-        let mut whole = vec![0.0; 2_000];
-        render_voice(&mut whole, &params, 37, 1_500);
-        let mut state = VoiceState::new(params, 37, 1_500);
-        let mut blocks = vec![0.0; 2_000];
-        for (index, block) in blocks.chunks_mut(128).enumerate() {
-            state.render(block, index as i64 * 128);
-        }
-        assert_eq!(whole, blocks);
+        assert_blocks_match_whole(&params);
     }
 
     #[test]
     fn notes_are_clipped_to_the_buffer() {
         let mut out = vec![0.0; 10];
-        render_voice(&mut out, &voice(Oscillator::Triangle), -4, 8);
+        render_mono(&mut out, &voice(Oscillator::Triangle), -4, 8);
         assert!(out[..4].iter().all(|s| *s != 0.0));
         assert!(out[4..].iter().all(|s| *s == 0.0));
 
         let mut out = vec![0.0; 10];
-        render_voice(&mut out, &voice(Oscillator::Triangle), 7, 100);
+        render_mono(&mut out, &voice(Oscillator::Triangle), 7, 100);
         assert!(out[..7].iter().all(|s| *s == 0.0));
         assert!(out[7..].iter().all(|s| *s != 0.0));
     }
@@ -828,16 +916,7 @@ mod tests {
                 note_duration: 0.02,
                 ..voice(oscillator)
             };
-            let mut whole = vec![0.0; 2_000];
-            render_voice(&mut whole, &params, 37, 1_500);
-
-            let mut state = VoiceState::new(params, 37, 1_500);
-            let mut blocks = vec![0.0; 2_000];
-            for (index, block) in blocks.chunks_mut(128).enumerate() {
-                state.render(block, index as i64 * 128);
-            }
-            assert_eq!(whole, blocks, "{oscillator:?}");
-            assert!(state.finished());
+            assert_blocks_match_whole(&params);
         }
     }
 
@@ -845,7 +924,7 @@ mod tests {
     fn supersaw_stays_about_as_loud_as_one_saw() {
         let rms = |oscillator| {
             let mut out = vec![0.0; 48_000];
-            render_voice(&mut out, &voice(oscillator), 0, 48_000);
+            render_mono(&mut out, &voice(oscillator), 0, 48_000);
             (out.iter().map(|s| s * s).sum::<f64>() / out.len() as f64).sqrt()
         };
         let ratio = rms(Oscillator::Supersaw) / rms(Oscillator::Sawtooth);
@@ -861,7 +940,7 @@ mod tests {
             ..voice(Oscillator::PluckedString)
         };
         let mut out = vec![0.0; 48_000];
-        render_voice(&mut out, &params, 0, 48_000);
+        render_mono(&mut out, &params, 0, 48_000);
         let settled = &out[24_000..];
         let crossings = settled
             .windows(2)
@@ -887,7 +966,7 @@ mod tests {
                 seed,
                 ..voice(Oscillator::PluckedString)
             };
-            render_voice(&mut out, &params, 0, 2_000);
+            render_mono(&mut out, &params, 0, 2_000);
             out
         };
         assert_eq!(render(7), render(7));
@@ -900,7 +979,7 @@ mod tests {
         // the start of an FM note must be brighter than its tail.
         for oscillator in [Oscillator::FmBell, Oscillator::FmPiano] {
             let mut out = vec![0.0; 48_000];
-            render_voice(&mut out, &voice(oscillator), 0, 48_000);
+            render_mono(&mut out, &voice(oscillator), 0, 48_000);
             let brightness = |range: &[f64]| {
                 let change: f64 = range.windows(2).map(|w| (w[1] - w[0]).abs()).sum();
                 change / range.iter().map(|s| s.abs()).sum::<f64>()
@@ -926,7 +1005,7 @@ mod tests {
             ..voice(Oscillator::Bass808)
         };
         let mut out = vec![0.0; 48_000];
-        render_voice(&mut out, &params, 0, 48_000);
+        render_mono(&mut out, &params, 0, 48_000);
         let crossings = |range: &[f64]| {
             range
                 .windows(2)
@@ -954,7 +1033,7 @@ mod tests {
             ..voice(Oscillator::Pulse25)
         };
         let mut out = vec![0.0; 48_000];
-        render_voice(&mut out, &params, 0, 48_000);
+        render_mono(&mut out, &params, 0, 48_000);
         let harmonic = |k: f64| {
             let (mut re, mut im) = (0.0, 0.0);
             for (i, s) in out.iter().enumerate() {
@@ -997,7 +1076,7 @@ mod tests {
             ..voice(Oscillator::DrumKit)
         };
         let mut out = vec![0.0; 24_000];
-        render_voice(&mut out, &params, 0, 24_000);
+        render_mono(&mut out, &params, 0, 24_000);
         out
     }
 
@@ -1035,7 +1114,7 @@ mod tests {
                 ..voice(Oscillator::DrumKit)
             };
             let mut out = vec![0.0; 2_000];
-            render_voice(&mut out, &params, 0, 2_000);
+            render_mono(&mut out, &params, 0, 2_000);
             out
         };
         assert_eq!(hit(3), hit(3));
@@ -1061,9 +1140,9 @@ mod tests {
     #[test]
     fn voices_add_into_the_buffer() {
         let mut once = vec![0.0; 64];
-        render_voice(&mut once, &voice(Oscillator::Triangle), 0, 64);
+        render_mono(&mut once, &voice(Oscillator::Triangle), 0, 64);
         let mut twice = once.clone();
-        render_voice(&mut twice, &voice(Oscillator::Triangle), 0, 64);
+        render_mono(&mut twice, &voice(Oscillator::Triangle), 0, 64);
         for (a, b) in once.iter().zip(&twice) {
             assert_eq!(*b, a + a);
         }

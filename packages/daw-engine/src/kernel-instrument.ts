@@ -30,7 +30,8 @@ export function loadKernelWorklet(context: Tone.BaseContext = Tone.getContext())
 /**
  * A track's instrument in the studio preview, played by the same Rust kernel as exports (in an
  * AudioWorklet), so a note sounds the same in both. It includes the one-pole filter and the
- * envelope; `output` is mono and goes to the track's inserts and channel strip.
+ * envelope; `output` is stereo (most voices are the same on both sides) and goes to the track's
+ * inserts, pan stage and channel strip.
  */
 export class KernelInstrument {
   readonly output = new Tone.Gain(1);
@@ -48,7 +49,7 @@ export class KernelInstrument {
         const node = context.createAudioWorkletNode(VOICE_PROCESSOR_NAME, {
           numberOfInputs: 0,
           numberOfOutputs: 1,
-          outputChannelCount: [1],
+          outputChannelCount: [2],
           processorOptions: { wasm }
         });
         Tone.connect(node, this.output);
