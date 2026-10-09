@@ -32,7 +32,7 @@ import {
 } from "@synaptix/command-system/midi";
 import type { MusicProject } from "@synaptix/project-model";
 
-import { isDrumTrack } from "../../../lib/editor/drum-step-sequencer-model";
+import { drumNoteName, isDrumTrack } from "../../../lib/editor/drum-step-sequencer-model";
 import {
   clampZoom,
   notesInsideMarquee,
@@ -87,7 +87,7 @@ export function PianoRoll({
   if (!track || !clip || clip.kind !== "midi") return null;
   if (isDrumTrack(track)) {
     return (
-      <DrumStepSequencer
+      <DrumEditor
         engine={engine}
         project={project}
         track={track}
@@ -109,13 +109,62 @@ export function PianoRoll({
   );
 }
 
+/**
+ * Drum tracks open in the step sequencer; the piano roll (with drum names) is one click away for
+ * timing off the 16th-note grid or notes without a lane.
+ */
+function DrumEditor({
+  project,
+  engine,
+  track,
+  clip,
+  onExecute,
+  onClose
+}: {
+  project: MusicProject;
+  engine: AudioTransport;
+  track: Track;
+  clip: MidiClip;
+  onExecute(command: EditorCommand): Promise<void>;
+  onClose(): void;
+}) {
+  const [view, setView] = useState<"steps" | "piano-roll">("steps");
+  if (view === "steps") {
+    return (
+      <DrumStepSequencer
+        engine={engine}
+        project={project}
+        track={track}
+        clip={clip}
+        onExecute={onExecute}
+        onClose={onClose}
+        onOpenPianoRoll={() => setView("piano-roll")}
+      />
+    );
+  }
+  return (
+    <PianoRollEditor
+      engine={engine}
+      project={project}
+      trackId={track.id}
+      clip={clip}
+      onExecute={onExecute}
+      onClose={onClose}
+      noteLabel={(pitch) => drumNoteName(track, pitch)}
+      onOpenSteps={() => setView("steps")}
+    />
+  );
+}
+
 function PianoRollEditor({
   project,
   engine,
   trackId,
   clip,
   onExecute: executeCommand,
-  onClose
+  onClose,
+  noteLabel,
+  onOpenSteps
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -123,7 +172,16 @@ function PianoRollEditor({
   clip: MidiClip;
   onExecute(command: EditorCommand): Promise<void>;
   onClose(): void;
+  /** Drum tracks: what a pitch plays (e.g. "Kick"), shown instead of the pitch name. */
+  noteLabel?(pitch: number): string | null;
+  /** Drum tracks: back to the step sequencer. */
+  onOpenSteps?(): void;
 }) {
+  // "Kick (C1)" on drum tracks, "C4" otherwise.
+  const describe = (pitch: number) => {
+    const drum = noteLabel?.(pitch);
+    return drum ? `${drum} (${noteName(pitch)})` : noteName(pitch);
+  };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [gridRatio, setGridRatio] = useState(0.25);
   const gridTicks = Math.max(1, Math.round(project.transport.ticksPerQuarterNote * gridRatio));
@@ -430,6 +488,7 @@ function PianoRollEditor({
       <Toolbar>
         <strong>{clip.name}</strong>
         <Button onClick={onClose}>Arrangement</Button>
+        {onOpenSteps && <Button onClick={onOpenSteps}>Steps</Button>}
         <label title="Play notes as you add, select, move, or press piano keys">
           <input
             type="checkbox"
@@ -624,9 +683,10 @@ function PianoRollEditor({
                     className={styles.pianoKey}
                     data-black={[1, 3, 6, 8, 10].includes(pitch % 12)}
                     style={{ height: rowHeight }}
+                    title={describe(pitch)}
                     onPointerDown={() => preview.audition(pitch, velocity)}
                   >
-                    {noteName(pitch)}
+                    {noteLabel?.(pitch) ?? noteName(pitch)}
                   </div>
                 );
               })}
@@ -671,7 +731,7 @@ function PianoRollEditor({
                   data-start={note.startTick}
                   data-duration={note.durationTicks}
                   data-velocity={note.velocity}
-                  aria-label={`${noteName(note.pitch)}, tick ${note.startTick}, duration ${note.durationTicks}, velocity ${note.velocity}`}
+                  aria-label={`${describe(note.pitch)}, tick ${note.startTick}, duration ${note.durationTicks}, velocity ${note.velocity}`}
                   aria-pressed={selected.has(note.id)}
                   tabIndex={
                     selectedIds[0] === note.id || (!selectedIds.length && index === 0) ? 0 : -1
@@ -750,7 +810,7 @@ function PianoRollEditor({
                     className={styles.velocityBar}
                     data-velocity-note-id={note.id}
                     data-selected={selected.has(note.id)}
-                    aria-label={`${noteName(note.pitch)} at tick ${note.startTick}, velocity ${value}`}
+                    aria-label={`${describe(note.pitch)} at tick ${note.startTick}, velocity ${value}`}
                     tabIndex={focusable ? 0 : -1}
                     style={{
                       left: `${(note.startTick / clip.range.durationTicks) * 100}%`,

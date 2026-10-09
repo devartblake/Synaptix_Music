@@ -51,6 +51,15 @@ test("new instrument tracks are valid, audible, and carry a starter phrase", () 
   }
 });
 
+test("the Drum Kit starter beat keeps eighth-note hats, the last one opened", () => {
+  const kit = INSTRUMENT_CATALOG.find((entry) => entry.deviceType === "synaptix-beat-kit")!;
+  const hatBeats = (pitch: number) =>
+    kit.starterPattern.filter(([, notePitch]) => notePitch === pitch).map(([beat]) => beat);
+  // Closed hat (42) on every eighth note except the last, where the open hat (46) rings.
+  assert.deepEqual(hatBeats(42), [0, 0.5, 1, 1.5, 2, 2.5, 3]);
+  assert.deepEqual(hatBeats(46), [3.5]);
+});
+
 test("resonance defaults to 0 (the plain filter) and follows the Resonance control", () => {
   const lead = createInstrumentTrack("synaptix-lead-synth", { id: "l" });
   assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 0);

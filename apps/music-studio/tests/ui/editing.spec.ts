@@ -186,3 +186,26 @@ test("pointer group edits form one undo step and keyboard insertion respects cli
   await expect(added).toHaveAttribute("data-pitch", "127");
   await expect(page.getByRole("region", { name: "Piano roll editor" }).getByRole("alert")).toHaveCount(0);
 });
+
+test("the Drum Kit edits in the step sequencer, and in a piano roll that names its drums", async ({ page }) => {
+  await openStudio(page);
+  await page.getByRole("button", { name: /^All instruments \(\d+\)$/ }).click();
+  await page.getByRole("dialog", { name: "Choose an instrument" }).getByText("Drum Kit", { exact: true }).click();
+  await page.getByRole("button", { name: "Add instrument track" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).last().click();
+
+  // Lanes for everything the kit plays, including rim and cymbals.
+  const steps = page.getByRole("region", { name: "Drum step sequencer" });
+  await expect(steps.getByRole("button", { name: "Rim step 1", exact: true })).toBeVisible();
+  await expect(steps.getByRole("button", { name: "Ride step 1", exact: true })).toBeVisible();
+  await expect(steps.getByRole("button", { name: "Kick step 1", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  // The piano roll names notes by drum, keeping the pitch for reference.
+  await steps.getByRole("button", { name: "Piano roll", exact: true }).click();
+  const pianoRoll = page.getByRole("region", { name: "Piano roll editor" });
+  await expect(pianoRoll.getByRole("button", { name: /^Kick \(C2\), tick 0,/ })).toBeVisible();
+  await expect(pianoRoll.getByRole("button", { name: /^Open Hat \(A#2\), tick / }).first()).toBeVisible();
+
+  await pianoRoll.getByRole("button", { name: "Steps", exact: true }).click();
+  await expect(steps.getByRole("button", { name: "Kick step 1", exact: true })).toBeVisible();
+});
