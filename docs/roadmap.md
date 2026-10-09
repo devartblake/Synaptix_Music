@@ -10,7 +10,7 @@ Current estimated completion:
 
 - Foundational stages 1–11: complete
 - Stage 12: complete. Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.
-- Stage 13: approximately 80% implementation-complete (2026-09-27). Slice 13.1 (verified publication) has met its exit; the Flutter loader, scheduler, stem/intensity mixer and stingers are implemented and await on-device listening tests; telemetry dashboards (13.6) and the device matrix and soak (13.7) need staging and physical devices.
+- Stage 13: approximately 90% implementation-complete (2026-10-09). Slice 13.1 (verified publication) has met its exit; the Flutter loader, scheduler, stem/intensity mixer and stingers are implemented and await on-device listening tests; the platform now ingests runtime telemetry with a dashboard and alerts (13.6; thresholds need staging data); the device matrix and soak (13.7) need staging and physical devices.
 - Project Schema v2 plug-in cutover: steps A-F done (plug-in projects sync as v2; first-party plug-ins can be frozen, and freezes play in renders and in the browser); retiring v1 writes (G) remains
 - Full planned DAW roadmap: 52-56% complete
 

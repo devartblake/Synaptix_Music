@@ -42,6 +42,7 @@ This index records completed Synaptix Music implementation slices and the curren
 | Studio Workflow, Adaptive Publishing and AI Composition               |      a41f93e, 459a3f5, cc42285 | Save safety, clipboard, import/export, velocity lanes, crash recovery; Stage 13 authoring and hardening; Claude/local composers with keys and modes; platform sign-in; v2 safeguards (steps A-C); local Stage 12 certification |
 | Listening Library, CI Fixes and Prototype Audio                       |                       #44, #45 | Listening library and mini player; edit queue (no lost edits); Linux visual baselines; MusicGen prototype audio (non-commercial) |
 | Stage 13.1 Verification and v2 Cutover Steps D-E                      |        #47 (backend #531 open) | Publication verified against render-worker records; plug-in projects sync as v2; first-party plug-in freezing |
+| Offline Shell, Studio Handoff, Render Scope and Studio Sign-in        |                       #49–#51 | Offline app shell and installable studio; studio opens at the listening position; queued prototype audio with live progress; render evidence reports scope kind (backend publishes only master/stem renders); studio signs in through SynaptixPlay's studio routes and renews its session |
 
 ## Active Stage
 
@@ -98,8 +99,8 @@ Groundwork is implemented (#29–#31): adaptive package contracts and validation
 5. ~~Beat/bar/phrase-aware transition scheduler.~~ Implemented (clock, boundary preload, cancellation, drift correction, per-package tempo from the manifest `clock`).
 6. ~~Layer and stem mixing with intensity interpolation.~~ Implemented; needs on-device listening tests.
 7. ~~Stingers, ducking, and gameplay-event mappings.~~ Implemented.
-8. Telemetry for state changes, transition latency, underruns, and asset failures. Client events (including underrun detection) and redaction are implemented; dashboards and alerts wait on staging.
-9. Cross-device certification and offline fallback. The kill switch, master-only fallback and runtime bootstrap are implemented; the device matrix waits on hardware and staging.
+8. Telemetry for state changes, transition latency, underruns, and asset failures. Client events (including underrun detection) and redaction are implemented; the platform ingests them as metrics with a dashboard and alerts (TycoonTycoon_Backend #571). Thresholds need staging data.
+9. Cross-device certification and offline fallback. The kill switch (which now reaches running sessions, trivia_tycoon #399), master-only fallback, runtime bootstrap and a staging preflight script (TycoonTycoon_Backend #572) are implemented; the device matrix waits on hardware and staging.
 
 See the per-slice status audit in `stage-13-execution-plan-v1.md`.
 
@@ -107,7 +108,7 @@ See the per-slice status audit in `stage-13-execution-plan-v1.md`.
 
 - Stages 1–11: complete
 - Stage 12: complete. Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.
-- Stage 13: approximately 75% implementation-complete (2026-09-23 audit); no slice has formally exited, because publication is gated on Stage 12 staging evidence and rollout needs on-device certification
+- Stage 13: approximately 90% implementation-complete (2026-10-09); slice 13.1 has met its exit, slices 13.2–13.5 await on-device listening and soak evidence, and 13.6 thresholds and 13.7 rollout need staging and devices
 - Full planned DAW roadmap: approximately 48–52% complete
 
 These estimates describe feature-scope completion, not production-readiness certification.
