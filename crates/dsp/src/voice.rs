@@ -50,69 +50,125 @@ pub struct Voice {
 /// `note_total` samples. Samples outside `out` are skipped; the filter starts at the first
 /// sample inside it.
 pub fn render_voice(out: &mut [f64], voice: &Voice, note_start: i64, note_total: i64) {
-    let first = (-note_start).max(0);
-    let end = note_total.min(out.len() as i64 - note_start);
-    let dt = voice.frequency / voice.sample_rate;
-    let Voice {
-        attack,
-        decay,
-        sustain,
-        release,
-        ..
-    } = *voice;
-    let mut filtered = 0.0;
-    for sample_index in first..end {
-        let time = sample_index as f64 / voice.sample_rate;
-        let phase = time * voice.frequency;
-        let cycle = phase - phase.floor();
-        let raw = match voice.oscillator {
-            Oscillator::Sine => sine_cycle(cycle),
-            Oscillator::Square => {
-                let naive = if cycle < 0.5 { 1.0 } else { -1.0 };
-                let half = cycle + 0.5;
-                let shifted = if half >= 1.0 { half - 1.0 } else { half };
-                naive + poly_blep(cycle, dt) - poly_blep(shifted, dt)
-            }
-            Oscillator::Sawtooth => 2.0 * cycle - 1.0 - poly_blep(cycle, dt),
-            Oscillator::Triangle => {
-                if cycle < 0.5 {
-                    4.0 * cycle - 1.0
-                } else {
-                    3.0 - 4.0 * cycle
-                }
-            }
-        };
-        filtered += voice.alpha * (raw - filtered);
+    VoiceState::new(*voice, note_start, note_total).render(out, 0);
+}
 
-        let envelope = if time < attack {
-            if attack > 0.0 {
-                time / attack
-            } else {
-                1.0
-            }
-        } else {
-            let since_decay_start = time - attack;
-            if since_decay_start < decay {
-                if decay > 0.0 {
-                    1.0 - (1.0 - sustain) * (since_decay_start / decay)
+/// A note being played block by block (the studio preview). Rendering a note in blocks makes
+/// exactly the samples `render_voice` makes in one call.
+#[derive(Clone, Copy, Debug)]
+pub struct VoiceState {
+    pub voice: Voice,
+    /// Frame the note starts on.
+    pub start: i64,
+    /// Length in frames, including the release.
+    pub total: i64,
+    /// The next sample of the note to render.
+    next: i64,
+    filtered: f64,
+}
+
+impl VoiceState {
+    pub fn new(voice: Voice, start: i64, total: i64) -> Self {
+        Self {
+            voice,
+            start,
+            total,
+            next: 0,
+            filtered: 0.0,
+        }
+    }
+
+    pub fn finished(&self) -> bool {
+        self.next >= self.total
+    }
+
+    /// Note off at `frame`: the release starts there unless it already has. A note that hasn't
+    /// started yet is cut entirely.
+    pub fn release_at(&mut self, frame: i64) {
+        let at = (frame - self.start) as f64 / self.voice.sample_rate;
+        if at <= 0.0 {
+            self.total = 0;
+        } else if at < self.voice.note_duration {
+            self.voice.note_duration = at;
+            let end = ((at + self.voice.release) * self.voice.sample_rate).round() as i64;
+            self.total = self.total.min(end);
+        }
+    }
+
+    /// Adds the note's samples for frames `block_start .. block_start + out.len()`. Frames the
+    /// note already rendered are not rendered again; frames before the block that it never
+    /// rendered are skipped without touching the filter.
+    pub fn render(&mut self, out: &mut [f64], block_start: i64) {
+        let first = self.next.max(block_start - self.start);
+        let end = self.total.min(block_start + out.len() as i64 - self.start);
+        let voice = &self.voice;
+        let dt = voice.frequency / voice.sample_rate;
+        let Voice {
+            attack,
+            decay,
+            sustain,
+            release,
+            ..
+        } = *voice;
+        let mut filtered = self.filtered;
+        for sample_index in first..end {
+            let time = sample_index as f64 / voice.sample_rate;
+            let phase = time * voice.frequency;
+            let cycle = phase - phase.floor();
+            let raw = match voice.oscillator {
+                Oscillator::Sine => sine_cycle(cycle),
+                Oscillator::Square => {
+                    let naive = if cycle < 0.5 { 1.0 } else { -1.0 };
+                    let half = cycle + 0.5;
+                    let shifted = if half >= 1.0 { half - 1.0 } else { half };
+                    naive + poly_blep(cycle, dt) - poly_blep(shifted, dt)
+                }
+                Oscillator::Sawtooth => 2.0 * cycle - 1.0 - poly_blep(cycle, dt),
+                Oscillator::Triangle => {
+                    if cycle < 0.5 {
+                        4.0 * cycle - 1.0
+                    } else {
+                        3.0 - 4.0 * cycle
+                    }
+                }
+            };
+            filtered += voice.alpha * (raw - filtered);
+
+            let envelope = if time < attack {
+                if attack > 0.0 {
+                    time / attack
                 } else {
+                    1.0
+                }
+            } else {
+                let since_decay_start = time - attack;
+                if since_decay_start < decay {
+                    if decay > 0.0 {
+                        1.0 - (1.0 - sustain) * (since_decay_start / decay)
+                    } else {
+                        sustain
+                    }
+                } else if time < voice.note_duration {
                     sustain
-                }
-            } else if time < voice.note_duration {
-                sustain
-            } else {
-                let since_release = time - voice.note_duration;
-                if since_release >= release {
-                    0.0
-                } else if release > 0.0 {
-                    sustain * (1.0 - since_release / release)
                 } else {
-                    0.0
+                    let since_release = time - voice.note_duration;
+                    if since_release >= release {
+                        0.0
+                    } else if release > 0.0 {
+                        sustain * (1.0 - since_release / release)
+                    } else {
+                        0.0
+                    }
                 }
-            }
-        };
+            };
 
-        out[(note_start + sample_index) as usize] += filtered * envelope * voice.velocity_gain;
+            out[(self.start + sample_index - block_start) as usize] +=
+                filtered * envelope * voice.velocity_gain;
+        }
+        if end > first {
+            self.filtered = filtered;
+            self.next = end;
+        }
     }
 }
 
@@ -264,6 +320,52 @@ mod tests {
         render_voice(&mut out, &voice(Oscillator::Triangle), 7, 100);
         assert!(out[..7].iter().all(|s| *s == 0.0));
         assert!(out[7..].iter().all(|s| *s != 0.0));
+    }
+
+    #[test]
+    fn rendering_in_blocks_matches_rendering_at_once() {
+        for oscillator in [
+            Oscillator::Sine,
+            Oscillator::Square,
+            Oscillator::Sawtooth,
+            Oscillator::Triangle,
+        ] {
+            let params = Voice {
+                alpha: 0.3,
+                attack: 0.002,
+                decay: 0.01,
+                sustain: 0.5,
+                release: 0.004,
+                note_duration: 0.02,
+                ..voice(oscillator)
+            };
+            let mut whole = vec![0.0; 2_000];
+            render_voice(&mut whole, &params, 37, 1_500);
+
+            let mut state = VoiceState::new(params, 37, 1_500);
+            let mut blocks = vec![0.0; 2_000];
+            for (index, block) in blocks.chunks_mut(128).enumerate() {
+                state.render(block, index as i64 * 128);
+            }
+            assert_eq!(whole, blocks, "{oscillator:?}");
+            assert!(state.finished());
+        }
+    }
+
+    #[test]
+    fn release_shortens_a_held_note_and_cuts_one_not_yet_started() {
+        let params = Voice {
+            release: 0.01,
+            ..voice(Oscillator::Sine)
+        };
+        let mut held = VoiceState::new(params, 0, 48_480);
+        held.release_at(4_800);
+        assert_eq!(held.voice.note_duration, 0.1);
+        assert_eq!(held.total, 5_280);
+
+        let mut future = VoiceState::new(params, 9_600, 48_480);
+        future.release_at(4_800);
+        assert!(future.finished());
     }
 
     #[test]

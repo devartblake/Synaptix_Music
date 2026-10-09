@@ -13,6 +13,6 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-transform-types --test src/*.test.ts",
-    "build:wasm": "cargo build --release -p synaptix-wasm-bindings --target wasm32-unknown-unknown --manifest-path ../../Cargo.toml && cp ../../target/wasm32-unknown-unknown/release/synaptix_wasm_bindings.wasm synaptix-dsp.wasm"
+    "build:wasm": "cargo build --release -p synaptix-wasm-bindings --target wasm32-unknown-unknown --manifest-path ../../Cargo.toml && node scripts/embed-wasm.mjs ../../target/wasm32-unknown-unknown/release/synaptix_wasm_bindings.wasm"
   }
 }

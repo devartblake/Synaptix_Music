@@ -60,7 +60,7 @@ jobs:
             python=true
           fi
 
-          if grep -Eq '^(crates/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|packages/dsp-kernel/synaptix-dsp\.wasm$)' /tmp/synaptix-music-changed.txt; then
+          if grep -Eq '^(crates/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|packages/dsp-kernel/(src/kernel-wasm\.ts|scripts/))' /tmp/synaptix-music-changed.txt; then
             rust=true
           fi
 
@@ -173,11 +173,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo check --workspace --target wasm32-unknown-unknown
-      # The kernel's WebAssembly is checked in so Node and browser builds need no Rust toolchain.
-      - name: Checked-in synaptix-dsp.wasm matches the crates
+      # The kernel's WebAssembly is checked in (embedded in kernel-wasm.ts) so Node and browser
+      # builds need no Rust toolchain.
+      - name: Checked-in kernel WebAssembly matches the crates
         run: |
           cargo build --release -p synaptix-wasm-bindings --target wasm32-unknown-unknown
-          cmp target/wasm32-unknown-unknown/release/synaptix_wasm_bindings.wasm packages/dsp-kernel/synaptix-dsp.wasm \
+          node packages/dsp-kernel/scripts/embed-wasm.mjs target/wasm32-unknown-unknown/release/synaptix_wasm_bindings.wasm
+          git diff --exit-code packages/dsp-kernel/src/kernel-wasm.ts \
             || { echo "::error::Rebuild it: npm run build:wasm -w @synaptix/dsp-kernel"; exit 1; }
 
   docker:

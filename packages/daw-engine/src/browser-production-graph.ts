@@ -10,6 +10,7 @@ import {
   type MasterMeterSnapshot
 } from "./production-audio.ts";
 import { FREQUENCY_DRONE_DEVICE_TYPE, resolveFrequencyDroneDevice } from "./frequency-drone.ts";
+import { KernelInstrument, loadKernelWorklet } from "./kernel-instrument.ts";
 
 /** A plug-in insert's audio endpoints (see BrowserPluginInstance). */
 export interface PluginInsertNodes {
@@ -18,11 +19,10 @@ export interface PluginInsertNodes {
 }
 
 export interface ProductionInstrumentRuntime {
-  synth: Tone.PolySynth;
-  filter: Tone.Filter;
+  synth: KernelInstrument;
   channel: Tone.Channel;
   reverbSend: Tone.Gain;
-  /** Route the post-filter signal through plug-in inserts, in order, before the channel strip. */
+  /** Route the instrument (post-filter) through plug-in inserts, in order, before the channel strip. */
   setInserts(inserts: readonly PluginInsertNodes[]): void;
   dispose(): void;
 }
@@ -80,6 +80,9 @@ export class BrowserProductionAudioGraph {
     this.addMeter("bus:drums", this.drumsBus);
     this.addMeter("bus:reverb", this.reverbReturn);
     this.addMeter("master", this.master);
+    // Instruments play through the synthesis kernel's worklet; start loading it now (each
+    // instrument reports a load failure).
+    loadKernelWorklet().catch(() => {});
   }
 
 
@@ -169,20 +172,10 @@ export class BrowserProductionAudioGraph {
   createInstrument(track: Track): ProductionInstrumentRuntime {
     const settings = resolveEffectiveInstrumentSettings(track);
     const channel = new Tone.Channel({ volume: track.volumeDb, pan: track.pan, mute: track.muted });
-    const filter = new Tone.Filter(settings.filterFrequency, "lowpass");
-    const synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: settings.oscillator },
-      envelope: {
-        attack: settings.attack,
-        decay: settings.decay,
-        sustain: settings.sustain,
-        release: settings.release
-      }
-    });
+    const synth = new KernelInstrument(settings);
     const reverbSend = new Tone.Gain(resolveTrackSend(track));
 
-    synth.connect(filter);
-    filter.connect(channel);
+    synth.output.connect(channel);
     channel.connect(this.destination(track));
     this.addMeter(`track:${track.id}`, channel);
     channel.connect(reverbSend);
@@ -191,18 +184,16 @@ export class BrowserProductionAudioGraph {
     let inserts: readonly PluginInsertNodes[] = [];
     const runtime: ProductionInstrumentRuntime = {
       synth,
-      filter,
       channel,
       reverbSend,
       setInserts: (next) => {
-        routeInserts(filter, channel, inserts, next);
+        routeInserts(synth.output, channel, inserts, next);
         inserts = [...next];
       },
       dispose: () => {
         this.runtimes.delete(runtime);
         this.removeMeter(`track:${track.id}`);
         synth.dispose();
-        filter.dispose();
         channel.dispose();
         reverbSend.dispose();
       }
@@ -219,24 +210,13 @@ export class BrowserProductionAudioGraph {
   auditionNote(track: Track, frequency: number, durationSeconds: number, velocity: number): void {
     const settings = resolveEffectiveInstrumentSettings(track);
     const channel = new Tone.Channel({ volume: track.volumeDb, pan: track.pan });
-    const filter = new Tone.Filter(settings.filterFrequency, "lowpass");
-    const synth = new Tone.Synth({
-      oscillator: { type: settings.oscillator },
-      envelope: {
-        attack: settings.attack,
-        decay: settings.decay,
-        sustain: settings.sustain,
-        release: settings.release
-      }
-    });
-    synth.connect(filter);
-    filter.connect(channel);
+    const synth = new KernelInstrument(settings);
+    synth.output.connect(channel);
     channel.connect(this.destination(track));
     synth.triggerAttackRelease(frequency, durationSeconds, undefined, velocity);
 
     const release = () => {
       synth.dispose();
-      filter.dispose();
       channel.dispose();
     };
     const timer = setTimeout(() => {

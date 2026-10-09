@@ -1,9 +1,30 @@
 /**
- * The Rust synthesis kernel (`crates/dsp`, built by `crates/wasm-bindings` into
- * `synaptix-dsp.wasm`). The same module renders exports in the render worker and (next) the
- * studio preview, so both make the same samples. Rebuild the .wasm with `npm run build:wasm -w
- * @synaptix/dsp-kernel` after changing the crates; CI fails if the checked-in file is stale.
+ * The Rust synthesis kernel (`crates/dsp`, built by `crates/wasm-bindings` and embedded in
+ * `kernel-wasm.ts`). The same module renders exports in the render worker and plays notes in the
+ * studio preview's AudioWorklet (`voice-processor.ts`), so both make the same samples. Rebuild
+ * it with `npm run build:wasm -w @synaptix/dsp-kernel` after changing the crates; CI fails if
+ * the checked-in module is stale.
  */
+import { KERNEL_WASM_BASE64 } from "./kernel-wasm.ts";
+
+export {
+  VOICE_PROCESSOR_NAME,
+  VOICE_PROCESSOR_SOURCE,
+  type VoiceProcessorMessage
+} from "./voice-processor.ts";
+
+/** The kernel's WebAssembly bytes. */
+export function kernelWasmBytes(): Uint8Array<ArrayBuffer> {
+  const binary = atob(KERNEL_WASM_BASE64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** The one-pole low-pass coefficient for a cutoff, shared by exports and preview. */
+export function onePoleAlpha(filterFrequency: number, sampleRate: number): number {
+  return 1 - Math.exp((-2 * Math.PI * filterFrequency) / sampleRate);
+}
 
 export const OSCILLATOR_CODES = { sine: 0, square: 1, sawtooth: 2, triangle: 3 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;

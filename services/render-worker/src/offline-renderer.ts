@@ -20,6 +20,7 @@ import {
 
 import { projectV2BuiltinView, type MusicProjectV2 } from "@synaptix/project-model/v2";
 
+import { onePoleAlpha } from "@synaptix/dsp-kernel";
 import { createNodeDspKernel } from "@synaptix/dsp-kernel/node";
 
 import { applyCompressor } from "./compressor.ts";
@@ -103,7 +104,7 @@ function renderTrackBuffer(
 
   const settings = resolveEffectiveInstrumentSettings(track);
   kernel.beginTrack(totalSamples);
-  const alpha = 1 - Math.exp((-2 * Math.PI * settings.filterFrequency) / sampleRate);
+  const alpha = onePoleAlpha(settings.filterFrequency, sampleRate);
 
   for (const clip of track.clips) {
     if (clip.kind !== "midi") continue;
