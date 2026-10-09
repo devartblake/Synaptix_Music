@@ -12,9 +12,13 @@ test("the sidebar shows six instruments and the full list opens in a modal", asy
   await expect(sidebar.getByRole("radio")).toHaveCount(6);
   await expect(sidebar.getByRole("radio", { name: "Organ" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "All instruments (12)" }).click();
+  // The button names the catalog size; the modal must list every instrument.
+  const allInstruments = page.getByRole("button", { name: /^All instruments \(\d+\)$/ });
+  const total = Number((await allInstruments.textContent())?.match(/\d+/)?.[0]);
+  expect(total).toBeGreaterThanOrEqual(12);
+  await allInstruments.click();
   const dialog = page.getByRole("dialog", { name: "Choose an instrument" });
-  await expect(dialog.getByRole("radio")).toHaveCount(12);
+  await expect(dialog.getByRole("radio")).toHaveCount(total);
   await expect(dialog.getByText("Sustained square organ with a quick release.")).toBeVisible();
 
   // Choosing from the full list closes it and puts the choice in the sidebar.
@@ -29,7 +33,7 @@ test("the sidebar shows six instruments and the full list opens in a modal", asy
   await expect(trackCount).toHaveText(String(before + 1));
 
   // Escape closes the modal without changing the choice.
-  await page.getByRole("button", { name: "All instruments (12)" }).click();
+  await allInstruments.click();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(sidebar.getByRole("radio", { name: "Organ" })).toBeChecked();
