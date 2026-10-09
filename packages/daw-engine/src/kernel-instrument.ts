@@ -9,7 +9,7 @@ import {
 } from "@synaptix/dsp-kernel";
 import * as Tone from "tone";
 
-import type { EffectiveInstrumentSettings } from "./production-audio.ts";
+import { instrumentModulation, type EffectiveInstrumentSettings } from "./production-audio.ts";
 
 const loadedContexts = new WeakMap<Tone.BaseContext, Promise<void>>();
 let wasm: Uint8Array | undefined;
@@ -84,6 +84,7 @@ export class KernelInstrument {
       seed: noteSeed(noteId),
       cutoff: settings.filterFrequency,
       resonance: settings.resonance,
+      modulation: instrumentModulation(settings),
       time: time === undefined ? Tone.now() : Tone.Time(time).toSeconds()
     });
   }

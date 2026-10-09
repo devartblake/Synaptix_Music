@@ -374,6 +374,20 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
   assert.ok(peak(stem) > 0, "isolated stems exclude bus and master controls");
 });
 
+test("the modulation controls reach the export, and zero depths render exactly as before", () => {
+  const render = (parameters: { id: string; value: number }[]) => {
+    const track = noteTrack("track-1", "Lead", "synaptix-lead-synth");
+    track.devices[0]!.parameters = parameters;
+    return renderProjectOffline(project([track]), manifest()).artifacts[0]!.metadata.checksumSha256;
+  };
+  const plain = render([]);
+  // A rate with no depth is no modulation.
+  assert.equal(render([{ id: "lfoRate", value: 7 }]), plain);
+  for (const id of ["vibratoCents", "lfoCutoffOctaves", "tremolo", "filterEnvOctaves"]) {
+    assert.notEqual(render([{ id, value: id === "vibratoCents" ? 40 : 0.8 }]), plain, id);
+  }
+});
+
 test("the Resonance control reaches the export, and 0 renders exactly as before", () => {
   const withResonance = (value: number | null) => {
     const track = noteTrack("track-1", "Lead", "synaptix-lead-synth");
@@ -392,6 +406,7 @@ test("the Resonance control reaches the export, and 0 renders exactly as before"
 // six saw/square instruments; Supersaw Lead, Unison Pad, Plucked String,
 // FM Bell, FM Electric Piano, Drum Kit, 808 Bass and Chiptune Lead were added.
 // Stereo voice path: Supersaw Lead and Unison Pad now spread their saws across the stereo field.
+// Modulation system: Acid Bass and Motion Pad were added.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -412,9 +427,11 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-fm-ep": "12c06005b9ccd593f7784ef1ea501853b3755c2553f800e19ab96e9524404b0a",
   "synaptix-beat-kit": "e4fbd3f7eba650803560ebded6013010bcdf33bb6fe333ec9fd090de6197f97f",
   "synaptix-boom": "618144ad6a9ce1fd7d3288db961c04f8739ae167cb2ea1c4ee0fa5f953c2e334",
-  "synaptix-chiptune": "20b4876bdef0721c97d42d5bb1c6007fdfd68a5ec07b9a07013c34fd843bf4ef"
+  "synaptix-chiptune": "20b4876bdef0721c97d42d5bb1c6007fdfd68a5ec07b9a07013c34fd843bf4ef",
+  "synaptix-squelch": "9176405664aebe5aa5ff6f70d4e3b86a39e9e606e4367d56260df4462abfd4e0",
+  "synaptix-motion": "ac0d6355f7a49eba7c4ee120929909e67e607aa6784e3ad76292d4661a0be5dd"
 };
-const GOLDEN_MASTER = "39c704f5631bce6d7ec9f3e5ecc22c1508f6bb4089dd086660b5f0f8103d7c59";
+const GOLDEN_MASTER = "b13bd34d0774f932163d8eaa14c3b7dccfd3f8e2e5937036c38ed7c2dd82df5b";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {

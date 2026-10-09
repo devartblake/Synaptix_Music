@@ -1,3 +1,5 @@
+import type { VoiceModulation } from "./index.ts";
+
 /**
  * The studio preview's AudioWorklet processor: plays notes through the kernel in real time.
  *
@@ -26,6 +28,7 @@ export type VoiceProcessorMessage =
       seed: number;
       cutoff: number;
       resonance: number;
+      modulation: VoiceModulation;
       /** AudioContext time the note starts. */
       time: number;
     }
@@ -49,6 +52,8 @@ class SynaptixKernelVoiceProcessor extends AudioWorkletProcessor {
         message.attack, message.decay, message.sustain, message.release,
         message.noteDuration, message.velocityGain, message.seed,
         message.cutoff, message.resonance,
+        message.modulation.lfoRate, message.modulation.vibratoCents, message.modulation.lfoCutoffOctaves,
+        message.modulation.tremolo, message.modulation.filterEnvOctaves, message.modulation.filterEnvDecay,
         Math.round(message.time * sampleRate),
         Math.round((message.noteDuration + message.release) * sampleRate)
       );

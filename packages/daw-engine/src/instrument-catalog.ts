@@ -16,6 +16,13 @@ export interface InstrumentProfile {
   filterFrequency: number;
   /** Resonant filter amount, 0–1 (0, the default, is the plain one-pole low-pass). */
   resonance?: number;
+  /** Modulation defaults (see device-parameters); omitted means none. */
+  lfoRate?: number;
+  vibratoCents?: number;
+  lfoCutoffOctaves?: number;
+  tremolo?: number;
+  filterEnvOctaves?: number;
+  filterEnvDecay?: number;
   reverbSend: number;
   destinationBus: "music" | "drums";
 }
@@ -185,6 +192,27 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
       filterFrequency: 12000, reverbSend: 0.08, destinationBus: "music" },
     starterPattern: [[0, 72, 0.25], [0.25, 76, 0.25], [0.5, 79, 0.25], [0.75, 84, 0.25], [1, 83, 0.5], [1.5, 79, 0.5],
       [2, 81, 0.75], [3, 79, 0.5], [3.5, 76, 0.5]]
+  },
+  {
+    // A squelchy 303-style line: a resonant saw whose cutoff snaps up on every note and falls
+    // back (filter envelope). "acid" and "bass" are avoided in the device type (Bass Synth).
+    deviceType: "synaptix-squelch", label: "Acid Bass", description: "Resonant saw with a snappy filter envelope: the 303 squelch.",
+    keywords: ["squelch", "acid"],
+    profile: { kind: "bass", oscillator: "sawtooth", attack: 0.002, decay: 0.3, sustain: 0.5, release: 0.08,
+      filterFrequency: 350, resonance: 0.65, filterEnvOctaves: 3.5, filterEnvDecay: 0.12,
+      reverbSend: 0.06, destinationBus: "music" },
+    starterPattern: [[0, 36, 0.25], [0.5, 36, 0.25], [0.75, 48, 0.25], [1.25, 39, 0.25], [1.5, 36, 0.25],
+      [2, 43, 0.5], [2.5, 36, 0.25], [3, 46, 0.25], [3.5, 41, 0.5]]
+  },
+  {
+    // A slow, breathing pad: the LFO sweeps the cutoff and adds a touch of vibrato. "pad" is
+    // avoided in the device type (Warm Pad).
+    deviceType: "synaptix-motion", label: "Motion Pad", description: "Supersaw pad whose filter slowly breathes, with gentle vibrato.",
+    keywords: ["motion"],
+    profile: { kind: "pad", oscillator: "supersaw", attack: 0.5, decay: 0.6, sustain: 0.8, release: 1.4,
+      filterFrequency: 1200, resonance: 0.25, lfoRate: 0.25, lfoCutoffOctaves: 1.2, vibratoCents: 6,
+      reverbSend: 0.35, destinationBus: "music" },
+    starterPattern: [[0, 53, 4], [0, 57, 4], [0, 60, 4], [0, 64, 4]]
   }
 ];
 
