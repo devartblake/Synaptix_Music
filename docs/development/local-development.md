@@ -164,7 +164,7 @@ REDIS_URL=redis://localhost:6379/0
 
 Studio sign-in uses the platform's own studio routes (`/api/v1/auth/studio/login` and `/studio/refresh`), separate from the game clients. Set `SYNAPTIX_PLATFORM_SERVICE_TOKEN` to the backend's `ServiceTokens:MusicStudio` value; only a server with that token can call them, and without it sign-in is off. The platform assigns the studio identity (the studio sends no product registration), keeps the account's own audience, and studio tokens only work on the music API. The studio's server keeps the refresh token in an HttpOnly cookie and renews the session a minute before the 8-minute access token ends and when the studio is reopened.
 
-The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete `RENDER_WORKER_MINIO_*` configuration before its polling loop starts. Use `RENDER_WORKER_FFMPEG_PATH` only when FFmpeg is not on `PATH`.
+The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete `RENDER_WORKER_MINIO_*` configuration before its polling loop starts. Use `RENDER_WORKER_FFMPEG_PATH` only when FFmpeg is not on `PATH`. `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` caps how many queued-or-running render jobs one signed-in player may have (default 10, `0` turns the limit off); a submission over it answers 429 `render_quota_exceeded`. Private callers without a player (certification tooling, the backend) are not limited.
 
 ## Install TypeScript Dependencies
 

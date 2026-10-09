@@ -7,7 +7,7 @@ import { Pool } from "pg";
 import { RENDER_CONTRACT_VERSION, type RenderManifest, type RenderResult } from "@synaptix/render-contracts";
 
 import { applyMigrations } from "./migrate.ts";
-import { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
+import { PostgresRenderJobStore, RenderQuotaExceededError } from "./postgres-render-job-store.ts";
 
 // This suite exercises the durable, concurrency-safe behavior (SKIP LOCKED
 // leasing, transactional retry/dead-letter, lease reclamation) that the
@@ -216,5 +216,47 @@ if (!connectionString) {
     assert.equal((await store.list("queued")).length, 0);
     const eventTypes = (await store.events(job.jobId)).map((event) => event.type);
     assert.deepEqual(eventTypes, ["submitted", "leased", "completed"]);
+  });
+  // One dense stems render can hold a worker for minutes, so one player must not be able to
+  // fill the queue; the limit counts queued and running jobs only.
+  const renderIdN = (n: number) => `30000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+
+  test("a player at the active-job limit is refused until one of their jobs finishes", async () => {
+    await store.submit(manifest(renderIdN(1)), "q-1", undefined, "alice", 2);
+    await store.submit(manifest(renderIdN(2)), "q-2", undefined, "alice", 2);
+    await assert.rejects(
+      () => store.submit(manifest(renderIdN(3)), "q-3", undefined, "alice", 2),
+      (error: unknown) => error instanceof RenderQuotaExceededError && error.limit === 2
+    );
+
+    const leased = await store.lease("worker-1");
+    await store.reportResult(leased!.jobId, "worker-1", completedResult(leased!.manifest.renderId));
+    const accepted = await store.submit(manifest(renderIdN(3)), "q-3", undefined, "alice", 2);
+    assert.equal(accepted.status, "queued", "a finished job no longer counts");
+  });
+
+  test("replaying an accepted request is never refused, even at the limit", async () => {
+    const first = await store.submit(manifest(renderIdN(1)), "q-1", undefined, "alice", 1);
+    const replay = await store.submit(manifest(renderIdN(1)), "q-1", undefined, "alice", 1);
+    assert.equal(replay.jobId, first.jobId);
+  });
+
+  test("concurrent submissions can't take a player past the limit", async () => {
+    const outcomes = await Promise.allSettled(
+      [1, 2, 3, 4, 5].map((n) => store.submit(manifest(renderIdN(n)), `q-${n}`, undefined, "alice", 2))
+    );
+    assert.equal(outcomes.filter((o) => o.status === "fulfilled").length, 2);
+    assert.ok(
+      outcomes.every((o) => o.status === "fulfilled" || o.reason instanceof RenderQuotaExceededError)
+    );
+    assert.equal((await store.list(undefined, "alice")).length, 2);
+  });
+
+  test("the limit is per player, and private callers aren't limited", async () => {
+    await store.submit(manifest(renderIdN(1)), "q-1", undefined, "alice", 1);
+    await store.submit(manifest(renderIdN(2)), "q-2", undefined, "bob", 1);
+    await store.submit(manifest(renderIdN(3)), "q-3", undefined, null, 1);
+    await store.submit(manifest(renderIdN(4)), "q-4", undefined, null, 1);
+    assert.equal((await store.list()).length, 4);
   });
 }

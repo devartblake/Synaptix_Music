@@ -9,11 +9,20 @@ import {
 } from "@synaptix/render-contracts";
 import { Pool } from "pg";
 
-import { createRenderJobHttpServer } from "./http-server.ts";
+import { createRenderJobHttpServer, maxActiveJobsPerOwnerFromEnv } from "./http-server.ts";
 import { applyMigrations } from "./migrate.ts";
 import { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
 const connectionString = process.env.RENDER_WORKER_TEST_DATABASE_URL;
+
+test("RENDER_MAX_ACTIVE_JOBS_PER_OWNER defaults to 10, 0 turns the limit off, and junk fails at startup", () => {
+  assert.equal(maxActiveJobsPerOwnerFromEnv(undefined), 10);
+  assert.equal(maxActiveJobsPerOwnerFromEnv(" "), 10);
+  assert.equal(maxActiveJobsPerOwnerFromEnv("3"), 3);
+  assert.equal(maxActiveJobsPerOwnerFromEnv("0"), undefined);
+  assert.throws(() => maxActiveJobsPerOwnerFromEnv("-1"), /whole number/);
+  assert.throws(() => maxActiveJobsPerOwnerFromEnv("lots"), /whole number/);
+});
 
 function manifest(renderId: string, scope: RenderManifest["scope"] = { kind: "master" }): RenderManifest {
   return {
@@ -356,5 +365,25 @@ if (!connectionString) {
     const response = await fetch(`${baseUrl}/nonexistent`);
     assert.equal(response.status, 404);
     assert.equal((await response.json()).code, "not_found");
+  });
+
+  test("a player over the active-job limit gets 429 render_quota_exceeded", async () => {
+    const limited = createRenderJobHttpServer(store, artifactDelivery, { maxActiveJobsPerOwner: 1 });
+    await new Promise<void>((resolve) => limited.listen(0, resolve));
+    const url = `http://127.0.0.1:${(limited.address() as AddressInfo).port}`;
+    const submit = (renderId: string, key: string) =>
+      fetch(`${url}/render-jobs`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": key, "x-synaptix-owner": "alice" },
+        body: JSON.stringify({ manifest: manifest(renderId) })
+      });
+    try {
+      assert.equal((await submit("10000000-0000-4000-8000-000000000011", "lim-1")).status, 201);
+      const refused = await submit("10000000-0000-4000-8000-000000000012", "lim-2");
+      assert.equal(refused.status, 429);
+      assert.equal((await refused.json()).code, "render_quota_exceeded");
+    } finally {
+      await new Promise<void>((resolve, reject) => limited.close((error) => error ? reject(error) : resolve()));
+    }
   });
 }
