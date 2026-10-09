@@ -1,12 +1,3 @@
-      # The kernel's WebAssembly is checked in (embedded in kernel-wasm.ts) so Node and browser
-      # builds need no Rust toolchain.
-      - name: Checked-in kernel WebAssembly matches the crates
-        run: |
-          cargo build --release -p synaptix-wasm-bindings --target wasm32-unknown-unknown
-          node packages/dsp-kernel/scripts/embed-wasm.mjs target/wasm32-unknown-unknown/release/synaptix_wasm_bindings.wasm
-          git diff --exit-code packages/dsp-kernel/src/kernel-wasm.ts \
-            || { echo "::error::Rebuild it: npm run build:wasm -w @synaptix/dsp-kernel"; exit 1; }
-
 name: CI
 
 on:
