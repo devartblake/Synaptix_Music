@@ -7,7 +7,7 @@ import {
   type FrozenPluginArtifactReference,
   type MusicProjectV2
 } from "@synaptix/project-model/v2";
-import { RENDER_CONTRACT_VERSION, RenderManifestSchema, type RenderJob, type RenderManifest } from "@synaptix/render-contracts";
+import { RENDER_CONTRACT_VERSION, RENDER_ENGINE_VERSION, RenderManifestSchema, type RenderJob, type RenderManifest } from "@synaptix/render-contracts";
 
 import { arrangementBars, barTicks } from "../editor/timeline-model.ts";
 
@@ -63,7 +63,7 @@ export async function createFreezeManifest(
     projectId: stored.projectId,
     revisionId: stored.revisionId,
     projectChecksumSha256: await computeProjectChecksum(stored),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: 0,
     scope: { kind: "plugin-freeze", trackId, deviceId },
     range: { startTick: 0, endTick: arrangementBars(builtin) * barTicks(builtin) },

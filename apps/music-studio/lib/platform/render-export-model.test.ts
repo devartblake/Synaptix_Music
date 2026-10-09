@@ -22,6 +22,9 @@ test("export anchors the exact mixer-bearing project revision and validates stem
   assert.equal(manifest.projectChecksumSha256, await computeProjectChecksum(project));
   assert.equal(manifest.revisionId, project.revisionId);
   assert.equal(manifest.range.endTick, 15360);
+  // Renders record which synthesis made them, so audio from the 1.0.0 renderer (aliasing saw
+  // and square) is never mistaken for the band-limited kernel's.
+  assert.equal(manifest.engineVersion, "1.1.0");
   await assert.rejects(createExportManifest(project, { ...options, scope: "stems", trackIds: [] }));
   await assert.rejects(createExportManifest(project, { ...options, scope: "stems", trackIds: ["missing"] }));
   const stems = await createExportManifest(project, { ...options, scope: "stems", normalize: true });
