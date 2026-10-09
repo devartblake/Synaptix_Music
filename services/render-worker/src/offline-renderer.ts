@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   FREQUENCY_DRONE_DEVICE_TYPE,
   buildFrequencyDroneRenderPlan,
+  instrumentModulation,
   renderFrequencyDroneMono,
   resolveFrequencyDroneDevice,
   resolveEffectiveInstrumentSettings,
@@ -135,7 +136,8 @@ function renderTrackBuffer(
           velocityGain,
           seed: noteSeed(note.id),
           cutoff: settings.filterFrequency,
-          resonance: settings.resonance
+          resonance: settings.resonance,
+          modulation: instrumentModulation(settings)
         },
         noteStartSample,
         noteTotalSamples

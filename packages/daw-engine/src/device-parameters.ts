@@ -1,6 +1,6 @@
 import type { Device } from "@synaptix/project-model";
 
-export type DeviceParameterUnit = "hz" | "seconds" | "ratio" | "count";
+export type DeviceParameterUnit = "hz" | "seconds" | "ratio" | "count" | "cents" | "octaves";
 
 export interface DeviceParameterDefinition {
   readonly id: string;
@@ -12,6 +12,12 @@ export interface DeviceParameterDefinition {
 
 export const FILTER_FREQUENCY_PARAMETER = "filterFrequency";
 export const FILTER_RESONANCE_PARAMETER = "filterResonance";
+export const LFO_RATE_PARAMETER = "lfoRate";
+export const VIBRATO_PARAMETER = "vibratoCents";
+export const LFO_CUTOFF_PARAMETER = "lfoCutoffOctaves";
+export const TREMOLO_PARAMETER = "tremolo";
+export const FILTER_ENV_AMOUNT_PARAMETER = "filterEnvOctaves";
+export const FILTER_ENV_DECAY_PARAMETER = "filterEnvDecay";
 export const ENVELOPE_ATTACK_PARAMETER = "envelopeAttack";
 export const ENVELOPE_DECAY_PARAMETER = "envelopeDecay";
 export const ENVELOPE_SUSTAIN_PARAMETER = "envelopeSustain";
@@ -28,6 +34,12 @@ export const DRONE_STEREO_OFFSET_PARAMETER = "droneStereoOffsetHz";
 export const DEVICE_PARAMETER_DEFINITIONS: readonly DeviceParameterDefinition[] = [
   { id: FILTER_FREQUENCY_PARAMETER, label: "Filter Frequency", unit: "hz", minimum: 80, maximum: 16000 },
   { id: FILTER_RESONANCE_PARAMETER, label: "Resonance", unit: "ratio", minimum: 0, maximum: 1 },
+  { id: FILTER_ENV_AMOUNT_PARAMETER, label: "Filter Envelope", unit: "octaves", minimum: 0, maximum: 6 },
+  { id: FILTER_ENV_DECAY_PARAMETER, label: "Filter Env Decay", unit: "seconds", minimum: 0.005, maximum: 2 },
+  { id: LFO_RATE_PARAMETER, label: "LFO Rate", unit: "hz", minimum: 0.05, maximum: 20 },
+  { id: VIBRATO_PARAMETER, label: "Vibrato", unit: "cents", minimum: 0, maximum: 100 },
+  { id: LFO_CUTOFF_PARAMETER, label: "LFO to Cutoff", unit: "octaves", minimum: 0, maximum: 4 },
+  { id: TREMOLO_PARAMETER, label: "Tremolo", unit: "ratio", minimum: 0, maximum: 1 },
   { id: ENVELOPE_ATTACK_PARAMETER, label: "Attack", unit: "seconds", minimum: 0.001, maximum: 2 },
   { id: ENVELOPE_DECAY_PARAMETER, label: "Decay", unit: "seconds", minimum: 0.01, maximum: 2 },
   { id: ENVELOPE_SUSTAIN_PARAMETER, label: "Sustain", unit: "ratio", minimum: 0, maximum: 1 },

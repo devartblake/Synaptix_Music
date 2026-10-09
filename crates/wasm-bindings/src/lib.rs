@@ -5,7 +5,7 @@
 
 use std::cell::RefCell;
 
-use synaptix_dsp::voice::{self, Oscillator, Voice, VoiceState};
+use synaptix_dsp::voice::{self, Modulation, Oscillator, Voice, VoiceState};
 
 thread_local! {
     static TRACK: RefCell<Vec<f64>> = const { RefCell::new(Vec::new()) };
@@ -29,7 +29,8 @@ pub extern "C" fn begin_track(len: u32) -> *const f64 {
 }
 
 /// Adds one note to the current track. Sample positions are whole numbers passed as `f64`
-/// (JavaScript numbers). Returns 0 for an unknown oscillator code, 1 otherwise.
+/// (JavaScript numbers); the last six arguments are the voice's `Modulation` (all zero for
+/// none). Returns 0 for an unknown oscillator code, 1 otherwise.
 #[no_mangle]
 #[allow(clippy::too_many_arguments)]
 pub extern "C" fn render_voice(
@@ -46,6 +47,12 @@ pub extern "C" fn render_voice(
     seed: u32,
     cutoff: f64,
     resonance: f64,
+    lfo_rate: f64,
+    vibrato_cents: f64,
+    lfo_cutoff_octaves: f64,
+    tremolo: f64,
+    filter_env_octaves: f64,
+    filter_env_decay: f64,
     note_start: f64,
     note_total: f64,
 ) -> u32 {
@@ -63,6 +70,14 @@ pub extern "C" fn render_voice(
         seed,
         cutoff,
         resonance,
+        Modulation {
+            lfo_rate,
+            vibrato_cents,
+            lfo_cutoff_octaves,
+            tremolo,
+            filter_env_octaves,
+            filter_env_decay,
+        },
     ) else {
         return 0;
     };
@@ -92,6 +107,12 @@ pub extern "C" fn start_voice(
     seed: u32,
     cutoff: f64,
     resonance: f64,
+    lfo_rate: f64,
+    vibrato_cents: f64,
+    lfo_cutoff_octaves: f64,
+    tremolo: f64,
+    filter_env_octaves: f64,
+    filter_env_decay: f64,
     start: f64,
     total: f64,
 ) -> u32 {
@@ -109,6 +130,14 @@ pub extern "C" fn start_voice(
         seed,
         cutoff,
         resonance,
+        Modulation {
+            lfo_rate,
+            vibrato_cents,
+            lfo_cutoff_octaves,
+            tremolo,
+            filter_env_octaves,
+            filter_env_decay,
+        },
     ) else {
         return 0;
     };
@@ -166,6 +195,7 @@ fn voice_params(
     seed: u32,
     cutoff: f64,
     resonance: f64,
+    modulation: Modulation,
 ) -> Option<Voice> {
     Some(Voice {
         oscillator: Oscillator::from_code(oscillator)?,
@@ -181,5 +211,6 @@ fn voice_params(
         seed,
         cutoff,
         resonance,
+        modulation,
     })
 }

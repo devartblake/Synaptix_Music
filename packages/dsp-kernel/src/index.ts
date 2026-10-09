@@ -71,7 +71,34 @@ export interface VoiceParams {
   cutoff: number;
   /** 0 keeps the one-pole low-pass (`alpha`); above 0 a 12 dB resonant low-pass at `cutoff`. */
   resonance: number;
+  /** Omitted or all zero: no modulation, exactly as before. */
+  modulation?: VoiceModulation;
 }
+
+/** One sine LFO to pitch, cutoff and level, and a filter envelope (crates/dsp `Modulation`). */
+export interface VoiceModulation {
+  /** LFO speed in Hz. */
+  lfoRate: number;
+  /** Pitch swings ± this many cents. */
+  vibratoCents: number;
+  /** Cutoff swings ± this many octaves. */
+  lfoCutoffOctaves: number;
+  /** Level dips by up to this much, 0–1. */
+  tremolo: number;
+  /** The cutoff starts this many octaves higher and decays onto it. */
+  filterEnvOctaves: number;
+  /** Seconds for the filter envelope to fall to a quarter. */
+  filterEnvDecay: number;
+}
+
+export const NO_MODULATION: VoiceModulation = {
+  lfoRate: 0,
+  vibratoCents: 0,
+  lfoCutoffOctaves: 0,
+  tremolo: 0,
+  filterEnvOctaves: 0,
+  filterEnvDecay: 0
+};
 
 interface KernelExports {
   memory: WebAssembly.Memory;
@@ -90,12 +117,29 @@ interface KernelExports {
     seed: number,
     cutoff: number,
     resonance: number,
+    lfoRate: number,
+    vibratoCents: number,
+    lfoCutoffOctaves: number,
+    tremolo: number,
+    filterEnvOctaves: number,
+    filterEnvDecay: number,
     noteStart: number,
     noteTotal: number
   ): number;
 }
 
-/** Renders one mono track at a time: begin it, add voices, then read the samples. */
+function modulationArguments(m: VoiceModulation): [number, number, number, number, number, number] {
+  return [
+    m.lfoRate,
+    m.vibratoCents,
+    m.lfoCutoffOctaves,
+    m.tremolo,
+    m.filterEnvOctaves,
+    m.filterEnvDecay
+  ];
+}
+
+/** Renders one stereo track at a time: begin it, add voices, then read the samples. */
 export class DspKernel {
   readonly #exports: KernelExports;
   #track = { address: 0, length: 0 };
@@ -124,6 +168,7 @@ export class DspKernel {
       params.seed,
       params.cutoff,
       params.resonance,
+      ...modulationArguments(params.modulation ?? NO_MODULATION),
       noteStart,
       noteTotal
     );

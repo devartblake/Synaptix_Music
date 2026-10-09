@@ -119,6 +119,64 @@ pub struct Voice {
     /// 0 keeps the original one-pole low-pass (6 dB); above 0 switches to a 12 dB resonant
     /// state-variable low-pass, peaking more as it rises to 1.
     pub resonance: f64,
+    /// Modulation; all zero (the default) leaves the voice exactly as without it.
+    pub modulation: Modulation,
+}
+
+/// Per-voice modulation: one sine LFO routed to pitch, cutoff and level, and a filter envelope
+/// that starts the cutoff higher and decays onto it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Modulation {
+    /// LFO speed in Hz.
+    pub lfo_rate: f64,
+    /// Vibrato depth in cents (pitch swings ± this much).
+    pub vibrato_cents: f64,
+    /// Cutoff swing in octaves (±).
+    pub lfo_cutoff_octaves: f64,
+    /// Tremolo depth, 0–1 (level dips by up to this much).
+    pub tremolo: f64,
+    /// How many octaves above the cutoff the filter envelope starts.
+    pub filter_env_octaves: f64,
+    /// Seconds for the filter envelope to fall to a quarter of its amount.
+    pub filter_env_decay: f64,
+}
+
+impl Modulation {
+    fn vibrato(&self) -> bool {
+        self.vibrato_cents > 0.0 && self.lfo_rate > 0.0
+    }
+    fn moves_cutoff(&self) -> bool {
+        (self.lfo_cutoff_octaves > 0.0 && self.lfo_rate > 0.0)
+            || (self.filter_env_octaves > 0.0 && self.filter_env_decay > 0.0)
+    }
+    fn tremolo(&self) -> bool {
+        self.tremolo > 0.0 && self.lfo_rate > 0.0
+    }
+}
+
+/// Samples between updates of a moving cutoff (0.33 ms at 48 kHz): smooth for an LFO or filter
+/// envelope, and far cheaper than recomputing the filter every sample.
+pub const CONTROL_INTERVAL: i64 = 16;
+
+/// 2^x from a fixed series, so every platform agrees (x clamped to ±20 octaves).
+pub fn exp2(x: f64) -> f64 {
+    let x = x.clamp(-20.0, 20.0);
+    let whole = x.floor();
+    let y = (x - whole) * core::f64::consts::LN_2;
+    // e^y for y in [0, ln 2): Taylor series through y^14 (error below 1e-16).
+    let mut term = 1.0;
+    let mut sum = 1.0;
+    for n in 1..=14 {
+        term *= y / n as f64;
+        sum += term;
+    }
+    sum * f64::from_bits(((whole as i64 + 1023) as u64) << 52)
+}
+
+/// tan(π · fraction) for a cutoff as a fraction of the sample rate, from the kernel's sine.
+fn tan_of_cutoff(cutoff: f64, sample_rate: f64) -> f64 {
+    let cycle = (cutoff / sample_rate).clamp(0.0, 0.49) * 0.5;
+    sine_cycle(cycle) / sine_cycle(cycle + 0.25)
 }
 
 /// Adds one note into `left` and `right` (the same length), starting at sample `note_start`
@@ -289,7 +347,18 @@ impl VoiceState {
         let modulator_frequency = voice.frequency * fm.ratio;
         let mut filtered = self.filtered;
         let resonant = voice.resonance > 0.0;
-        let svf = ResonantLowPass::new(voice.cutoff, voice.sample_rate, voice.resonance);
+        let mut svf = ResonantLowPass::new(voice.cutoff, voice.sample_rate, voice.resonance);
+        let modulation = voice.modulation;
+        let (vibrato, moves_cutoff, tremolo) = (
+            modulation.vibrato(),
+            modulation.moves_cutoff(),
+            modulation.tremolo(),
+        );
+        // Vibrato as a time warp: frequency × (1 + k·sin(2π·rate·t)) integrates to the phase of
+        // t + k·(1 − cos(2π·rate·t)) / (2π·rate), so every oscillator's phase stays closed-form.
+        let vibrato_depth = (exp2(modulation.vibrato_cents / 1_200.0) - 1.0)
+            / (2.0 * core::f64::consts::PI * modulation.lfo_rate);
+        let mut alpha = voice.alpha;
         let (mut svf_1, mut svf_2) = (self.svf_1, self.svf_2);
         let mut filtered_right = self.filtered_right;
         let (mut svf_right_1, mut svf_right_2) = (self.svf_right_1, self.svf_right_2);
@@ -298,7 +367,41 @@ impl VoiceState {
         let mut sweep_phase = self.sweep_phase;
         for sample_index in first..end {
             let time = sample_index as f64 / voice.sample_rate;
-            let phase = time * voice.frequency;
+            let lfo_cycle = time * modulation.lfo_rate;
+            let lfo_cycle = lfo_cycle - lfo_cycle.floor();
+            // The oscillators' clock: real time, or warped by the vibrato.
+            let clock = if vibrato {
+                time + vibrato_depth * (1.0 - sine_cycle(lfo_cycle + 0.25))
+            } else {
+                time
+            };
+            // The moving cutoff updates at control rate: on a grid every CONTROL_INTERVAL
+            // samples from the note's start (and at a block's first sample, from the grid point
+            // before it), so block boundaries never change the result.
+            if moves_cutoff && (sample_index % CONTROL_INTERVAL == 0 || sample_index == first) {
+                let control_time =
+                    (sample_index - sample_index % CONTROL_INTERVAL) as f64 / voice.sample_rate;
+                let control_lfo = control_time * modulation.lfo_rate;
+                let mut octaves = 0.0;
+                if modulation.lfo_cutoff_octaves > 0.0 {
+                    octaves += modulation.lfo_cutoff_octaves
+                        * sine_cycle(control_lfo - control_lfo.floor());
+                }
+                if modulation.filter_env_octaves > 0.0 && modulation.filter_env_decay > 0.0 {
+                    let fall = 1.0 / (1.0 + control_time / modulation.filter_env_decay);
+                    octaves += modulation.filter_env_octaves * fall * fall;
+                }
+                let cutoff = (voice.cutoff * exp2(octaves)).max(20.0);
+                if resonant {
+                    svf = ResonantLowPass::new(cutoff, voice.sample_rate, voice.resonance);
+                } else {
+                    // A moving one-pole cutoff: tan-based (deterministic) rather than the static
+                    // path's exp.
+                    let g = tan_of_cutoff(cutoff, voice.sample_rate);
+                    alpha = g / (1.0 + g);
+                }
+            }
+            let phase = clock * voice.frequency;
             let cycle = phase - phase.floor();
             // The right channel's raw signal, for stereo voices.
             let mut raw_right = 0.0;
@@ -312,7 +415,7 @@ impl VoiceState {
                     soft_clip(tone * BASS_808_DRIVE) / soft_clip(BASS_808_DRIVE)
                 }
                 Oscillator::FmBell | Oscillator::FmPiano => {
-                    let modulator_phase = time * modulator_frequency;
+                    let modulator_phase = clock * modulator_frequency;
                     let modulator = sine_cycle(modulator_phase - modulator_phase.floor());
                     let index = fm.end + (fm.start - fm.end) / (1.0 + time * fm.fall);
                     // Phase modulation in cycles: index radians is index / 2π cycles.
@@ -322,7 +425,7 @@ impl VoiceState {
                 Oscillator::Supersaw => {
                     let (mut sum_left, mut sum_right) = (0.0, 0.0);
                     for k in 0..7 {
-                        let phase = time * supersaw_frequencies[k] + SUPERSAW_PHASES[k];
+                        let phase = clock * supersaw_frequencies[k] + SUPERSAW_PHASES[k];
                         let cycle = phase - phase.floor();
                         let saw = SUPERSAW_LEVELS[k]
                             * (2.0 * cycle - 1.0 - poly_blep(cycle, supersaw_dts[k]));
@@ -359,13 +462,13 @@ impl VoiceState {
             if resonant {
                 filtered = svf.process(raw, &mut svf_1, &mut svf_2);
             } else {
-                filtered += voice.alpha * (raw - filtered);
+                filtered += alpha * (raw - filtered);
             }
             if stereo {
                 if resonant {
                     filtered_right = svf.process(raw_right, &mut svf_right_1, &mut svf_right_2);
                 } else {
-                    filtered_right += voice.alpha * (raw_right - filtered_right);
+                    filtered_right += alpha * (raw_right - filtered_right);
                 }
             }
 
@@ -398,6 +501,12 @@ impl VoiceState {
             };
 
             let index = (self.start + sample_index - block_start) as usize;
+            // Tremolo dips the level by up to its depth, in time with the LFO.
+            let envelope = if tremolo {
+                envelope * (1.0 - modulation.tremolo * 0.5 * (1.0 - sine_cycle(lfo_cycle)))
+            } else {
+                envelope
+            };
             let value = filtered * envelope * voice.velocity_gain;
             left[index] += value;
             right[index] += if stereo {
@@ -501,9 +610,8 @@ struct ResonantLowPass {
 
 impl ResonantLowPass {
     fn new(cutoff: f64, sample_rate: f64, resonance: f64) -> Self {
-        // Below Nyquist, where tan stays finite; half a cycle of fc/fs is π·fc/fs radians.
-        let cycle = (cutoff / sample_rate).clamp(0.0, 0.49) * 0.5;
-        let g = sine_cycle(cycle) / sine_cycle(cycle + 0.25);
+        // Below Nyquist, where tan stays finite.
+        let g = tan_of_cutoff(cutoff, sample_rate);
         // Damping from 2 (no peak) down to 0.1 (a strong peak, about +20 dB) as resonance → 1.
         let k = 2.0 - 1.9 * resonance.clamp(0.0, 1.0);
         let a1 = 1.0 / (1.0 + g * (g + k));
@@ -766,6 +874,7 @@ mod tests {
             seed: 1,
             cutoff: 1_000.0,
             resonance: 0.0,
+            modulation: Modulation::default(),
         }
     }
 
@@ -877,6 +986,138 @@ mod tests {
             ..voice(Oscillator::Supersaw)
         };
         assert_blocks_match_whole(&params);
+    }
+
+    #[test]
+    fn exp2_matches_the_platform_closely() {
+        for i in -2_000..=2_000 {
+            let x = i as f64 / 250.0;
+            let expected = 2f64.powf(x);
+            assert!(((exp2(x) - expected) / expected).abs() < 1e-14, "2^{x}");
+        }
+    }
+
+    fn modulated(oscillator: Oscillator, modulation: Modulation) -> Vec<f64> {
+        let params = Voice {
+            // The one-pole coefficient for the same 800 Hz cutoff, as the TypeScript side computes it.
+            alpha: 1.0 - (-2.0 * core::f64::consts::PI * 800.0 / 48_000.0).exp(),
+            cutoff: 800.0,
+            modulation,
+            ..voice(oscillator)
+        };
+        let mut out = vec![0.0; 48_000];
+        render_mono(&mut out, &params, 0, 48_000);
+        out
+    }
+
+    #[test]
+    fn modulation_with_no_depth_changes_nothing() {
+        // A running LFO with every depth at zero must leave the voice byte-identical.
+        let idle = Modulation {
+            lfo_rate: 5.0,
+            ..Modulation::default()
+        };
+        for oscillator in [
+            Oscillator::Sawtooth,
+            Oscillator::Supersaw,
+            Oscillator::FmBell,
+        ] {
+            assert_eq!(
+                modulated(oscillator, idle),
+                modulated(oscillator, Modulation::default())
+            );
+        }
+    }
+
+    #[test]
+    fn vibrato_swings_the_pitch_around_the_note() {
+        // 440 Hz with ±200 cents at 2 Hz: the LFO's rising half-cycle (0–0.25 s) runs sharp
+        // (about +34 Hz on average, so ~8 more crossings) and the falling half flat; over a whole
+        // second the pitch averages back to the note.
+        let out = modulated(
+            Oscillator::Sine,
+            Modulation {
+                lfo_rate: 2.0,
+                vibrato_cents: 200.0,
+                ..Modulation::default()
+            },
+        );
+        let crossings = |range: &[f64]| {
+            range
+                .windows(2)
+                .filter(|w| w[0] < 0.0 && w[1] >= 0.0)
+                .count()
+        };
+        let high = crossings(&out[0..12_000]);
+        let low = crossings(&out[12_000..24_000]);
+        assert!(high > low + 10, "high {high}, low {low}");
+        let total = crossings(&out);
+        assert!((438..=442).contains(&total), "{total} crossings in 1 s");
+    }
+
+    #[test]
+    fn the_filter_envelope_opens_then_closes_the_cutoff() {
+        // High-frequency share: energy of the sample-to-sample difference over the energy. (A
+        // low-pass turns a saw's jumps into steep ramps, which the total change barely notices.)
+        let brightness = |s: &[f64]| {
+            let change: f64 = s.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum();
+            change / s.iter().map(|x| x * x).sum::<f64>()
+        };
+        let swept = modulated(
+            Oscillator::Sawtooth,
+            Modulation {
+                filter_env_octaves: 4.0,
+                filter_env_decay: 0.05,
+                ..Modulation::default()
+            },
+        );
+        let plain = modulated(Oscillator::Sawtooth, Modulation::default());
+        // Bright at the start, settling back towards the unmodulated sound.
+        let (early, late) = (brightness(&swept[..2_400]), brightness(&swept[40_000..]));
+        let (plain_early, plain_late) = (brightness(&plain[..2_400]), brightness(&plain[40_000..]));
+        assert!(
+            early > 1.5 * plain_early,
+            "early {early} vs plain {plain_early}"
+        );
+        assert!(late < 1.2 * plain_late, "late {late} vs plain {plain_late}");
+    }
+
+    #[test]
+    fn tremolo_pulses_the_level_at_the_lfo_rate() {
+        let out = modulated(
+            Oscillator::Sine,
+            Modulation {
+                lfo_rate: 4.0,
+                tremolo: 0.8,
+                ..Modulation::default()
+            },
+        );
+        let rms = |r: &[f64]| (r.iter().map(|x| x * x).sum::<f64>() / r.len() as f64).sqrt();
+        // LFO peak at t = 1/16 s (full level), trough at 3/16 s (level × 0.2).
+        let peak = rms(&out[2_400..3_600]);
+        let trough = rms(&out[8_400..9_600]);
+        assert!(trough < peak * 0.35, "peak {peak}, trough {trough}");
+    }
+
+    #[test]
+    fn modulated_notes_render_the_same_in_blocks() {
+        let modulation = Modulation {
+            lfo_rate: 3.0,
+            vibrato_cents: 20.0,
+            lfo_cutoff_octaves: 1.0,
+            tremolo: 0.3,
+            filter_env_octaves: 2.0,
+            filter_env_decay: 0.01,
+        };
+        for resonance in [0.0, 0.6] {
+            assert_blocks_match_whole(&Voice {
+                alpha: 0.3,
+                cutoff: 1_200.0,
+                resonance,
+                modulation,
+                ..voice(Oscillator::Supersaw)
+            });
+        }
     }
 
     #[test]

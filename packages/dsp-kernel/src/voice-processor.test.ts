@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { kernelWasmBytes, onePoleAlpha, OSCILLATOR_CODES, type KernelOscillator } from "./index.ts";
+import {
+  kernelWasmBytes,
+  NO_MODULATION,
+  onePoleAlpha,
+  OSCILLATOR_CODES,
+  type KernelOscillator,
+  type VoiceModulation
+} from "./index.ts";
 import { createNodeDspKernel } from "./node.ts";
 import {
   VOICE_PROCESSOR_NAME,
@@ -48,6 +55,7 @@ interface Note {
   time: number;
   noteDuration: number;
   resonance?: number;
+  modulation?: VoiceModulation;
 }
 
 const ENVELOPE = { attack: 0.01, decay: 0.05, sustain: 0.6, release: 0.08 };
@@ -64,6 +72,7 @@ function noteMessage(note: Note): VoiceProcessorMessage {
     seed: 0xc0ffee,
     cutoff: 2_400,
     resonance: note.resonance ?? 0,
+    modulation: note.modulation ?? NO_MODULATION,
     time: note.time
   };
 }
@@ -85,7 +94,8 @@ function exportSamples(notes: readonly Note[], length: number): Stereo<Float64Ar
         velocityGain: 0.75,
         seed: 0xc0ffee,
         cutoff: 2_400,
-        resonance: note.resonance ?? 0
+        resonance: note.resonance ?? 0,
+        modulation: note.modulation
       },
       Math.round(note.time * SAMPLE_RATE),
       Math.round((note.noteDuration + ENVELOPE.release) * SAMPLE_RATE)
@@ -142,7 +152,23 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 },
     { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 },
     { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 },
-    { oscillator: "sawtooth", frequency: 146.83, time: 0.47, noteDuration: 0.1, resonance: 0.8 }
+    { oscillator: "sawtooth", frequency: 146.83, time: 0.47, noteDuration: 0.1, resonance: 0.8 },
+    // Every modulation at once, on a resonant supersaw.
+    {
+      oscillator: "supersaw",
+      frequency: 196,
+      time: 0.5,
+      noteDuration: 0.08,
+      resonance: 0.5,
+      modulation: {
+        lfoRate: 6,
+        vibratoCents: 30,
+        lfoCutoffOctaves: 1,
+        tremolo: 0.4,
+        filterEnvOctaves: 2,
+        filterEnvDecay: 0.03
+      }
+    }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();
