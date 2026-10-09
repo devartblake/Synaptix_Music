@@ -14,6 +14,8 @@ export interface InstrumentProfile {
   sustain: number;
   release: number;
   filterFrequency: number;
+  /** Resonant filter amount, 0–1 (0, the default, is the plain one-pole low-pass). */
+  resonance?: number;
   reverbSend: number;
   destinationBus: "music" | "drums";
 }

@@ -38,6 +38,7 @@ import {
   ENVELOPE_RELEASE_PARAMETER,
   ENVELOPE_SUSTAIN_PARAMETER,
   FILTER_FREQUENCY_PARAMETER,
+  FILTER_RESONANCE_PARAMETER,
   primaryDevice,
   resolveEffectiveInstrumentSettings,
   REVERB_SEND_PARAMETER,
@@ -171,10 +172,11 @@ function createStarterProjectV1(projectId: string, options: CreateEmptyProjectOp
   return project;
 }
 
-type NumericSettingsKey = "filterFrequency" | "attack" | "decay" | "sustain" | "release" | "reverbSend";
+type NumericSettingsKey = "filterFrequency" | "resonance" | "attack" | "decay" | "sustain" | "release" | "reverbSend";
 
 const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
   [FILTER_FREQUENCY_PARAMETER]: "filterFrequency",
+  [FILTER_RESONANCE_PARAMETER]: "resonance",
   [ENVELOPE_ATTACK_PARAMETER]: "attack",
   [ENVELOPE_DECAY_PARAMETER]: "decay",
   [ENVELOPE_SUSTAIN_PARAMETER]: "sustain",

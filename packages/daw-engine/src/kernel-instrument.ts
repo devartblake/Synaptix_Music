@@ -81,6 +81,8 @@ export class KernelInstrument {
       noteDuration: Tone.Time(duration).toSeconds(),
       velocityGain: velocity,
       seed: noteSeed(noteId),
+      cutoff: settings.filterFrequency,
+      resonance: settings.resonance,
       time: time === undefined ? Tone.now() : Tone.Time(time).toSeconds()
     });
   }

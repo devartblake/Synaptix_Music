@@ -47,6 +47,7 @@ interface Note {
   frequency: number;
   time: number;
   noteDuration: number;
+  resonance?: number;
 }
 
 const ENVELOPE = { attack: 0.01, decay: 0.05, sustain: 0.6, release: 0.08 };
@@ -61,6 +62,8 @@ function noteMessage(note: Note): VoiceProcessorMessage {
     noteDuration: note.noteDuration,
     velocityGain: 0.75,
     seed: 0xc0ffee,
+    cutoff: 2_400,
+    resonance: note.resonance ?? 0,
     time: note.time
   };
 }
@@ -78,7 +81,9 @@ function exportSamples(notes: readonly Note[], length: number): Float64Array {
         ...ENVELOPE,
         noteDuration: note.noteDuration,
         velocityGain: 0.75,
-        seed: 0xc0ffee
+        seed: 0xc0ffee,
+        cutoff: 2_400,
+        resonance: note.resonance ?? 0
       },
       Math.round(note.time * SAMPLE_RATE),
       Math.round((note.noteDuration + ENVELOPE.release) * SAMPLE_RATE)
@@ -124,7 +129,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "drum-kit", frequency: 73.41619197935188, time: 0.38, noteDuration: 0.1 },
     { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 },
     { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 },
-    { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 }
+    { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 },
+    { oscillator: "sawtooth", frequency: 146.83, time: 0.47, noteDuration: 0.1, resonance: 0.8 }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();

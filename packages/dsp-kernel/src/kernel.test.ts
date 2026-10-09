@@ -85,6 +85,15 @@ function referenceVoice(
   const string = referenceString(p.frequency, p.sampleRate, p.seed);
   let sweepPhase = 0;
   let filtered = 0;
+  // crates/dsp ResonantLowPass, with Math.sin / Math.cos for tan.
+  const angle = Math.PI * Math.min(Math.max(p.cutoff / p.sampleRate, 0), 0.49);
+  const g = Math.sin(angle) / Math.cos(angle);
+  const k = 2 - 1.9 * Math.min(Math.max(p.resonance, 0), 1);
+  const a1 = 1 / (1 + g * (g + k));
+  const a2 = g * a1;
+  const a3 = g * a2;
+  let ic1 = 0;
+  let ic2 = 0;
   for (let i = first; i < end; i++) {
     const time = i / p.sampleRate;
     const phase = time * p.frequency;
@@ -125,7 +134,14 @@ function referenceVoice(
         polyBlep(fall >= 1 ? fall - 1 : fall, dt) +
         0.5;
     } else raw = cycle < 0.5 ? 4 * cycle - 1 : 3 - 4 * cycle;
-    filtered += p.alpha * (raw - filtered);
+    if (p.resonance > 0) {
+      const v3 = raw - ic2;
+      const v1 = a1 * ic1 + a2 * v3;
+      const v2 = ic2 + a2 * ic1 + a3 * v3;
+      ic1 = 2 * v1 - ic1;
+      ic2 = 2 * v2 - ic2;
+      filtered = v2;
+    } else filtered += p.alpha * (raw - filtered);
 
     let envelope: number;
     if (time < p.attack) envelope = p.attack > 0 ? time / p.attack : 1;
@@ -187,6 +203,8 @@ for (const oscillator of OSCILLATORS) {
         noteDuration: 0.12,
         velocityGain: 0.8,
         seed: 0xdeadbeef,
+        cutoff: 2_000,
+        resonance: 0,
         ...overrides
       };
       kernel.renderVoice(params, start, total);
@@ -215,6 +233,37 @@ for (const oscillator of OSCILLATORS) {
   });
 }
 
+test("the resonant filter matches the reference", () => {
+  // Its tan comes from the kernel's sine and cosine, so allow for their rounding; resonance
+  // amplifies it a little.
+  for (const resonance of [0.05, 0.6, 1]) {
+    const kernel = createNodeDspKernel();
+    const expected = new Float64Array(20_000);
+    kernel.beginTrack(20_000);
+    const params: VoiceParams = {
+      oscillator: "sawtooth",
+      frequency: 220,
+      sampleRate: 48_000,
+      alpha: 0.35,
+      attack: 0.005,
+      decay: 0.1,
+      sustain: 0.7,
+      release: 0.05,
+      noteDuration: 0.3,
+      velocityGain: 0.8,
+      seed: 1,
+      cutoff: 1_500,
+      resonance
+    };
+    kernel.renderVoice(params, 100, 18_000);
+    referenceVoice(expected, params, 100, 18_000);
+    const actual = kernel.trackSamples();
+    const worst = actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
+    assert.ok(worst < 1e-9, `resonance ${resonance} differs by ${worst}`);
+    assert.ok(actual.some((s) => s !== 0));
+  }
+});
+
 test("beginTrack starts from silence", () => {
   const kernel = createNodeDspKernel();
   kernel.beginTrack(100);
@@ -230,7 +279,9 @@ test("beginTrack starts from silence", () => {
       release: 0,
       noteDuration: 1,
       velocityGain: 1,
-      seed: 1
+      seed: 1,
+      cutoff: 2_000,
+      resonance: 0
     },
     0,
     100
