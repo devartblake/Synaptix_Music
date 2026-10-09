@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  RENDER_ENGINE_VERSION,
   RENDER_ARTIFACT_MANIFEST_VERSION,
   RENDER_CONTRACT_VERSION,
   RenderArtifactManifestSchema,
@@ -21,7 +22,7 @@ function manifest(format: "wav" | "mp3" | "ogg", preview = false): RenderManifes
     projectId: "project-a",
     revisionId: "revision-a",
     projectChecksumSha256: "a".repeat(64),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: 1,
     scope: { kind: "master" },
     range: { startTick: 0, endTick: 3840 },
@@ -98,6 +99,17 @@ test("packages a requested lossy master, preview, and validated artifact manifes
   assert.equal(artifactManifest.outputFormat, "ogg");
   assert.equal(artifactManifest.artifacts.length, 2);
   assert.equal(artifactManifest.previewArtifactId, packaged.artifacts[1]?.metadata.artifactId);
+});
+
+test("the artifact manifest names the engine that rendered it, not the one the request named", async () => {
+  // The worker refuses mismatched requests before rendering (engine-version.ts); this is the
+  // second half: what it writes comes from its own engine constant.
+  const request = { ...manifest("wav"), engineVersion: "0.9.0" };
+  const packaged = await packageRenderArtifacts(outcome(), request, new RecordingTranscoder());
+  const artifactManifest = RenderArtifactManifestSchema.parse(
+    JSON.parse(packaged.artifacts[1]!.bytes.toString("utf8"))
+  );
+  assert.equal(artifactManifest.engineVersion, RENDER_ENGINE_VERSION);
 });
 
 test("keeps certified WAV bytes and still emits an artifact manifest", async () => {

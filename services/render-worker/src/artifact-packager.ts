@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   RENDER_ARTIFACT_MANIFEST_VERSION,
+  RENDER_ENGINE_VERSION,
   RenderArtifactManifestSchema,
   type RenderArtifact,
   type RenderManifest,
@@ -100,7 +101,8 @@ function manifestArtifact(
     projectId: manifest.projectId,
     revisionId: manifest.revisionId,
     projectChecksumSha256: manifest.projectChecksumSha256,
-    engineVersion: manifest.engineVersion,
+    // Stamped by the worker, not copied from the request (assertWorkerEngine keeps them equal).
+    engineVersion: RENDER_ENGINE_VERSION,
     outputFormat: manifest.output.format,
     scope: manifest.scope,
     range: manifest.range,

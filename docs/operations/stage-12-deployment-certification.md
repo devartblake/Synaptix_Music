@@ -59,6 +59,10 @@ RENDER_WORKER_SIGNED_URL_TTL_SECONDS=900
 RENDER_WORKER_FFMPEG_PATH=ffmpeg
 ```
 
+### Engine version
+
+The worker renders with one synthesis engine, `RENDER_ENGINE_VERSION` in `@synaptix/render-contracts` (1.1.0 since the Rust kernel), and stamps it on every artifact manifest. It refuses render requests that name another engine. A submission gets `409 engine_version_mismatch` and a message asking the player to reload the studio. A job already queued is retried, so during a rolling deploy a worker still on the old engine can take it; otherwise it dead-letters. Deploy the studio and the render worker together whenever the engine version changes.
+
 The worker refuses to start its polling loop when the platform loader is configured without MinIO. The backend returns `503` when service authentication is not configured and `401` for a missing or incorrect token.
 
 ## Certification procedure

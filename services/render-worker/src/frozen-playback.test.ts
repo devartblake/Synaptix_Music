@@ -5,7 +5,7 @@ import { createReferenceDriveDevice } from "@synaptix/daw-engine";
 import { createEmptyProject } from "@synaptix/project-model";
 import { computePluginStateChecksum, computeSignalChainChecksum } from "@synaptix/project-model/plugin";
 import { toProjectV2, type DeviceV2, type MusicProjectV2 } from "@synaptix/project-model/v2";
-import { RENDER_CONTRACT_VERSION, type RenderManifest } from "@synaptix/render-contracts";
+import { RENDER_CONTRACT_VERSION, RENDER_ENGINE_VERSION, type RenderManifest } from "@synaptix/render-contracts";
 
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import type { AudioTranscoder } from "./ffmpeg-transcoder.ts";
@@ -43,7 +43,7 @@ function manifest(overrides: Partial<RenderManifest> = {}): RenderManifest {
     projectId: "project-a",
     revisionId: "revision-a",
     projectChecksumSha256: "a".repeat(64),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: 1,
     scope: { kind: "stems", trackIds: ["bass"] },
     range: { startTick: 0, endTick: PPQ * 4 },

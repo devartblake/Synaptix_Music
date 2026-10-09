@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { RenderManifestSchema, type RenderJobStatus } from "@synaptix/render-contracts";
 import { z, ZodError } from "zod";
 
+import { assertWorkerEngine, EngineVersionMismatchError } from "./engine-version.ts";
 import type { ArtifactDelivery } from "./minio-artifact-store.ts";
 import { RenderQuotaExceededError, type PostgresRenderJobStore } from "./postgres-render-job-store.ts";
 
@@ -283,6 +284,7 @@ async function handleSubmit(
   }
 
   const manifest = RenderManifestSchema.parse(body.manifest);
+  assertWorkerEngine(manifest);
   const job = await store.submit(manifest, idempotencyKey, body.maxAttempts, owner, maxActiveJobsPerOwner);
   sendJson(res, 201, job);
 }
@@ -291,6 +293,9 @@ async function handleSubmit(
 // (matching the render-job store's existing error-handling convention); Zod
 // parse failures and JSON syntax errors are client input errors (400).
 function handleError(res: ServerResponse, error: unknown, correlationId: string): void {
+  if (error instanceof EngineVersionMismatchError) {
+    return sendError(res, 409, "engine_version_mismatch", error.message, correlationId);
+  }
   if (error instanceof RenderQuotaExceededError) {
     return sendError(res, 429, "render_quota_exceeded", error.message, correlationId);
   }

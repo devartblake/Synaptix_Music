@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { after, before, beforeEach, test } from "node:test";
 
 import {
+  RENDER_ENGINE_VERSION,
   RENDER_CONTRACT_VERSION,
   type RenderManifest,
   type RenderResult
@@ -31,7 +32,7 @@ function manifest(renderId: string, scope: RenderManifest["scope"] = { kind: "ma
     projectId: "project-a",
     revisionId: "revision-a",
     projectChecksumSha256: "a".repeat(64),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: 42,
     scope,
     range: { startTick: 0, endTick: 3840 },
@@ -98,6 +99,21 @@ if (!connectionString) {
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.equal(body.code, "invalid_render_job_request");
+  });
+
+  test("a render asking for another engine is refused with 409 engine_version_mismatch", async () => {
+    // e.g. a studio tab loaded before a deploy still asks for the old engine. Rendering it with
+    // this worker's engine would label the audio wrongly and fail certification later.
+    const response = await fetch(`${baseUrl}/render-jobs`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": "old-engine" },
+      body: JSON.stringify({ manifest: { ...manifest("10000000-0000-4000-8000-0000000000e1"), engineVersion: "1.0.0" } })
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, "engine_version_mismatch");
+    assert.match(body.message, /Reload the studio/);
+    assert.equal((await store.list()).length, 0, "no job was queued");
   });
 
   test("submit, fetch status, list, and events form a consistent lifecycle", async () => {

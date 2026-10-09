@@ -4,7 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import { Pool } from "pg";
 
-import { RENDER_CONTRACT_VERSION, type RenderManifest, type RenderResult } from "@synaptix/render-contracts";
+import { RENDER_CONTRACT_VERSION, RENDER_ENGINE_VERSION, type RenderManifest, type RenderResult } from "@synaptix/render-contracts";
 
 import { applyMigrations } from "./migrate.ts";
 import { PostgresRenderJobStore, RenderQuotaExceededError } from "./postgres-render-job-store.ts";
@@ -23,7 +23,7 @@ function manifest(renderId: string): RenderManifest {
     projectId: "project-a",
     revisionId: "revision-a",
     projectChecksumSha256: "a".repeat(64),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: 42,
     scope: { kind: "master" },
     range: { startTick: 0, endTick: 3840 },
