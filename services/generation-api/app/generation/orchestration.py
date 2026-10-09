@@ -30,6 +30,16 @@ INSTRUMENTS: dict[str, str] = {
     "synaptix-brass": "Brass Section",
     "synaptix-bell": "Bell",
     "synaptix-poly-synth": "Poly Synth",
+    "synaptix-supersaw": "Supersaw Lead",
+    "synaptix-unison": "Unison Pad",
+    "synaptix-guitar": "Plucked String",
+    "synaptix-fm-glass": "FM Bell",
+    "synaptix-fm-ep": "FM Electric Piano",
+    "synaptix-beat-kit": "Drum Kit",
+    "synaptix-boom": "808 Bass",
+    "synaptix-chiptune": "Chiptune Lead",
+    "synaptix-squelch": "Acid Bass",
+    "synaptix-motion": "Motion Pad",
 }
 
 ROLES: tuple[TrackRole, ...] = get_args(TrackRole)
