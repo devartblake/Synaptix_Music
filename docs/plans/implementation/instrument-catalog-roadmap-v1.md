@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** second slice in progress · **Created:** 2026-10-09 · **First slice:** done · **Second slice:** step 1 done
+**Status:** second slice in progress · **Created:** 2026-10-09 · **First slice:** done · **Second slice:** steps 1–2 done
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -128,7 +128,11 @@ existing sound changes: Drum Kit is added alongside Drum Synth, which stays byte
   kick, snare, clap and tom about 0.9–1.0; hats and cymbals 0.45–0.65. A second golden test pins
   one hit of every drum, because the catalog golden project only reaches the toms. Cost: about
   the same as Drum Synth (typical project 7.3× real time master, 6.7× stems).
-- Step 2, 808 Bass: next.
+- Step 2, 808 Bass: **done.** Kernel oscillator `808-bass` (`synaptix-boom`; "808" and "bass"
+  are other instruments' keywords). A sine whose pitch falls from 2.5× the note onto it
+  (`f · (1 + 1.5 / (1 + 35·t))`, integrated sample by sample), through the soft clipper
+  `x / (1 + |x|)` at drive 2.2, normalized so peaks reach 1. Cost: typical project 7.7× real
+  time master, 7.2× stems.
 - Step 3, Chiptune Lead: after that. The arpeggio belongs in the editor, not the voice.
 
 ## Quick wins (days each)
