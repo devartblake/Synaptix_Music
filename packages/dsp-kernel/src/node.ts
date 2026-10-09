@@ -1,11 +1,12 @@
-import { readFileSync } from "node:fs";
-
-import { DspKernel } from "./index.ts";
+import { DspKernel, kernelWasmBytes } from "./index.ts";
 
 let module: WebAssembly.Module | undefined;
 
-/** A kernel instance for Node; the module is compiled once per process. */
+/**
+ * A kernel instance for Node; the module is compiled once per process. Browsers' main threads
+ * refuse synchronous compiles this large, so the studio compiles it in its AudioWorklet instead.
+ */
 export function createNodeDspKernel(): DspKernel {
-  module ??= new WebAssembly.Module(readFileSync(new URL("../synaptix-dsp.wasm", import.meta.url)));
+  module ??= new WebAssembly.Module(kernelWasmBytes());
   return new DspKernel(module);
 }

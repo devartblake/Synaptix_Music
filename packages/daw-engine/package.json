@@ -16,6 +16,7 @@
     "test": "node --experimental-transform-types --test src/*.test.ts"
   },
   "dependencies": {
+    "@synaptix/dsp-kernel": "0.1.0",
     "@synaptix/project-model": "0.1.0",
     "@synaptix/audio-runtime": "0.1.0",
     "tone": "^15.1.22"

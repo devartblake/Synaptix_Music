@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** in progress · **Created:** 2026-10-09 · **First slice:** step 1 in exports (see below)
+**Status:** in progress · **Created:** 2026-10-09 · **First slice:** step 1 done (see below)
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -72,13 +72,17 @@ deliberately).
 
 **Progress**
 
-- Step 1, exports: **done.** `crates/dsp` (`voice.rs`) renders every instrument note in the render
-  worker through `packages/dsp-kernel` (`synaptix-dsp.wasm`, checked in; CI rebuilds it and fails
-  if it differs). Saw and square are PolyBLEP; the six saw/square instruments changed on purpose
-  and the sine and triangle instruments stayed byte-identical. `packages/dsp-kernel/src/kernel.test.ts`
-  checks the kernel against a TypeScript reference sample for sample.
-- Step 1, studio preview: next. Load the same `.wasm` in an AudioWorklet in place of the Tone.js
-  oscillators.
+- Step 1, exports: **done.** `crates/dsp` (`voice.rs`) renders every instrument note in the
+  render worker through `packages/dsp-kernel` (the WebAssembly is embedded in `kernel-wasm.ts` and
+  checked in; CI rebuilds it and fails if it differs). Saw and square are PolyBLEP; the six
+  saw/square instruments changed on purpose and the sine and triangle instruments stayed
+  byte-identical. `kernel.test.ts` checks the kernel against a TypeScript reference sample for
+  sample.
+- Step 1, studio preview: **done.** Instrument tracks and note auditions play through the same
+  module in an AudioWorklet (`voice-processor.ts`, `KernelInstrument` in `daw-engine`) instead of
+  Tone.js synths. `voice-processor.test.ts` runs the shipped worklet source in 128-frame blocks and
+  requires every sample to equal the export's (as 32-bit float); the same check passed in Chromium's
+  real audio thread (48,000 samples, none different).
 
 Result: the kernel proven in both places, six existing instruments improved, three to five new
 instruments, and no asset work.
