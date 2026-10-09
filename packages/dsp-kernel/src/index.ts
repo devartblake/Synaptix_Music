@@ -47,7 +47,8 @@ export const OSCILLATOR_CODES = {
   "fm-bell": 6,
   "fm-piano": 7,
   "drum-kit": 8,
-  "808-bass": 9
+  "808-bass": 9,
+  "pulse-25": 10
 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;
 

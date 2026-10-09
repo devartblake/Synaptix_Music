@@ -380,7 +380,7 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
 // only update the expected values for an intended sound change, and say so in the changelog.
 // Intended changes so far: band-limited (PolyBLEP) saw and square in the Rust kernel changed the
 // six saw/square instruments; Supersaw Lead, Unison Pad, Plucked String,
-// FM Bell, FM Electric Piano, Drum Kit and 808 Bass were added.
+// FM Bell, FM Electric Piano, Drum Kit, 808 Bass and Chiptune Lead were added.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -400,9 +400,10 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-fm-glass": "7a0b9b7eb136c82e815f53ee428e96242627419998e87bd2108907bf664bf958",
   "synaptix-fm-ep": "12c06005b9ccd593f7784ef1ea501853b3755c2553f800e19ab96e9524404b0a",
   "synaptix-beat-kit": "e4fbd3f7eba650803560ebded6013010bcdf33bb6fe333ec9fd090de6197f97f",
-  "synaptix-boom": "618144ad6a9ce1fd7d3288db961c04f8739ae167cb2ea1c4ee0fa5f953c2e334"
+  "synaptix-boom": "618144ad6a9ce1fd7d3288db961c04f8739ae167cb2ea1c4ee0fa5f953c2e334",
+  "synaptix-chiptune": "20b4876bdef0721c97d42d5bb1c6007fdfd68a5ec07b9a07013c34fd843bf4ef"
 };
-const GOLDEN_MASTER = "96626eeb2db74c06fd5eb90214defe5a0530eed9a2400af8094a00d44e4d2e35";
+const GOLDEN_MASTER = "0a1887dcc1bfae410753414ab070c0bef5dfc55a8597b7852f0d1d6cec93fcd4";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {
