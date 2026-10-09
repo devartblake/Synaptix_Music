@@ -1,3 +1,12 @@
 [workspace]
 members = ["crates/dsp", "crates/wasm-bindings"]
 resolver = "2"
+
+# The WebAssembly build (packages/dsp-kernel/synaptix-dsp.wasm) is checked in; CI rebuilds it
+# and fails if it differs, so these settings must stay reproducible.
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

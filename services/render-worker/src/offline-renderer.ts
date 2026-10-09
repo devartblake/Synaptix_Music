@@ -20,6 +20,8 @@ import {
 
 import { projectV2BuiltinView, type MusicProjectV2 } from "@synaptix/project-model/v2";
 
+import { createNodeDspKernel } from "@synaptix/dsp-kernel/node";
+
 import { applyCompressor } from "./compressor.ts";
 import { offlineProcessorFor, type OfflinePluginProcessor } from "./plugin-processors.ts";
 import { PluginRenderUnsupportedError } from "./plugin-render-error.ts";
@@ -75,73 +77,12 @@ interface TickRange {
   endTick: number;
 }
 
-const OSCILLATOR_CODES = { sine: 0, square: 1, sawtooth: 2, triangle: 3 } as const;
-
 /**
- * One note: oscillator -> one-pole low-pass -> ADSR -> velocity, added into the track buffer.
- *
- * This is the renderer's hot loop (docs/development/dsp-profiling.md), so the oscillator and
- * envelope are computed inline (no per-sample calls or table lookups) and the sample range is
- * clipped to the buffer once. The golden-checksum test in offline-renderer.test.ts fails if a
- * change here alters the rendered audio.
+ * The Rust synthesis kernel (one note: oscillator -> one-pole low-pass -> ADSR -> velocity). It
+ * is the renderer's hot loop (docs/development/dsp-profiling.md) and the code the studio preview
+ * will share. The golden-checksum test in offline-renderer.test.ts fails if the audio changes.
  */
-function renderVoice(
-  left: Float64Array,
-  right: Float64Array,
-  settings: EffectiveInstrumentSettings,
-  noteStartSample: number,
-  noteTotalSamples: number,
-  totalSamples: number,
-  sampleRate: number,
-  frequency: number,
-  alpha: number,
-  noteDurationSeconds: number,
-  velocityGain: number
-): void {
-  const oscillator = OSCILLATOR_CODES[settings.oscillator];
-  const { attack, decay, sustain, release } = settings;
-  // Samples before the buffer start are skipped without touching the filter, as before.
-  const first = Math.max(0, -noteStartSample);
-  const end = Math.min(noteTotalSamples, totalSamples - noteStartSample);
-  let filtered = 0;
-  for (let sampleIndex = first; sampleIndex < end; sampleIndex++) {
-    const timeSeconds = sampleIndex / sampleRate;
-    const phase = timeSeconds * frequency;
-    const cycle = phase - Math.floor(phase);
-    const raw =
-      oscillator === 0
-        ? Math.sin(2 * Math.PI * cycle)
-        : oscillator === 1
-          ? cycle < 0.5
-            ? 1
-            : -1
-          : oscillator === 2
-            ? 2 * cycle - 1
-            : cycle < 0.5
-              ? 4 * cycle - 1
-              : 3 - 4 * cycle;
-    filtered += alpha * (raw - filtered);
-
-    let envelope: number;
-    if (timeSeconds < attack) envelope = attack > 0 ? timeSeconds / attack : 1;
-    else {
-      const sinceDecayStart = timeSeconds - attack;
-      if (sinceDecayStart < decay)
-        envelope = decay > 0 ? 1 - (1 - sustain) * (sinceDecayStart / decay) : sustain;
-      else if (timeSeconds < noteDurationSeconds) envelope = sustain;
-      else {
-        const sinceRelease = timeSeconds - noteDurationSeconds;
-        envelope =
-          sinceRelease >= release ? 0 : release > 0 ? sustain * (1 - sinceRelease / release) : 0;
-      }
-    }
-
-    const value = filtered * envelope * velocityGain;
-    const target = noteStartSample + sampleIndex;
-    left[target]! += value;
-    right[target]! += value;
-  }
-}
+const kernel = createNodeDspKernel();
 
 function renderTrackBuffer(
   track: Track,
@@ -156,11 +97,12 @@ function renderTrackBuffer(
   /** False stops before the channel strip (volume and pan), where plug-in inserts sit. */
   applyChannel = true
 ): StereoBuffer {
-  const left = new Float64Array(totalSamples);
-  const right = new Float64Array(totalSamples);
-  if (!forceAudible && !trackAudible(track, tracks)) return { left, right };
+  if (!forceAudible && !trackAudible(track, tracks)) {
+    return { left: new Float64Array(totalSamples), right: new Float64Array(totalSamples) };
+  }
 
   const settings = resolveEffectiveInstrumentSettings(track);
+  kernel.beginTrack(totalSamples);
   const alpha = 1 - Math.exp((-2 * Math.PI * settings.filterFrequency) / sampleRate);
 
   for (const clip of track.clips) {
@@ -178,21 +120,28 @@ function renderTrackBuffer(
       const noteStartSample = Math.round(noteStartSeconds * sampleRate);
       const noteTotalSamples = Math.round((noteDurationSeconds + settings.release) * sampleRate);
 
-      renderVoice(
-        left,
-        right,
-        settings,
+      kernel.renderVoice(
+        {
+          oscillator: settings.oscillator,
+          frequency,
+          sampleRate,
+          alpha,
+          attack: settings.attack,
+          decay: settings.decay,
+          sustain: settings.sustain,
+          release: settings.release,
+          noteDuration: noteDurationSeconds,
+          velocityGain
+        },
         noteStartSample,
-        noteTotalSamples,
-        totalSamples,
-        sampleRate,
-        frequency,
-        alpha,
-        noteDurationSeconds,
-        velocityGain
+        noteTotalSamples
       );
     }
   }
+
+  // Voices are mono until the channel strip pans them.
+  const left = kernel.trackSamples();
+  const right = left.slice();
 
   if (!applyChannel) return { left, right };
   const gainLinear = 10 ** (track.volumeDb / 20);

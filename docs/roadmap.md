@@ -191,6 +191,8 @@ Profiled 2026-10-09 (`docs/development/dsp-profiling.md`): no such bottleneck. S
 
 The instruments a Rust synthesis kernel would enable, and the decided first slice (PolyBLEP oscillators, supersaw, Karplus–Strong pluck, 2-operator FM), are in `docs/plans/implementation/instrument-catalog-roadmap-v1.md`.
 
+Started 2026-10-09: the render worker now synthesizes instrument notes with the Rust kernel (`crates/dsp` → `packages/dsp-kernel`), with band-limited saw and square waves.
+
 ## Deferred or Later-Phase Work
 
 - Third-party plugin hosting
