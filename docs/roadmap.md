@@ -189,6 +189,8 @@ Rust/WASM remains deferred until profiling demonstrates a material bottleneck in
 
 Profiled 2026-10-09 (`docs/development/dsp-profiling.md`): no such bottleneck. Synthesis dominates render time; the next steps, if renders need to be faster, are TypeScript-level synthesis changes before any WASM kernel.
 
+The instruments a Rust synthesis kernel would enable, and the decided first slice (PolyBLEP oscillators, supersaw, Karplus–Strong pluck, 2-operator FM), are in `docs/plans/implementation/instrument-catalog-roadmap-v1.md`.
+
 ## Deferred or Later-Phase Work
 
 - Third-party plugin hosting
