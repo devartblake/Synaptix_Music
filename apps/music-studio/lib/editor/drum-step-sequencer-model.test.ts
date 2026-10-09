@@ -4,6 +4,8 @@ import test from "node:test";
 import type { MusicProject } from "@synaptix/project-model";
 
 import {
+  DRUM_KIT_DEVICE_TYPE,
+  drumNoteName,
   isDrumTrack,
   nextStepVelocity,
   noteAtStep,
@@ -34,6 +36,37 @@ test("resolves device drum mapping overrides", () => {
   assert.equal(isDrumTrack(track), true);
   assert.equal(resolveDrumLanes(track).find((lane) => lane.id === "kick")?.pitch, 35);
   assert.equal(resolveDrumLanes(track).find((lane) => lane.id === "snare")?.pitch, 38);
+});
+
+const kit = {
+  ...track,
+  id: "track-kit",
+  devices: [{ ...track.devices[0]!, id: "device-kit", deviceType: DRUM_KIT_DEVICE_TYPE, parameters: [] }]
+};
+
+test("the Drum Kit opens in the step sequencer with a lane for every drum it plays", () => {
+  // Its device type has no "drum" in it, so it used to open in the plain piano roll.
+  assert.equal(isDrumTrack(kit), true);
+  assert.deepEqual(
+    resolveDrumLanes(kit).map((lane) => `${lane.label} ${lane.pitch}`),
+    ["Kick 36", "Rim 37", "Snare 38", "Clap 39", "Closed Hat 42", "Open Hat 46",
+      "Low Tom 45", "Mid Tom 47", "High Tom 50", "Crash 49", "Ride 51"]
+  );
+  // Drum Synth keeps its eight lanes: it has no rim or cymbal sounds.
+  assert.equal(resolveDrumLanes(track).length, 8);
+});
+
+test("drum notes are named by what they play, for the piano roll", () => {
+  assert.equal(drumNoteName(kit, 36), "Kick");
+  assert.equal(drumNoteName(kit, 51), "Ride");
+  // Notes off the lanes: the kit's own map (low notes kick, unmapped notes tuned toms).
+  assert.equal(drumNoteName(kit, 30), "Kick");
+  assert.equal(drumNoteName(kit, 44), "Closed Hat");
+  assert.equal(drumNoteName(kit, 72), "Tom");
+  // Drum Synth names its lanes; other notes are plain pitches. Melodic tracks get no drum names.
+  assert.equal(drumNoteName(track, 38), "Snare");
+  assert.equal(drumNoteName(track, 72), null);
+  assert.equal(drumNoteName({ ...track, devices: [{ ...track.devices[0]!, deviceType: "synaptix-lead-synth" }] }, 36), null);
 });
 
 test("finds notes at exact steps and within bars", () => {

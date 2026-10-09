@@ -37,6 +37,8 @@ export interface DrumStepSequencerProps {
   clip: MidiClip;
   onExecute(command: EditorCommand): Promise<void>;
   onClose(): void;
+  /** Opens this clip in the piano roll (timing off the step grid, notes without a lane). */
+  onOpenPianoRoll?(): void;
 }
 
 export function DrumStepSequencer({
@@ -45,7 +47,8 @@ export function DrumStepSequencer({
   track,
   clip,
   onExecute: executeCommand,
-  onClose
+  onClose,
+  onOpenPianoRoll
 }: DrumStepSequencerProps) {
   const [patternBars, setPatternBars] = useState(1);
   const [defaultVelocity, setDefaultVelocity] = useState(100);
@@ -148,6 +151,7 @@ export function DrumStepSequencer({
       <Toolbar>
         <strong>{clip.name} · Steps</strong>
         <Button onClick={onClose}>Arrangement</Button>
+        {onOpenPianoRoll && <Button onClick={onOpenPianoRoll}>Piano roll</Button>}
         <label>
           Pattern{" "}
           <select
