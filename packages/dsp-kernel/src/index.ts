@@ -43,7 +43,9 @@ export const OSCILLATOR_CODES = {
   sawtooth: 2,
   triangle: 3,
   supersaw: 4,
-  "plucked-string": 5
+  "plucked-string": 5,
+  "fm-bell": 6,
+  "fm-piano": 7
 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;
 

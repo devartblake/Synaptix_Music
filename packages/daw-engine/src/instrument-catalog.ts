@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -143,6 +143,20 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "pluck", oscillator: "plucked-string", attack: 0.001, decay: 2, sustain: 0.6, release: 0.25,
       filterFrequency: 7000, reverbSend: 0.22, destinationBus: "music" },
     starterPattern: [[0, 52, 1], [0.5, 59, 1], [1, 64, 1], [1.5, 67, 1], [2, 71, 1], [2.5, 67, 1], [3, 64, 1], [3.5, 59, 0.5]]
+  },
+  {
+    deviceType: "synaptix-fm-glass", label: "FM Bell", description: "Two-operator FM: glassy, inharmonic bell that mellows as it rings.",
+    keywords: ["fm-glass", "fm bell"],
+    profile: { kind: "bell", oscillator: "fm-bell", attack: 0.001, decay: 1.5, sustain: 0.25, release: 1.6,
+      filterFrequency: 12000, reverbSend: 0.3, destinationBus: "music" },
+    starterPattern: [[0, 76, 1], [1, 79, 1], [2, 84, 1.5], [3.5, 83, 0.5]]
+  },
+  {
+    deviceType: "synaptix-fm-ep", label: "FM Electric Piano", description: "Two-operator FM keys: bright attack, mellow body.",
+    keywords: ["fm-ep", "fm piano"],
+    profile: { kind: "keys", oscillator: "fm-piano", attack: 0.002, decay: 1.2, sustain: 0.35, release: 0.4,
+      filterFrequency: 9000, reverbSend: 0.18, destinationBus: "music" },
+    starterPattern: [[0, 60, 1.5], [0, 64, 1.5], [0, 67, 1.5], [2, 62, 1.5], [2, 65, 1.5], [2, 69, 1.5]]
   }
 ];
 
