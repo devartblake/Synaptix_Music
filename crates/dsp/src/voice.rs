@@ -15,7 +15,17 @@ pub enum Oscillator {
     /// Band-limited (PolyBLEP) sawtooth.
     Sawtooth,
     Triangle,
+    /// Seven detuned band-limited saws (supersaw / unison).
+    Supersaw,
 }
+
+/// Supersaw voices: frequency ratios (spread about ±19 cents), starting phases (fixed, so
+/// renders stay deterministic, and spread so the voices don't start in phase), and levels.
+pub const SUPERSAW_RATIOS: [f64; 7] = [0.989, 0.9937, 0.998, 1.0, 1.002, 1.0063, 1.011];
+pub const SUPERSAW_PHASES: [f64; 7] = [0.37, 0.71, 0.13, 0.0, 0.53, 0.89, 0.29];
+pub const SUPERSAW_LEVELS: [f64; 7] = [0.6, 0.6, 0.6, 1.0, 0.6, 0.6, 0.6];
+/// Brings the sum back to about one saw's loudness: 1 / (1 + 0.6·√6), rounded.
+pub const SUPERSAW_GAIN: f64 = 0.405;
 
 impl Oscillator {
     /// Codes shared with the TypeScript side.
@@ -25,6 +35,7 @@ impl Oscillator {
             1 => Some(Self::Square),
             2 => Some(Self::Sawtooth),
             3 => Some(Self::Triangle),
+            4 => Some(Self::Supersaw),
             _ => None,
         }
     }
@@ -110,12 +121,24 @@ impl VoiceState {
             release,
             ..
         } = *voice;
+        let supersaw_frequencies = SUPERSAW_RATIOS.map(|ratio| voice.frequency * ratio);
+        let supersaw_dts = supersaw_frequencies.map(|frequency| frequency / voice.sample_rate);
         let mut filtered = self.filtered;
         for sample_index in first..end {
             let time = sample_index as f64 / voice.sample_rate;
             let phase = time * voice.frequency;
             let cycle = phase - phase.floor();
             let raw = match voice.oscillator {
+                Oscillator::Supersaw => {
+                    let mut sum = 0.0;
+                    for k in 0..7 {
+                        let phase = time * supersaw_frequencies[k] + SUPERSAW_PHASES[k];
+                        let cycle = phase - phase.floor();
+                        sum += SUPERSAW_LEVELS[k]
+                            * (2.0 * cycle - 1.0 - poly_blep(cycle, supersaw_dts[k]));
+                    }
+                    sum * SUPERSAW_GAIN
+                }
                 Oscillator::Sine => sine_cycle(cycle),
                 Oscillator::Square => {
                     let naive = if cycle < 0.5 { 1.0 } else { -1.0 };
@@ -329,6 +352,7 @@ mod tests {
             Oscillator::Square,
             Oscillator::Sawtooth,
             Oscillator::Triangle,
+            Oscillator::Supersaw,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -350,6 +374,17 @@ mod tests {
             assert_eq!(whole, blocks, "{oscillator:?}");
             assert!(state.finished());
         }
+    }
+
+    #[test]
+    fn supersaw_stays_about_as_loud_as_one_saw() {
+        let rms = |oscillator| {
+            let mut out = vec![0.0; 48_000];
+            render_voice(&mut out, &voice(oscillator), 0, 48_000);
+            (out.iter().map(|s| s * s).sum::<f64>() / out.len() as f64).sqrt()
+        };
+        let ratio = rms(Oscillator::Supersaw) / rms(Oscillator::Sawtooth);
+        assert!((0.6..1.2).contains(&ratio), "supersaw/saw RMS {ratio}");
     }
 
     #[test]

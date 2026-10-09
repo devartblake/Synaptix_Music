@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** in progress · **Created:** 2026-10-09 · **First slice:** step 1 done (see below)
+**Status:** in progress · **Created:** 2026-10-09 · **First slice:** steps 1–2 done (see below)
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -83,6 +83,13 @@ deliberately).
   Tone.js synths. `voice-processor.test.ts` runs the shipped worklet source in 128-frame blocks and
   requires every sample to equal the export's (as 32-bit float); the same check passed in Chromium's
   real audio thread (48,000 samples, none different).
+
+- Step 2, supersaw: **done.** Kernel oscillator `supersaw` (seven PolyBLEP saws at ratios
+  0.989–1.011, fixed start phases, centre voice louder) and two catalog instruments, **Supersaw
+  Lead** (`synaptix-supersaw`) and **Unison Pad** (`synaptix-unison`). Stereo spread is not done:
+  voices are mono until the channel strip, in both preview and export; spreading needs a stereo
+  voice path and comes later. Cost: a dense all-supersaw project exports at 5.0× real time
+  (master) and 3.5× (stems).
 
 Result: the kernel proven in both places, six existing instruments improved, three to five new
 instruments, and no asset work.

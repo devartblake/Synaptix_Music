@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { createInstrumentTrack, INSTRUMENT_CATALOG } from "@synaptix/daw-engine";
@@ -379,8 +378,25 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
 // speed-up (or a future WASM synthesis kernel) must not change a single sample. One track per
 // catalog instrument covers every oscillator and envelope shape. If this fails, the audio changed:
 // only update the expected values for an intended sound change, and say so in the changelog.
-// Last intended change: band-limited (PolyBLEP) saw and square in the Rust kernel, which changed
-// the six saw/square instruments; the sine and triangle instruments stayed byte-identical.
+// Intended changes so far: band-limited (PolyBLEP) saw and square in the Rust kernel changed the
+// six saw/square instruments; Supersaw Lead and Unison Pad were added.
+const GOLDEN_STEMS: Record<string, string> = {
+  "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
+  "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
+  "synaptix-bass-synth": "a5ad3391b6240290c5c81660c8704d491feb27328af414a0a5a6c1a98f69eecb",
+  "synaptix-lead-synth": "bd7d15d2537e8b740b9cded003cf42ab79f355cf4e2933f42016e3134ca80f00",
+  "synaptix-pad": "72472e0ab45a77bb2ecbeffb501a53115512cfea2addef0c797be12e8214c72d",
+  "synaptix-pluck": "f25416e9aa1b838810f8acdb3a8d5e9e30762808ef8ceec17e4c2be01af8b1bf",
+  "synaptix-electric-piano": "e4e94622747d67d1a7738c23bb0452bf13eb6dcc95ed8aaf8665a7fa1d9b12e7",
+  "synaptix-organ": "2c40c332980cedc42c4190741044244a9f1d7565957a7082a3f5c4164ce5ed21",
+  "synaptix-strings": "8acecfb7f56a6b698454427c9ad311dafe4d053775561362a574028753f62098",
+  "synaptix-brass": "48df5c86f7a86eba1553f971124eddda5a3ab46c83c76b561bd770106b49350b",
+  "synaptix-bell": "d59fe591221738c0dc4208213f07e062332976fe01e421d32f61f865777bd748",
+  "synaptix-poly-synth": "6961e425915149f4c87df542c8e13e3574de198603c905dc9dc0d962cc9b9a58",
+  "synaptix-supersaw": "e2acdc9199ea39648e814ddbbfd4f312adb4abd11690c62ec295434ce06ea005",
+  "synaptix-unison": "0cf154540b68ff8f61a82dc872237cb1d6b5091f0eacefdbb46525dc46646bdc"
+};
+const GOLDEN_MASTER = "5017472830db0a4e480ae7b415deba5146baa31b4d941a2d327701521469d314";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {
@@ -414,11 +430,12 @@ test("every catalog instrument renders the same bytes as before (golden checksum
 
   const master = renderProjectOffline(value, golden({ kind: "master" }));
   const stems = renderProjectOffline(value, golden({ kind: "stems", trackIds: value.tracks.map((t) => t.id) }));
-  const stemsDigest = createHash("sha256")
-    .update(stems.artifacts.map((artifact) => artifact.metadata.checksumSha256).join(","))
-    .digest("hex");
+  // Stems are pinned per instrument, so a change shows which instruments it touched, and adding
+  // an instrument (appended to the catalog) leaves the others' entries alone.
+  const stemChecksums = Object.fromEntries(
+    INSTRUMENT_CATALOG.map((entry, index) => [entry.deviceType, stems.artifacts[index]!.metadata.checksumSha256])
+  );
 
-  assert.equal(value.tracks.length, INSTRUMENT_CATALOG.length);
-  assert.equal(master.artifacts[0]!.metadata.checksumSha256, "324151ce06b5ecc3df2686392172b6bd099f6f25f7e338fefb01a5999feed296");
-  assert.equal(stemsDigest, "b1e36a8b2042add9c9be012d48b579447691418201376339a30fa768c516c253");
+  assert.deepEqual(stemChecksums, GOLDEN_STEMS);
+  assert.equal(master.artifacts[0]!.metadata.checksumSha256, GOLDEN_MASTER);
 });
