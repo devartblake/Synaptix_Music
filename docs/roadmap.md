@@ -187,6 +187,8 @@ Started 2026-10-09: each player may have at most `RENDER_MAX_ACTIVE_JOBS_PER_OWN
 
 Rust/WASM remains deferred until profiling demonstrates a material bottleneck in resampling, stretching, pitch shifting, filtering, encoding preparation, or other DSP kernels.
 
+Profiled 2026-10-09 (`docs/development/dsp-profiling.md`): no such bottleneck. Synthesis dominates render time; the next steps, if renders need to be faster, are TypeScript-level synthesis changes before any WASM kernel.
+
 ## Deferred or Later-Phase Work
 
 - Third-party plugin hosting
