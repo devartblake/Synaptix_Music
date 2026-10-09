@@ -76,6 +76,22 @@ Same idle machine, main then this change, back to back:
 | dense      | 3.6× → 6.4×   | 2.9× → 4.2×  |
 | worst case | 1.7× → 3.2×   | 1.1× → 1.9×  |
 
+## Step 3: Rust synthesis kernel (2026-10-09)
+
+Instrument notes are now synthesized by `crates/dsp` compiled to WebAssembly
+(`packages/dsp-kernel`), which also adds band-limited (PolyBLEP) saw and square waves; see
+`docs/plans/implementation/instrument-catalog-roadmap-v1.md`. Voices add into one mono track
+buffer inside the module, copied out once per track. Main then this change, back to back:
+
+| Scenario   | Master render | Stems render  |
+| ---------- | ------------- | ------------- |
+| typical    | 13.6× → 14.5× | 10.1× → 12.0× |
+| dense      | 5.8× → 9.4×   | 4.0× → 5.4×   |
+| worst case | 3.0× → 5.0×   | 1.7× → 2.0×   |
+
+Faster despite the extra PolyBLEP work. Stems gain less because each stem still runs its own
+reverb, compressor and encoder passes.
+
 ## Decision
 
 **Rust/WASM stays deferred.** None of the roadmap's candidate kernels is a bottleneck: the
@@ -90,7 +106,8 @@ If renders need to be faster, in this order:
    (above). Voices already stop at the end of their release. Reusing track buffers is still open.
 2. When a package needs both a master and stems, render them from one synthesis pass (they are
    separate render jobs today, so every track is synthesized twice).
-3. Only then a WASM synthesis kernel, re-profiled against step 1.
+3. ~~Only then a WASM synthesis kernel, re-profiled against step 1.~~ Done (above), to share one
+   implementation with the studio preview and enable new instruments.
 
 **Revisit when** a typical project renders below 2× real time, or a stems export of a
 production project takes longer than its own length, on the production render-worker hardware.

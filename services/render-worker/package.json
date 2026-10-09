@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@synaptix/daw-engine": "0.1.0",
+    "@synaptix/dsp-kernel": "0.1.0",
     "@synaptix/project-model": "0.1.0",
     "@synaptix/render-contracts": "0.1.0",
     "minio": "^8.0.7",
