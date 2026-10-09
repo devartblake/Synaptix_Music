@@ -30,6 +30,7 @@ export {
 } from "./adaptive-runtime.ts";
 export {
   RENDER_CONTRACT_VERSION,
+  RENDER_ENGINE_VERSION,
   RenderArtifactSchema,
   RenderFormatSchema,
   RenderManifestSchema,
