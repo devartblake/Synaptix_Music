@@ -60,6 +60,22 @@ encoder before/after comparison (same input, back to back) are the reliable figu
   and NaN at 16, 24 and 32 bits). It is 1.6× faster at 16-bit, 2.0× at 24-bit and 3.9× at 32-bit,
   which also removes much of the garbage-collection time.
 
+## Step 1: faster synthesis (2026-10-09)
+
+The per-note loop now computes the oscillator and envelope inline (no per-sample function calls
+or table lookups) and clips each note to the buffer once instead of checking every sample.
+**Output is byte-identical**: 96 renders across all four oscillators, master and stems, matched
+the previous renderer byte for byte, and a golden-checksum test (one track per catalog instrument)
+now fails on any change to the rendered audio.
+
+Same idle machine, main then this change, back to back:
+
+| Scenario   | Master render | Stems render |
+| ---------- | ------------- | ------------ |
+| typical    | 8.1× → 11.9×  | 6.8× → 10.1× |
+| dense      | 3.6× → 6.4×   | 2.9× → 4.2×  |
+| worst case | 1.7× → 3.2×   | 1.1× → 1.9×  |
+
 ## Decision
 
 **Rust/WASM stays deferred.** None of the roadmap's candidate kernels is a bottleneck: the
@@ -70,9 +86,8 @@ asynchronous render job.
 
 If renders need to be faster, in this order:
 
-1. Plain TypeScript in `renderTrackBuffer`: compute the oscillator and envelope inline instead
-   of calling `oscillatorValue`/`envelopeValue` per sample, skip voices once their release has
-   decayed to silence, and reuse track buffers instead of allocating one per track.
+1. ~~Plain TypeScript in `renderTrackBuffer`: compute the oscillator and envelope inline.~~ Done
+   (above). Voices already stop at the end of their release. Reusing track buffers is still open.
 2. When a package needs both a master and stems, render them from one synthesis pass (they are
    separate render jobs today, so every track is synthesized twice).
 3. Only then a WASM synthesis kernel, re-profiled against step 1.
