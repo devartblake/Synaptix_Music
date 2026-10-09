@@ -3,7 +3,7 @@ import { canonicalizeProject, computeProjectChecksum } from "@synaptix/command-s
 import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
 import { evaluateFrozenPluginEvidence } from "@synaptix/project-model/plugin";
 import { MusicProjectV2Schema, projectV2BuiltinView, type AnyMusicProject } from "@synaptix/project-model/v2";
-import { RenderManifestSchema, type RenderManifest } from "@synaptix/render-contracts";
+import { RENDER_ENGINE_VERSION, RenderManifestSchema, type RenderManifest } from "@synaptix/render-contracts";
 import { arrangementBars, barTicks } from "../editor/timeline-model.ts";
 import { canFreeze } from "./plugin-freeze-model.ts";
 
@@ -42,7 +42,7 @@ export async function createExportManifest(
     projectId: canonical.projectId,
     revisionId: canonical.revisionId,
     projectChecksumSha256: await computeProjectChecksum(canonical),
-    engineVersion: "1.0.0",
+    engineVersion: RENDER_ENGINE_VERSION,
     seed: Math.abs(canonical.generationMetadata?.seed ?? 0),
     scope:
       options.scope === "master"
