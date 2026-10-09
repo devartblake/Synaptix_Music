@@ -9,7 +9,10 @@ export const PLATFORM_SESSION_EVENT = "synaptix-platform-session";
 
 type Session =
   | { signedIn: true; profile: { handle: string; email: string }; expiresAt: string }
-  | { signedIn: false };
+  | { signedIn: false; refreshable?: boolean };
+
+/** Renew this long before the access token ends, so requests never carry an expired one. */
+const RENEW_BEFORE_MS = 60_000;
 
 /**
  * SynaptixPlay sign-in for cloud sync, generation, rendering and publishing. Local editing
@@ -29,25 +32,47 @@ export function PlatformAccount({ compact = false }: { compact?: boolean }) {
     window.dispatchEvent(new CustomEvent(PLATFORM_SESSION_EVENT, { detail: next }));
   }, []);
 
+  /** Renews the session on the studio's server; null when it can't be renewed. */
+  const renew = useCallback(async (): Promise<Session | null> => {
+    try {
+      const response = await fetch("/api/auth/session", { method: "PUT", cache: "no-store" });
+      const body = (await response.json().catch(() => null)) as Session | null;
+      return response.ok && body?.signedIn ? body : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/session", { cache: "no-store" })
       .then((response) => response.json() as Promise<Session>)
-      .then((value) => { if (!cancelled) setSession(value); })
+      .then(async (value) => {
+        // The access token ended while the studio was closed; renew it if the platform allows.
+        const current = !value.signedIn && value.refreshable ? ((await renew()) ?? { signedIn: false as const }) : value;
+        if (!cancelled) setSession(current);
+      })
       .catch(() => { if (!cancelled) setSession({ signedIn: false }); });
     return () => { cancelled = true; };
-  }, []);
+  }, [renew]);
 
-  // Platform access tokens are short-lived; say so when this one ends.
+  // Platform access tokens are short-lived: renew shortly before this one ends, and say so
+  // if it ends anyway.
   useEffect(() => {
     if (!session?.signedIn) return;
     const remaining = new Date(session.expiresAt).getTime() - Date.now();
-    const timer = window.setTimeout(() => {
+    const renewTimer = window.setTimeout(() => {
+      void renew().then((next) => { if (next) announce(next); });
+    }, Math.max(0, remaining - RENEW_BEFORE_MS));
+    const expiryTimer = window.setTimeout(() => {
       setExpired(true);
       announce({ signedIn: false });
     }, Math.max(0, remaining));
-    return () => window.clearTimeout(timer);
-  }, [session, announce]);
+    return () => {
+      window.clearTimeout(renewTimer);
+      window.clearTimeout(expiryTimer);
+    };
+  }, [session, announce, renew]);
 
   async function signIn(): Promise<void> {
     setBusy(true);

@@ -35,8 +35,11 @@
 
 - Render evidence (`POST /internal/render-evidence`) now reports each render's `scopeKind` (`master`, `stems` or `plugin-freeze`). The SynaptixPlay backend publishes package audio only from master and stem renders, so a plug-in freeze (one track through its plug-ins) can't be published as a game state through the API. Before, only the studio's UI kept freezes out. A worker that doesn't report the scope is refused, so deploy this worker before the matching backend change (TycoonTycoon_Backend #571).
 
+- Studio sign-in uses SynaptixPlay's own studio routes (`/api/v1/auth/studio/login` and `/studio/refresh`), separate from the game clients: only the studio's server calls them, with `SYNAPTIX_PLATFORM_SERVICE_TOKEN` (the backend's `ServiceTokens:MusicStudio`), and the platform assigns the studio identity. Sessions now last: the studio's server keeps the refresh token in an HttpOnly cookie and renews the session a minute before the 8-minute access token ends, and when the studio is reopened (`PUT /api/auth/session`).
+
 ### Fixed
 
+- Fixed studio sign-in being refused by the platform, which requires a product registration on its game sign-in route: the studio now signs in through the platform's studio routes instead. Before, every sign-in showed "That email and password don't match".
 - Fixed studio edits being silently lost when made while the previous edit was still saving (the editor history refuses overlapping operations, and the mixer ignored clicks while busy). Edits, undo and redo now queue and each builds on the latest project; cloud uploads no longer hold up the queue. This also fixes the flaky mixer-meter UI test.
 - Added Linux visual-regression baselines, generated in the Playwright 1.63 Ubuntu 24.04 image, so CI (ubuntu-latest) compares against reviewed images instead of failing on missing snapshots.
 - Fixed local-model generations that timed out leaving Ollama busy with the abandoned answer, which made every queued request time out too; answers are now length-capped.
