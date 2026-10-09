@@ -3,8 +3,8 @@
  *
  * It is plain JavaScript in a string because worklet modules load from a URL (the studio uses a
  * Blob URL) and can't import. The kernel's bytes arrive in `processorOptions.wasm` and are
- * compiled here, off the main thread. One node plays one track, mono; the track's channel strip
- * pans it, as in exports. Rendering in 128-frame blocks makes exactly the samples an export
+ * compiled here, off the main thread. One node plays one track, in stereo (most voices are the
+ * same on both sides; the supersaw spreads); the track's pan stage after it pans as exports do. Rendering in 128-frame blocks makes exactly the samples an export
  * makes (see voice-processor.test.ts).
  */
 
@@ -61,8 +61,9 @@ class SynaptixKernelVoiceProcessor extends AudioWorkletProcessor {
     const channels = outputs[0];
     const length = channels[0].length;
     const address = this.kernel.render_block(currentFrame, length);
-    const block = new Float32Array(this.kernel.memory.buffer, address, length);
-    for (const channel of channels) channel.set(block);
+    const { buffer } = this.kernel.memory;
+    channels[0].set(new Float32Array(buffer, address, length));
+    if (channels[1]) channels[1].set(new Float32Array(buffer, address + 4 * length, length));
     return true;
   }
 }

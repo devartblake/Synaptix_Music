@@ -71,14 +71,27 @@ function referenceString(frequency: number, sampleRate: number, seed: number): (
   };
 }
 
+function worstDifference(actual: Float64Array, expected: Float64Array): number {
+  return actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
+}
+
+const SUPERSAW_PANS = [-0.8, 0.53, -0.27, 0.0, 0.27, -0.53, 0.8];
+
 function referenceVoice(
-  out: Float64Array,
+  out: { left: Float64Array; right: Float64Array },
   p: VoiceParams,
   noteStart: number,
   noteTotal: number
 ): void {
   const first = Math.max(0, -noteStart);
-  const end = Math.min(noteTotal, out.length - noteStart);
+  const end = Math.min(noteTotal, out.left.length - noteStart);
+  // Equal-power pan per saw, ×√2 so a centred saw is at full level on both sides.
+  const panLeft = SUPERSAW_PANS.map((pan) => Math.SQRT2 * Math.cos(((pan + 1) * Math.PI) / 4));
+  const panRight = SUPERSAW_PANS.map((pan) => Math.SQRT2 * Math.sin(((pan + 1) * Math.PI) / 4));
+  let rawRight = 0;
+  let filteredRight = 0;
+  let icRight1 = 0;
+  let icRight2 = 0;
   const dt = p.frequency / p.sampleRate;
   const supersawFrequencies = SUPERSAW_RATIOS.map((ratio) => p.frequency * ratio);
   const supersawDts = supersawFrequencies.map((frequency) => frequency / p.sampleRate);
@@ -113,13 +126,18 @@ function referenceVoice(
       raw = Math.sin(2 * Math.PI * (carrier - Math.floor(carrier)));
     } else if (p.oscillator === "plucked-string") raw = string();
     else if (p.oscillator === "supersaw") {
-      let sum = 0;
+      let sumLeft = 0;
+      let sumRight = 0;
       for (let k = 0; k < 7; k++) {
         const voicePhase = time * supersawFrequencies[k]! + SUPERSAW_PHASES[k]!;
         const voiceCycle = voicePhase - Math.floor(voicePhase);
-        sum += SUPERSAW_LEVELS[k]! * (2 * voiceCycle - 1 - polyBlep(voiceCycle, supersawDts[k]!));
+        const saw =
+          SUPERSAW_LEVELS[k]! * (2 * voiceCycle - 1 - polyBlep(voiceCycle, supersawDts[k]!));
+        sumLeft += saw * panLeft[k]!;
+        sumRight += saw * panRight[k]!;
       }
-      raw = sum * SUPERSAW_GAIN;
+      raw = sumLeft * SUPERSAW_GAIN;
+      rawRight = sumRight * SUPERSAW_GAIN;
     } else if (p.oscillator === "sine") raw = Math.sin(2 * Math.PI * cycle);
     else if (p.oscillator === "square") {
       const half = cycle + 0.5;
@@ -142,6 +160,17 @@ function referenceVoice(
       ic2 = 2 * v2 - ic2;
       filtered = v2;
     } else filtered += p.alpha * (raw - filtered);
+    const stereo = p.oscillator === "supersaw";
+    if (stereo) {
+      if (p.resonance > 0) {
+        const v3 = rawRight - icRight2;
+        const v1 = a1 * icRight1 + a2 * v3;
+        const v2 = icRight2 + a2 * icRight1 + a3 * v3;
+        icRight1 = 2 * v1 - icRight1;
+        icRight2 = 2 * v2 - icRight2;
+        filteredRight = v2;
+      } else filteredRight += p.alpha * (rawRight - filteredRight);
+    }
 
     let envelope: number;
     if (time < p.attack) envelope = p.attack > 0 ? time / p.attack : 1;
@@ -157,7 +186,9 @@ function referenceVoice(
             ? p.sustain * (1 - sinceRelease / p.release)
             : 0;
     }
-    out[noteStart + i]! += filtered * envelope * p.velocityGain;
+    const value = filtered * envelope * p.velocityGain;
+    out.left[noteStart + i]! += value;
+    out.right[noteStart + i]! += stereo ? filteredRight * envelope * p.velocityGain : value;
   }
 }
 
@@ -180,7 +211,7 @@ for (const oscillator of OSCILLATORS) {
   test(`${oscillator}: kernel samples match the reference`, () => {
     const kernel = createNodeDspKernel();
     const length = 30_000;
-    const expected = new Float64Array(length);
+    const expected = { left: new Float64Array(length), right: new Float64Array(length) };
     kernel.beginTrack(length);
     // Overlapping notes, one starting before the buffer and one running past its end, with
     // every envelope stage and a high note whose PolyBLEP correction spans several samples.
@@ -212,21 +243,22 @@ for (const oscillator of OSCILLATORS) {
     }
     const actual = kernel.trackSamples();
 
-    assert.equal(actual.length, length);
-    assert.ok(actual.some((s) => s !== 0));
+    assert.equal(actual.left.length, length);
+    assert.ok(actual.left.some((s) => s !== 0));
     if (
       oscillator === "sine" ||
       oscillator === "fm-bell" ||
       oscillator === "fm-piano" ||
-      oscillator === "808-bass"
+      oscillator === "808-bass" ||
+      oscillator === "supersaw"
     ) {
-      // Rounding differences between the kernel's sine and Math.sin; FM phase-modulates them,
-      // so allow a little more there.
-      const worst = actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
-      assert.ok(
-        worst < (oscillator === "sine" ? 1e-14 : 1e-12),
-        `${oscillator} differs by ${worst}`
-      );
+      // Rounding differences between the kernel's sine and Math.sin (the supersaw's pan gains
+      // use it too); FM phase-modulates them, so allow a little more there.
+      const tolerance = oscillator === "sine" ? 1e-14 : 1e-12;
+      for (const side of ["left", "right"] as const) {
+        const worst = worstDifference(actual[side], expected[side]);
+        assert.ok(worst < tolerance, `${oscillator} ${side} differs by ${worst}`);
+      }
     } else {
       assert.deepEqual(actual, expected);
     }
@@ -238,7 +270,7 @@ test("the resonant filter matches the reference", () => {
   // amplifies it a little.
   for (const resonance of [0.05, 0.6, 1]) {
     const kernel = createNodeDspKernel();
-    const expected = new Float64Array(20_000);
+    const expected = { left: new Float64Array(20_000), right: new Float64Array(20_000) };
     kernel.beginTrack(20_000);
     const params: VoiceParams = {
       oscillator: "sawtooth",
@@ -258,9 +290,9 @@ test("the resonant filter matches the reference", () => {
     kernel.renderVoice(params, 100, 18_000);
     referenceVoice(expected, params, 100, 18_000);
     const actual = kernel.trackSamples();
-    const worst = actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
+    const worst = worstDifference(actual.left, expected.left);
     assert.ok(worst < 1e-9, `resonance ${resonance} differs by ${worst}`);
-    assert.ok(actual.some((s) => s !== 0));
+    assert.ok(actual.left.some((s) => s !== 0));
   }
 });
 
@@ -287,5 +319,8 @@ test("beginTrack starts from silence", () => {
     100
   );
   kernel.beginTrack(50);
-  assert.deepEqual(kernel.trackSamples(), new Float64Array(50));
+  assert.deepEqual(kernel.trackSamples(), {
+    left: new Float64Array(50),
+    right: new Float64Array(50)
+  });
 });
