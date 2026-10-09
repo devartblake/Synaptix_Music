@@ -51,6 +51,15 @@ test("new instrument tracks are valid, audible, and carry a starter phrase", () 
   }
 });
 
+test("resonance defaults to 0 (the plain filter) and follows the Resonance control", () => {
+  const lead = createInstrumentTrack("synaptix-lead-synth", { id: "l" });
+  assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 0);
+  lead.devices[0]!.parameters = [{ id: "filterResonance", value: 0.65 }];
+  assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 0.65);
+  lead.devices[0]!.parameters = [{ id: "filterResonance", value: 3 }];
+  assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 1, "clamped to the control's range");
+});
+
 test("pads default to a wetter reverb send than drums", () => {
   const pad = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-pad", { id: "p" }));
   const drums = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-drum-synth", { id: "d" }));

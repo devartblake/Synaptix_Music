@@ -67,6 +67,10 @@ export interface VoiceParams {
   velocityGain: number;
   /** Seeds the plucked string's noise burst; see noteSeed. */
   seed: number;
+  /** Cutoff in Hz, used by the resonant filter. */
+  cutoff: number;
+  /** 0 keeps the one-pole low-pass (`alpha`); above 0 a 12 dB resonant low-pass at `cutoff`. */
+  resonance: number;
 }
 
 interface KernelExports {
@@ -84,6 +88,8 @@ interface KernelExports {
     noteDuration: number,
     velocityGain: number,
     seed: number,
+    cutoff: number,
+    resonance: number,
     noteStart: number,
     noteTotal: number
   ): number;
@@ -116,6 +122,8 @@ export class DspKernel {
       params.noteDuration,
       params.velocityGain,
       params.seed,
+      params.cutoff,
+      params.resonance,
       noteStart,
       noteTotal
     );

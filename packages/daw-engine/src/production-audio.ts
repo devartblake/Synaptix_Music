@@ -10,6 +10,7 @@ import {
   ENVELOPE_RELEASE_PARAMETER,
   ENVELOPE_SUSTAIN_PARAMETER,
   FILTER_FREQUENCY_PARAMETER,
+  FILTER_RESONANCE_PARAMETER,
   resolveDeviceParameterValue,
   REVERB_SEND_PARAMETER
 } from "./device-parameters.ts";
@@ -51,7 +52,7 @@ export function resolveInstrumentProfile(track: Track): InstrumentProfile {
   return { ...resolveInstrumentDefinition(deviceType(track), track.name).profile };
 }
 
-export type EffectiveInstrumentSettings = InstrumentProfile;
+export type EffectiveInstrumentSettings = InstrumentProfile & { resonance: number };
 
 export function resolveEffectiveInstrumentSettings(track: Track): EffectiveInstrumentSettings {
   const profile = resolveInstrumentProfile(track);
@@ -59,6 +60,7 @@ export function resolveEffectiveInstrumentSettings(track: Track): EffectiveInstr
   return {
     ...profile,
     filterFrequency: resolveDeviceParameterValue(device, FILTER_FREQUENCY_PARAMETER, profile.filterFrequency),
+    resonance: resolveDeviceParameterValue(device, FILTER_RESONANCE_PARAMETER, profile.resonance ?? 0),
     attack: resolveDeviceParameterValue(device, ENVELOPE_ATTACK_PARAMETER, profile.attack),
     decay: resolveDeviceParameterValue(device, ENVELOPE_DECAY_PARAMETER, profile.decay),
     sustain: resolveDeviceParameterValue(device, ENVELOPE_SUSTAIN_PARAMETER, profile.sustain),

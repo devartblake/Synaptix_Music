@@ -24,6 +24,8 @@ export type VoiceProcessorMessage =
       noteDuration: number;
       velocityGain: number;
       seed: number;
+      cutoff: number;
+      resonance: number;
       /** AudioContext time the note starts. */
       time: number;
     }
@@ -46,6 +48,7 @@ class SynaptixKernelVoiceProcessor extends AudioWorkletProcessor {
         message.oscillator, message.frequency, sampleRate, message.alpha,
         message.attack, message.decay, message.sustain, message.release,
         message.noteDuration, message.velocityGain, message.seed,
+        message.cutoff, message.resonance,
         Math.round(message.time * sampleRate),
         Math.round((message.noteDuration + message.release) * sampleRate)
       );

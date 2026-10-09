@@ -43,6 +43,8 @@ pub extern "C" fn render_voice(
     note_duration: f64,
     velocity_gain: f64,
     seed: u32,
+    cutoff: f64,
+    resonance: f64,
     note_start: f64,
     note_total: f64,
 ) -> u32 {
@@ -58,6 +60,8 @@ pub extern "C" fn render_voice(
         note_duration,
         velocity_gain,
         seed,
+        cutoff,
+        resonance,
     ) else {
         return 0;
     };
@@ -83,6 +87,8 @@ pub extern "C" fn start_voice(
     note_duration: f64,
     velocity_gain: f64,
     seed: u32,
+    cutoff: f64,
+    resonance: f64,
     start: f64,
     total: f64,
 ) -> u32 {
@@ -98,6 +104,8 @@ pub extern "C" fn start_voice(
         note_duration,
         velocity_gain,
         seed,
+        cutoff,
+        resonance,
     ) else {
         return 0;
     };
@@ -152,6 +160,8 @@ fn voice_params(
     note_duration: f64,
     velocity_gain: f64,
     seed: u32,
+    cutoff: f64,
+    resonance: f64,
 ) -> Option<Voice> {
     Some(Voice {
         oscillator: Oscillator::from_code(oscillator)?,
@@ -165,5 +175,7 @@ fn voice_params(
         note_duration,
         velocity_gain,
         seed,
+        cutoff,
+        resonance,
     })
 }

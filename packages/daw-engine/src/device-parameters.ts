@@ -11,6 +11,7 @@ export interface DeviceParameterDefinition {
 }
 
 export const FILTER_FREQUENCY_PARAMETER = "filterFrequency";
+export const FILTER_RESONANCE_PARAMETER = "filterResonance";
 export const ENVELOPE_ATTACK_PARAMETER = "envelopeAttack";
 export const ENVELOPE_DECAY_PARAMETER = "envelopeDecay";
 export const ENVELOPE_SUSTAIN_PARAMETER = "envelopeSustain";
@@ -26,6 +27,7 @@ export const DRONE_STEREO_OFFSET_PARAMETER = "droneStereoOffsetHz";
 
 export const DEVICE_PARAMETER_DEFINITIONS: readonly DeviceParameterDefinition[] = [
   { id: FILTER_FREQUENCY_PARAMETER, label: "Filter Frequency", unit: "hz", minimum: 80, maximum: 16000 },
+  { id: FILTER_RESONANCE_PARAMETER, label: "Resonance", unit: "ratio", minimum: 0, maximum: 1 },
   { id: ENVELOPE_ATTACK_PARAMETER, label: "Attack", unit: "seconds", minimum: 0.001, maximum: 2 },
   { id: ENVELOPE_DECAY_PARAMETER, label: "Decay", unit: "seconds", minimum: 0.01, maximum: 2 },
   { id: ENVELOPE_SUSTAIN_PARAMETER, label: "Sustain", unit: "ratio", minimum: 0, maximum: 1 },

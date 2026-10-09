@@ -111,6 +111,11 @@ pub struct Voice {
     /// Seeds the plucked string's noise burst (derived from the note, so preview and export
     /// agree); other oscillators ignore it.
     pub seed: u32,
+    /// Cutoff in Hz, for the resonant filter (the one-pole filter uses `alpha`).
+    pub cutoff: f64,
+    /// 0 keeps the original one-pole low-pass (6 dB); above 0 switches to a 12 dB resonant
+    /// state-variable low-pass, peaking more as it rises to 1.
+    pub resonance: f64,
 }
 
 /// Adds one note into `out`, starting at sample `note_start` (may be negative) and lasting
@@ -193,6 +198,9 @@ pub struct VoiceState {
     /// The next sample of the note to render.
     next: i64,
     filtered: f64,
+    /// Resonant filter state (its two integrators).
+    svf_1: f64,
+    svf_2: f64,
     /// Phase of an oscillator whose pitch moves (808), integrated sample by sample.
     sweep_phase: f64,
     string: Option<PluckedString>,
@@ -207,6 +215,8 @@ impl VoiceState {
             total,
             next: 0,
             filtered: 0.0,
+            svf_1: 0.0,
+            svf_2: 0.0,
             sweep_phase: 0.0,
             string: (voice.oscillator == Oscillator::PluckedString)
                 .then(|| PluckedString::new(voice.frequency, voice.sample_rate, voice.seed)),
@@ -255,6 +265,9 @@ impl VoiceState {
         };
         let modulator_frequency = voice.frequency * fm.ratio;
         let mut filtered = self.filtered;
+        let resonant = voice.resonance > 0.0;
+        let svf = ResonantLowPass::new(voice.cutoff, voice.sample_rate, voice.resonance);
+        let (mut svf_1, mut svf_2) = (self.svf_1, self.svf_2);
         let mut string = self.string.take();
         let mut drum = self.drum.take();
         let mut sweep_phase = self.sweep_phase;
@@ -313,7 +326,11 @@ impl VoiceState {
                     }
                 }
             };
-            filtered += voice.alpha * (raw - filtered);
+            if resonant {
+                filtered = svf.process(raw, &mut svf_1, &mut svf_2);
+            } else {
+                filtered += voice.alpha * (raw - filtered);
+            }
 
             let envelope = if time < attack {
                 if attack > 0.0 {
@@ -351,6 +368,8 @@ impl VoiceState {
         if end > first {
             self.sweep_phase = sweep_phase;
             self.filtered = filtered;
+            self.svf_1 = svf_1;
+            self.svf_2 = svf_2;
             self.next = end;
         }
     }
@@ -423,6 +442,37 @@ fn cos_poly(x: f64) -> f64 {
                                 + x2 * (-1.0 / 87_178_291_200.0
                                     + x2 * (1.0 / 20_922_789_888_000.0
                                         + x2 * (-1.0 / 6_402_373_705_728_000.0)))))))))
+}
+
+/// A 12 dB resonant low-pass: the topology-preserving state-variable filter. Its coefficient
+/// needs tan(π·fc/fs), computed from the kernel's own sine and cosine so every platform agrees.
+#[derive(Clone, Copy, Debug)]
+struct ResonantLowPass {
+    a1: f64,
+    a2: f64,
+    a3: f64,
+}
+
+impl ResonantLowPass {
+    fn new(cutoff: f64, sample_rate: f64, resonance: f64) -> Self {
+        // Below Nyquist, where tan stays finite; half a cycle of fc/fs is π·fc/fs radians.
+        let cycle = (cutoff / sample_rate).clamp(0.0, 0.49) * 0.5;
+        let g = sine_cycle(cycle) / sine_cycle(cycle + 0.25);
+        // Damping from 2 (no peak) down to 0.1 (a strong peak, about +20 dB) as resonance → 1.
+        let k = 2.0 - 1.9 * resonance.clamp(0.0, 1.0);
+        let a1 = 1.0 / (1.0 + g * (g + k));
+        let a2 = g * a1;
+        Self { a1, a2, a3: g * a2 }
+    }
+
+    fn process(&self, input: f64, ic1: &mut f64, ic2: &mut f64) -> f64 {
+        let v3 = input - *ic2;
+        let v1 = self.a1 * *ic1 + self.a2 * v3;
+        let v2 = *ic2 + self.a2 * *ic1 + self.a3 * v3;
+        *ic1 = 2.0 * v1 - *ic1;
+        *ic2 = 2.0 * v2 - *ic2;
+        v2
+    }
 }
 
 /// Saturation by division, `x / (1 + |x|)`: smooth, odd, and the same on every platform.
@@ -619,6 +669,8 @@ mod tests {
             note_duration: 1.0,
             velocity_gain: 1.0,
             seed: 1,
+            cutoff: 1_000.0,
+            resonance: 0.0,
         }
     }
 
@@ -669,6 +721,74 @@ mod tests {
         let naive = energy(&|c, _| 2.0 * c - 1.0);
         let blep = energy(&|c, dt| 2.0 * c - 1.0 - poly_blep(c, dt));
         assert!(blep < naive / 10.0, "naive {naive}, polyblep {blep}");
+    }
+
+    #[test]
+    fn resonance_peaks_at_the_cutoff_and_zero_keeps_the_original_filter() {
+        // A 110 Hz saw has a harmonic at 990 Hz (the 9th). With the cutoff at 990 Hz, raising
+        // the resonance must boost that harmonic relative to the fundamental.
+        let render = |resonance: f64| {
+            let params = Voice {
+                frequency: 110.0,
+                cutoff: 990.0,
+                resonance,
+                ..voice(Oscillator::Sawtooth)
+            };
+            let mut out = vec![0.0; 48_000];
+            render_voice(&mut out, &params, 0, 48_000);
+            out
+        };
+        let level = |out: &[f64], hz: f64| {
+            let (mut re, mut im) = (0.0, 0.0);
+            for (i, s) in out.iter().enumerate() {
+                let angle = 2.0 * core::f64::consts::PI * hz * i as f64 / 48_000.0;
+                re += s * angle.cos();
+                im += s * angle.sin();
+            }
+            (re * re + im * im).sqrt()
+        };
+        let gentle = render(0.1);
+        let sharp = render(0.9);
+        let ratio = |out: &[f64]| level(out, 990.0) / level(out, 110.0);
+        assert!(
+            ratio(&sharp) > ratio(&gentle) * 4.0,
+            "{} vs {}",
+            ratio(&sharp),
+            ratio(&gentle)
+        );
+        // Even at full resonance the filter stays stable.
+        assert!(render(1.0).iter().all(|s| s.is_finite() && s.abs() < 20.0));
+
+        // Resonance 0 is exactly the one-pole filter, whatever the cutoff field says.
+        let one_pole = |cutoff| {
+            let params = Voice {
+                alpha: 0.2,
+                cutoff,
+                ..voice(Oscillator::Sawtooth)
+            };
+            let mut out = vec![0.0; 4_800];
+            render_voice(&mut out, &params, 0, 4_800);
+            out
+        };
+        assert_eq!(one_pole(500.0), one_pole(5_000.0));
+    }
+
+    #[test]
+    fn resonant_notes_render_the_same_in_blocks() {
+        let params = Voice {
+            alpha: 0.3,
+            cutoff: 2_000.0,
+            resonance: 0.7,
+            ..voice(Oscillator::Supersaw)
+        };
+        let mut whole = vec![0.0; 2_000];
+        render_voice(&mut whole, &params, 37, 1_500);
+        let mut state = VoiceState::new(params, 37, 1_500);
+        let mut blocks = vec![0.0; 2_000];
+        for (index, block) in blocks.chunks_mut(128).enumerate() {
+            state.render(block, index as i64 * 128);
+        }
+        assert_eq!(whole, blocks);
     }
 
     #[test]

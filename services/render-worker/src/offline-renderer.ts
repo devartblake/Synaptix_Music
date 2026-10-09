@@ -133,7 +133,9 @@ function renderTrackBuffer(
           release: settings.release,
           noteDuration: noteDurationSeconds,
           velocityGain,
-          seed: noteSeed(note.id)
+          seed: noteSeed(note.id),
+          cutoff: settings.filterFrequency,
+          resonance: settings.resonance
         },
         noteStartSample,
         noteTotalSamples

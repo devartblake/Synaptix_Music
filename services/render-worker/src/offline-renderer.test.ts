@@ -374,6 +374,16 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
   assert.ok(peak(stem) > 0, "isolated stems exclude bus and master controls");
 });
 
+test("the Resonance control reaches the export, and 0 renders exactly as before", () => {
+  const withResonance = (value: number | null) => {
+    const track = noteTrack("track-1", "Lead", "synaptix-lead-synth");
+    if (value !== null) track.devices[0]!.parameters = [{ id: "filterResonance", value }];
+    return renderProjectOffline(project([track]), manifest()).artifacts[0]!.metadata.checksumSha256;
+  };
+  assert.equal(withResonance(0), withResonance(null), "resonance 0 is the original one-pole filter");
+  assert.notEqual(withResonance(0.8), withResonance(null));
+});
+
 // Golden output. Renders are artifacts players hear and packages are verified by checksum, so a
 // speed-up (or a future WASM synthesis kernel) must not change a single sample. One track per
 // catalog instrument covers every oscillator and envelope shape. If this fails, the audio changed:
