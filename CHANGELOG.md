@@ -4,6 +4,7 @@
 
 ### Added
 
+- Offline renders are 1.5–1.9× faster with byte-identical audio: the synthesis loop computes the oscillator and envelope inline and clips each note to the buffer once (worst-case 32-track stems export: 1.1× → 1.9× real time). A golden-checksum test (one track per catalog instrument, master and stems) now fails on any change to rendered audio, guarding later optimizations and the planned WASM synthesis kernel.
 - Profiled the offline renderer (Stage 12, step 9): `npm run profile -w @synaptix/render-worker` renders typical, dense and worst-case projects and times each stage. No DSP kernel is a bottleneck (effects and encoding run 40–160× real time; synthesis dominates), so Rust/WASM stays deferred. The WAV encoder no longer allocates per frame: byte-identical output, 2× faster at 24-bit. Results and the revisit criteria are in `docs/development/dsp-profiling.md`.
 - Added an offline app shell (#49): a service worker precaches Home, Library and an offline page, saves Library and Studio pages for offline use, and never touches `/api/*`. The studio is installable (manifest and icon); the Library shows an offline banner and disables **Download for offline** without a connection. Turn the worker off with `NEXT_PUBLIC_SERVICE_WORKER=off`; `next dev` never registers it.
 - Added studio handoff from the player (#49): "Open in Studio" and "Edit in Studio" pass the listening position (`?t=`), and the studio opens at that point, snapped to the beat.
