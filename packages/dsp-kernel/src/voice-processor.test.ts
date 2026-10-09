@@ -60,6 +60,7 @@ function noteMessage(note: Note): VoiceProcessorMessage {
     ...ENVELOPE,
     noteDuration: note.noteDuration,
     velocityGain: 0.75,
+    seed: 0xc0ffee,
     time: note.time
   };
 }
@@ -76,7 +77,8 @@ function exportSamples(notes: readonly Note[], length: number): Float64Array {
         alpha: onePoleAlpha(2_400, SAMPLE_RATE),
         ...ENVELOPE,
         noteDuration: note.noteDuration,
-        velocityGain: 0.75
+        velocityGain: 0.75,
+        seed: 0xc0ffee
       },
       Math.round(note.time * SAMPLE_RATE),
       Math.round((note.noteDuration + ENVELOPE.release) * SAMPLE_RATE)
@@ -113,7 +115,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "square", frequency: 329.63, time: 0.05, noteDuration: 0.15 },
     { oscillator: "sine", frequency: 880, time: 0.1, noteDuration: 0.05 },
     { oscillator: "triangle", frequency: 110, time: 0.12, noteDuration: 0.3 },
-    { oscillator: "supersaw", frequency: 440, time: 0.2, noteDuration: 0.2 }
+    { oscillator: "supersaw", frequency: 440, time: 0.2, noteDuration: 0.2 },
+    { oscillator: "plucked-string", frequency: 196, time: 0.25, noteDuration: 0.25 }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();

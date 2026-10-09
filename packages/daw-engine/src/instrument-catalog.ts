@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -136,6 +136,13 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "pad", oscillator: "supersaw", attack: 0.45, decay: 0.7, sustain: 0.8, release: 1.2,
       filterFrequency: 3200, reverbSend: 0.35, destinationBus: "music" },
     starterPattern: [[0, 57, 4], [0, 60, 4], [0, 64, 4], [0, 69, 4]]
+  },
+  {
+    deviceType: "synaptix-guitar", label: "Plucked String", description: "Karplus–Strong string: guitar, harp and koto colours.",
+    keywords: ["guitar", "harp", "koto", "karplus"],
+    profile: { kind: "pluck", oscillator: "plucked-string", attack: 0.001, decay: 2, sustain: 0.6, release: 0.25,
+      filterFrequency: 7000, reverbSend: 0.22, destinationBus: "music" },
+    starterPattern: [[0, 52, 1], [0.5, 59, 1], [1, 64, 1], [1.5, 67, 1], [2, 71, 1], [2.5, 67, 1], [3, 64, 1], [3.5, 59, 0.5]]
   }
 ];
 

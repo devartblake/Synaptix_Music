@@ -323,7 +323,8 @@ export class BrowserAudioEngine implements AudioTransport {
               Tone.Frequency(note.pitch, "midi").toFrequency(),
               `${note.durationTicks}i`,
               time,
-              note.velocity / 127
+              note.velocity / 127,
+              note.id
             );
           }, `${clipStartTicks + note.startTick}i`);
           this.scheduledEventIds.push(eventId);

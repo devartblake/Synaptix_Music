@@ -1,6 +1,6 @@
 //! The instrument voice: oscillator -> one-pole low-pass -> ADSR -> velocity.
 //!
-//! One implementation for the offline renderer and (next) the studio preview, so exports and
+//! One implementation for the offline renderer and the studio preview, so exports and
 //! preview make the same samples. Everything is plain IEEE-754 `f64` arithmetic in a fixed order
 //! (no fused multiply-add, no platform `sin`), so a render is bit-identical on every machine and
 //! matches the TypeScript reference in `packages/dsp-kernel/src/kernel.test.ts`.
@@ -17,7 +17,12 @@ pub enum Oscillator {
     Triangle,
     /// Seven detuned band-limited saws (supersaw / unison).
     Supersaw,
+    /// Karplus–Strong plucked string: a seeded noise burst circulating in a tuned, lossy delay.
+    PluckedString,
 }
+
+/// How much of each pass around the string survives (higher rings longer).
+pub const STRING_FEEDBACK: f64 = 0.996;
 
 /// Supersaw voices: frequency ratios (spread about ±19 cents), starting phases (fixed, so
 /// renders stay deterministic, and spread so the voices don't start in phase), and levels.
@@ -36,6 +41,7 @@ impl Oscillator {
             2 => Some(Self::Sawtooth),
             3 => Some(Self::Triangle),
             4 => Some(Self::Supersaw),
+            5 => Some(Self::PluckedString),
             _ => None,
         }
     }
@@ -55,6 +61,9 @@ pub struct Voice {
     /// Seconds from note start to note off; the release follows.
     pub note_duration: f64,
     pub velocity_gain: f64,
+    /// Seeds the plucked string's noise burst (derived from the note, so preview and export
+    /// agree); other oscillators ignore it.
+    pub seed: u32,
 }
 
 /// Adds one note into `out`, starting at sample `note_start` (may be negative) and lasting
@@ -64,9 +73,70 @@ pub fn render_voice(out: &mut [f64], voice: &Voice, note_start: i64, note_total:
     VoiceState::new(*voice, note_start, note_total).render(out, 0);
 }
 
+/// A Karplus–Strong string: a delay line one period long, filled with noise, fed back through a
+/// two-point average (the loss that makes it decay and mellow) and a first-order all-pass that
+/// tunes the fractional part of the period.
+#[derive(Clone, Debug)]
+struct PluckedString {
+    line: Vec<f64>,
+    position: usize,
+    previous: f64,
+    allpass: f64,
+    allpass_input: f64,
+    allpass_output: f64,
+}
+
+impl PluckedString {
+    fn new(frequency: f64, sample_rate: f64, seed: u32) -> Self {
+        // Loop delay = whole samples + 0.5 (average) + the all-pass delay, kept in [0.1, 1.1).
+        let period = sample_rate / frequency;
+        let whole = ((period - 0.6).floor() as usize).max(1);
+        let fraction = period - 0.5 - whole as f64;
+        let mut state = if seed == 0 { 0x9E37_79B9 } else { seed };
+        let mut line: Vec<f64> = (0..whole)
+            .map(|_| {
+                // xorshift32
+                state ^= state << 13;
+                state ^= state >> 17;
+                state ^= state << 5;
+                state as f64 / 2_147_483_648.0 - 1.0
+            })
+            .collect();
+        // Without its mean the burst carries no DC, which would ring on as an offset.
+        let mean = line.iter().sum::<f64>() / whole as f64;
+        for sample in &mut line {
+            *sample -= mean;
+        }
+        Self {
+            line,
+            position: 0,
+            previous: 0.0,
+            allpass: (1.0 - fraction) / (1.0 + fraction),
+            allpass_input: 0.0,
+            allpass_output: 0.0,
+        }
+    }
+
+    fn next(&mut self) -> f64 {
+        let out = self.line[self.position];
+        let average = 0.5 * (out + self.previous);
+        self.previous = out;
+        let tuned =
+            self.allpass * average + self.allpass_input - self.allpass * self.allpass_output;
+        self.allpass_input = average;
+        self.allpass_output = tuned;
+        self.line[self.position] = tuned * STRING_FEEDBACK;
+        self.position += 1;
+        if self.position == self.line.len() {
+            self.position = 0;
+        }
+        out
+    }
+}
+
 /// A note being played block by block (the studio preview). Rendering a note in blocks makes
 /// exactly the samples `render_voice` makes in one call.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct VoiceState {
     pub voice: Voice,
     /// Frame the note starts on.
@@ -76,6 +146,7 @@ pub struct VoiceState {
     /// The next sample of the note to render.
     next: i64,
     filtered: f64,
+    string: Option<PluckedString>,
 }
 
 impl VoiceState {
@@ -86,6 +157,8 @@ impl VoiceState {
             total,
             next: 0,
             filtered: 0.0,
+            string: (voice.oscillator == Oscillator::PluckedString)
+                .then(|| PluckedString::new(voice.frequency, voice.sample_rate, voice.seed)),
         }
     }
 
@@ -124,11 +197,13 @@ impl VoiceState {
         let supersaw_frequencies = SUPERSAW_RATIOS.map(|ratio| voice.frequency * ratio);
         let supersaw_dts = supersaw_frequencies.map(|frequency| frequency / voice.sample_rate);
         let mut filtered = self.filtered;
+        let mut string = self.string.take();
         for sample_index in first..end {
             let time = sample_index as f64 / voice.sample_rate;
             let phase = time * voice.frequency;
             let cycle = phase - phase.floor();
             let raw = match voice.oscillator {
+                Oscillator::PluckedString => string.as_mut().map_or(0.0, PluckedString::next),
                 Oscillator::Supersaw => {
                     let mut sum = 0.0;
                     for k in 0..7 {
@@ -188,6 +263,7 @@ impl VoiceState {
             out[(self.start + sample_index - block_start) as usize] +=
                 filtered * envelope * voice.velocity_gain;
         }
+        self.string = string;
         if end > first {
             self.filtered = filtered;
             self.next = end;
@@ -280,6 +356,7 @@ mod tests {
             release: 0.0,
             note_duration: 1.0,
             velocity_gain: 1.0,
+            seed: 1,
         }
     }
 
@@ -353,6 +430,7 @@ mod tests {
             Oscillator::Sawtooth,
             Oscillator::Triangle,
             Oscillator::Supersaw,
+            Oscillator::PluckedString,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -385,6 +463,48 @@ mod tests {
         };
         let ratio = rms(Oscillator::Supersaw) / rms(Oscillator::Sawtooth);
         assert!((0.6..1.2).contains(&ratio), "supersaw/saw RMS {ratio}");
+    }
+
+    #[test]
+    fn plucked_string_is_in_tune_and_decays() {
+        // Count rising zero crossings of a 660 Hz string over its second half-second (after the
+        // noise has settled into a tone): close to 660 per second.
+        let params = Voice {
+            frequency: 660.0,
+            ..voice(Oscillator::PluckedString)
+        };
+        let mut out = vec![0.0; 48_000];
+        render_voice(&mut out, &params, 0, 48_000);
+        let settled = &out[24_000..];
+        let crossings = settled
+            .windows(2)
+            .filter(|w| w[0] < 0.0 && w[1] >= 0.0)
+            .count();
+        assert!(
+            (325..=335).contains(&crossings),
+            "{crossings} crossings in 0.5 s"
+        );
+
+        let peak = |range: &[f64]| range.iter().fold(0.0_f64, |max, s| max.max(s.abs()));
+        assert!(
+            peak(&out[40_000..]) < peak(&out[..4_800]) / 2.0,
+            "the string should decay"
+        );
+    }
+
+    #[test]
+    fn plucked_string_noise_follows_the_seed() {
+        let render = |seed| {
+            let mut out = vec![0.0; 2_000];
+            let params = Voice {
+                seed,
+                ..voice(Oscillator::PluckedString)
+            };
+            render_voice(&mut out, &params, 0, 2_000);
+            out
+        };
+        assert_eq!(render(7), render(7));
+        assert_ne!(render(7), render(8));
     }
 
     #[test]

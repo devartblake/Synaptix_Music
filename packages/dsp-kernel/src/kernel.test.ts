@@ -28,6 +28,40 @@ const SUPERSAW_PHASES = [0.37, 0.71, 0.13, 0.0, 0.53, 0.89, 0.29];
 const SUPERSAW_LEVELS = [0.6, 0.6, 0.6, 1.0, 0.6, 0.6, 0.6];
 const SUPERSAW_GAIN = 0.405;
 
+// crates/dsp PluckedString, step for step.
+function referenceString(frequency: number, sampleRate: number, seed: number): () => number {
+  const period = sampleRate / frequency;
+  const whole = Math.max(1, Math.floor(period - 0.6));
+  const fraction = period - 0.5 - whole;
+  let state = seed === 0 ? 0x9e3779b9 : seed >>> 0;
+  const line = Array.from({ length: whole }, () => {
+    state = (state ^ (state << 13)) >>> 0;
+    state = (state ^ (state >>> 17)) >>> 0;
+    state = (state ^ (state << 5)) >>> 0;
+    return state / 2_147_483_648 - 1;
+  });
+  let sum = 0;
+  for (const sample of line) sum += sample;
+  const mean = sum / whole;
+  for (let i = 0; i < whole; i++) line[i]! -= mean;
+  const allpass = (1 - fraction) / (1 + fraction);
+  let position = 0;
+  let previous = 0;
+  let allpassInput = 0;
+  let allpassOutput = 0;
+  return () => {
+    const out = line[position]!;
+    const average = 0.5 * (out + previous);
+    previous = out;
+    const tuned = allpass * average + allpassInput - allpass * allpassOutput;
+    allpassInput = average;
+    allpassOutput = tuned;
+    line[position] = tuned * 0.996;
+    position = (position + 1) % whole;
+    return out;
+  };
+}
+
 function referenceVoice(
   out: Float64Array,
   p: VoiceParams,
@@ -39,13 +73,15 @@ function referenceVoice(
   const dt = p.frequency / p.sampleRate;
   const supersawFrequencies = SUPERSAW_RATIOS.map((ratio) => p.frequency * ratio);
   const supersawDts = supersawFrequencies.map((frequency) => frequency / p.sampleRate);
+  const string = referenceString(p.frequency, p.sampleRate, p.seed);
   let filtered = 0;
   for (let i = first; i < end; i++) {
     const time = i / p.sampleRate;
     const phase = time * p.frequency;
     const cycle = phase - Math.floor(phase);
     let raw: number;
-    if (p.oscillator === "supersaw") {
+    if (p.oscillator === "plucked-string") raw = string();
+    else if (p.oscillator === "supersaw") {
       let sum = 0;
       for (let k = 0; k < 7; k++) {
         const voicePhase = time * supersawFrequencies[k]! + SUPERSAW_PHASES[k]!;
@@ -80,7 +116,14 @@ function referenceVoice(
   }
 }
 
-const OSCILLATORS: KernelOscillator[] = ["sine", "square", "sawtooth", "triangle", "supersaw"];
+const OSCILLATORS: KernelOscillator[] = [
+  "sine",
+  "square",
+  "sawtooth",
+  "triangle",
+  "supersaw",
+  "plucked-string"
+];
 
 for (const oscillator of OSCILLATORS) {
   test(`${oscillator}: kernel samples match the reference`, () => {
@@ -108,6 +151,7 @@ for (const oscillator of OSCILLATORS) {
         release: 0.05,
         noteDuration: 0.12,
         velocityGain: 0.8,
+        seed: 0xdeadbeef,
         ...overrides
       };
       kernel.renderVoice(params, start, total);
@@ -140,7 +184,8 @@ test("beginTrack starts from silence", () => {
       sustain: 1,
       release: 0,
       noteDuration: 1,
-      velocityGain: 1
+      velocityGain: 1,
+      seed: 1
     },
     0,
     100
