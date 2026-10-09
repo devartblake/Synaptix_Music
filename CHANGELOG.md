@@ -85,6 +85,7 @@
 
 ### Fixed
 
+- The generation API's instrument list now includes the ten instruments added to the studio catalog (Supersaw Lead through Motion Pad), so its catalog-parity test passes again. Generated arrangements don't use them yet: each role's suitable instruments are unchanged, and the plan still swaps an unsuitable choice for the role's default.
 - Fixed studio sign-in being refused by the platform, which requires a product registration on its game sign-in route: the studio now signs in through the platform's studio routes instead. Before, every sign-in showed "That email and password don't match".
 - Fixed studio edits being silently lost when made while the previous edit was still saving (the editor history refuses overlapping operations, and the mixer ignored clicks while busy). Edits, undo and redo now queue and each builds on the latest project; cloud uploads no longer hold up the queue. This also fixes the flaky mixer-meter UI test.
 - Added Linux visual-regression baselines, generated in the Playwright 1.63 Ubuntu 24.04 image, so CI (ubuntu-latest) compares against reviewed images instead of failing on missing snapshots.
