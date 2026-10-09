@@ -12,6 +12,7 @@ import { formatBytes, useOfflineRenders } from "../../lib/player/offline-renders
 import { playbackItemKey, type PlaybackItem } from "../../lib/player/playback-model";
 import { currentItem, usePlayer } from "../../lib/player/player-store";
 import { mixItem, projectSubtitle, useLibrary } from "../../lib/player/use-library";
+import { useOnline } from "../../lib/pwa/use-online";
 import styles from "./library.module.css";
 
 export function LibraryClient() {
@@ -21,6 +22,7 @@ export function LibraryClient() {
   const nowPlaying = usePlayer(currentItem);
   const playQueue = usePlayer((state) => state.playQueue);
   const toggle = usePlayer((state) => state.toggle);
+  const online = useOnline();
   const offline = useOfflineRenders();
   useEffect(() => { void useOfflineRenders.getState().refresh(); }, []);
   const names = useMemo(() => new Map(entries.map((entry) => [entry.projectId, entry.name])), [entries]);
@@ -57,6 +59,11 @@ export function LibraryClient() {
           )}
         </div>
         <h1 className={styles.largeTitle}>Library</h1>
+        {!online && (
+          <p className={styles.offlineBanner} role="status">
+            You're offline. Your saved projects and downloaded mixes still play; rendered mixes that aren't downloaded need a connection.
+          </p>
+        )}
         <input id="search" className={styles.search} type="search" value={query} onChange={(event) => setQuery(event.target.value)}
           placeholder="Search your projects" aria-label="Search your projects" />
 

@@ -14,6 +14,8 @@ import {
   previousIndex,
   projectDurationSeconds,
   projectDurationTicks,
+  studioHref,
+  studioStartTick,
   summarizeTracks,
   type PlaybackItem
 } from "./playback-model.ts";
@@ -82,4 +84,22 @@ test("track summaries, artwork palettes, and contours are deterministic", () => 
   assert.equal(contour.length, 8);
   assert.ok(contour.every((value) => value >= 0.2 && value <= 1));
   assert.equal(artworkContour(null, 4).length, 4);
+});
+
+test("the studio link carries the listening position and the studio starts there on the beat", () => {
+  assert.equal(studioHref("song 1"), "/studio/song%201");
+  assert.equal(studioHref("song-1", 0.6), "/studio/song-1", "under a second opens at the start");
+  assert.equal(studioHref("song-1", 42.36), "/studio/song-1?t=42.4");
+  assert.equal(studioHref("song-1", Number.NaN), "/studio/song-1");
+
+  const value = project();
+  const bpm = value.tempoMap[0]!.bpm;
+  const beatSeconds = 60 / bpm;
+  // 2.5 beats in: snapped down to beat 2.
+  assert.equal(studioStartTick(value, String(beatSeconds * 2.5)), 960 * 2);
+  assert.equal(studioStartTick(value, "0"), null);
+  assert.equal(studioStartTick(value, null), null);
+  for (const bad of ["-3", "abc", "1e9", "Infinity", ""]) assert.equal(studioStartTick(value, bad), null, bad);
+  // Past the end: the last beat of the arrangement.
+  assert.equal(studioStartTick(value, "99999"), projectDurationTicks(value) - 960);
 });

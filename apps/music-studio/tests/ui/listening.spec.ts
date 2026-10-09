@@ -42,3 +42,38 @@ test("the library plays a project, keeps playing across pages, and hands audio t
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await expect(page.getByRole("region", { name: "Mini player" })).toHaveCount(0);
 });
+
+test("Open in Studio continues editing from the listening position", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.route("**/api/platform/**", (route) =>
+    route.fulfill({ status: 503, json: { code: "offline", message: "Platform unavailable", retryable: true } })
+  );
+  const projectId = `handoff-${test.info().project.name}`;
+  await page.goto(`/studio/${projectId}`);
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  const tempo = page.getByRole("spinbutton", { name: "Tempo" });
+  await tempo.fill("118");
+  await tempo.press("Enter");
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+
+  await page.goto(`/library/${projectId}`);
+  await page.getByRole("button", { name: "Play mix" }).click();
+  const mini = page.getByRole("region", { name: "Mini player" });
+  await mini.getByRole("button", { name: /^Open Now Playing/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Now playing" });
+  const slider = sheet.getByRole("slider", { name: "Playback position" });
+  await expect.poll(async () => Number(await slider.inputValue()), { timeout: 20_000 }).toBeGreaterThan(2);
+  await sheet.getByRole("button", { name: "Pause", exact: true }).click();
+  const seconds = Number(await slider.inputValue());
+  await expect(sheet.getByRole("link", { name: "Open in Studio" })).toHaveAttribute("href", /\?t=\d+\.\d$/);
+
+  await sheet.getByRole("link", { name: "Open in Studio" }).click();
+  await expect(page).toHaveURL(new RegExp(`/studio/${projectId}$`));
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  // At 118 BPM a beat is 60/118 s (960 ticks); the studio starts on the beat at or before it.
+  const position = page.locator("[aria-label='Playback position'][data-tick]");
+  await expect.poll(async () => Number(await position.getAttribute("data-tick")), { timeout: 10_000 }).toBeGreaterThan(0);
+  const tick = Number(await position.getAttribute("data-tick"));
+  expect(tick % 960).toBe(0);
+  expect(tick).toBe(Math.floor(Number(seconds.toFixed(1)) / (60 / 118)) * 960);
+});

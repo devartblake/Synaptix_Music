@@ -30,6 +30,34 @@ export function ticksToSeconds(project: AnyMusicProject, ticks: number): number 
   return (ticks / project.transport.ticksPerQuarterNote) * (60 / bpm);
 }
 
+export function secondsToTicks(project: AnyMusicProject, seconds: number): number {
+  const bpm = project.tempoMap[0]?.bpm ?? 120;
+  return (seconds / (60 / bpm)) * project.transport.ticksPerQuarterNote;
+}
+
+/**
+ * The studio link for a project, carrying the listening position as `?t=<seconds>` so editing
+ * continues where the listener was. Positions under a second open at the start.
+ */
+export function studioHref(projectId: string, positionSeconds = 0): string {
+  const path = `/studio/${encodeURIComponent(projectId)}`;
+  return Number.isFinite(positionSeconds) && positionSeconds >= 1 ? `${path}?t=${positionSeconds.toFixed(1)}` : path;
+}
+
+/**
+ * The studio's start tick from a `?t=` value: seconds converted with the project's tempo,
+ * snapped down to the beat so editing starts on the grid, and kept inside the arrangement.
+ * Null when there is nothing valid to apply.
+ */
+export function studioStartTick(project: AnyMusicProject, value: string | null): number | null {
+  if (value === null || !/^\d+(\.\d+)?$/.test(value)) return null;
+  const ticks = secondsToTicks(project, Number(value));
+  const beat = project.transport.ticksPerQuarterNote;
+  const last = projectDurationTicks(project) - beat;
+  const snapped = Math.floor(ticks / beat) * beat;
+  return snapped > 0 && last > 0 ? Math.min(snapped, Math.floor(last / beat) * beat) : null;
+}
+
 export function projectDurationSeconds(project: AnyMusicProject): number {
   return ticksToSeconds(project, projectDurationTicks(project));
 }

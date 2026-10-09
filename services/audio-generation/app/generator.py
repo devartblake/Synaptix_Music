@@ -8,6 +8,7 @@ import io
 import threading
 import time
 import wave
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -37,7 +38,12 @@ class AudioGenerator(Protocol):
     def loaded(self) -> bool: ...
 
     def generate(
-        self, prompt: str, seconds: float, seed: int, guidance: float
+        self,
+        prompt: str,
+        seconds: float,
+        seed: int,
+        guidance: float,
+        on_progress: Callable[[float], None] | None = None,
     ) -> GeneratedAudio: ...
 
 
@@ -47,6 +53,27 @@ class GeneratorBusy(RuntimeError):
 
 class GeneratorUnavailable(RuntimeError):
     """The model couldn't be loaded (missing GPU, no network to download weights, ...)."""
+
+
+class ProgressStreamer:
+    """A transformers generation streamer that reports the share of audio tokens produced.
+
+    `generate` calls `put` once with the prompt and then once per generated step, so the
+    fraction is steps / max_new_tokens; it reaches 1.0 only on `end`.
+    """
+
+    def __init__(self, total_steps: int, on_progress: Callable[[float], None]) -> None:
+        self._total = max(1, total_steps)
+        self._steps = -1
+        self._on_progress = on_progress
+
+    def put(self, _value: object) -> None:
+        self._steps += 1
+        if self._steps > 0:
+            self._on_progress(min(0.99, self._steps / self._total))
+
+    def end(self) -> None:
+        self._on_progress(1.0)
 
 
 class MusicGenGenerator:
@@ -99,7 +126,14 @@ class MusicGenGenerator:
                 finally:
                     self._loading = False
 
-    def generate(self, prompt: str, seconds: float, seed: int, guidance: float) -> GeneratedAudio:
+    def generate(
+        self,
+        prompt: str,
+        seconds: float,
+        seed: int,
+        guidance: float,
+        on_progress: Callable[[float], None] | None = None,
+    ) -> GeneratedAudio:
         if not self._lock.acquire(blocking=False):
             raise GeneratorBusy(
                 "the model is still loading"
@@ -117,12 +151,15 @@ class MusicGenGenerator:
             inputs = self._processor(text=[prompt], padding=True, return_tensors="pt").to(
                 self._device
             )
+            steps = max(1, round(seconds * config.frame_rate))
+            streamer = ProgressStreamer(steps, on_progress) if on_progress else None
             with torch.inference_mode():
                 audio = self._model.generate(
                     **inputs,
                     do_sample=True,
                     guidance_scale=guidance,
-                    max_new_tokens=max(1, round(seconds * config.frame_rate)),
+                    max_new_tokens=steps,
+                    streamer=streamer,
                 )
             samples = audio[0, 0].float().cpu().numpy()
             return GeneratedAudio(

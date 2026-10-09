@@ -97,7 +97,7 @@ The endpoint currently executes synchronously because generation is inexpensive 
 - Additional genres and meters
 - Chord and section regeneration endpoints
 - Converting proposals into serialized editor commands
-- Redis-backed asynchronous jobs
+- Redis-backed asynchronous jobs (studio generation already runs as durable jobs with live updates on the SynaptixPlay platform, which calls this service synchronously; the prototype audio service has a Redis job queue with live progress, see `docs/development/local-development.md`)
 - Generation credit reservation
 - User instrument packs
 - Model inference

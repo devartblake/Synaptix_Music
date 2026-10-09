@@ -12,10 +12,11 @@ import { CoverArt } from "../../../components/player/CoverArt";
 import { ProjectArtwork } from "../../../components/player/ProjectArtwork";
 import playerStyles from "../../../components/player/player.module.css";
 import { platformRequest } from "../../../lib/platform/platform-request";
-import { formatClock, playbackItemKey, summarizeTracks, type PlaybackItem } from "../../../lib/player/playback-model";
+import { formatClock, playbackItemKey, studioHref, summarizeTracks, type PlaybackItem } from "../../../lib/player/playback-model";
 import { removeProjectCover, setProjectCover, useCoverUrl } from "../../../lib/player/covers";
 import { formatBytes, useOfflineRenders } from "../../../lib/player/offline-renders";
 import { currentItem, usePlayer } from "../../../lib/player/player-store";
+import { useOnline } from "../../../lib/pwa/use-online";
 import { mixItem, projectSubtitle, useLibrary } from "../../../lib/player/use-library";
 import styles from "../library.module.css";
 
@@ -56,6 +57,10 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
   const nowPlaying = currentItem(player);
   const playing = player.status === "playing";
   const coverUrl = useCoverUrl(projectId);
+  const online = useOnline();
+  // While this project is playing or paused, "Edit in Studio" continues from that position.
+  const listening = currentItem(player)?.projectId === projectId && (player.status === "playing" || player.status === "paused");
+  const editHref = studioHref(projectId, listening ? player.positionSeconds : 0);
   const coverInput = useRef<HTMLInputElement>(null);
   const [coverMessage, setCoverMessage] = useState<string | null>(null);
 
@@ -126,7 +131,7 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
           {entry && <p className={styles.heroMeta}>{projectSubtitle(project)} · {formatClock(entry.durationSeconds)}</p>}
           {mix && (
             <div className={styles.heroActions}>
-              <Link className={playerStyles.iconButton} href={`/studio/${encodeURIComponent(projectId)}`} aria-label="Edit in Studio"><EditIcon /></Link>
+              <Link className={playerStyles.iconButton} href={editHref} aria-label="Edit in Studio"><EditIcon /></Link>
               <button type="button" className={playerStyles.playButton} onClick={() => playItem(mix, [mix, ...trackItems])}
                 aria-label={isCurrent(mix) && playing ? "Pause mix" : "Play mix"}>
                 {isCurrent(mix) && playing ? <PauseIcon size={30} /> : <PlayIcon size={30} />}
@@ -165,7 +170,8 @@ export function ProjectListenClient({ projectId }: { projectId: string }) {
                       Remove download
                     </button>
                     : render.state === "ready" && (
-                      <button type="button" className={styles.linkButton} disabled={pending === "downloading"}
+                      <button type="button" className={styles.linkButton} disabled={pending === "downloading" || !online}
+                        title={online ? undefined : "Connect to download this mix"}
                         onClick={() => void offline.download(render.job, render.artifact)}>
                         {pending === "downloading" ? "Downloading…" : "Download for offline"}
                       </button>

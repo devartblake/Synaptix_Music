@@ -82,6 +82,7 @@ import { PluginRack } from "./PluginRack";
 import { createFreezeManifest, FreezeError, freezeReference, storedRevision } from "../../../lib/platform/plugin-freeze-model";
 import { createPlatformFrozenAudioSource } from "../../../lib/platform/frozen-audio-source";
 import { ProjectTitle } from "./ProjectTitle";
+import { studioStartTick } from "../../../lib/player/playback-model";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
 import { TransportPosition } from "./TransportPosition";
@@ -323,6 +324,18 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   });
 
   useEffect(() => engine.loadProject(project), [engine, project]);
+  // Arriving from the listening player with `?t=<seconds>`: start the playhead there (once).
+  useEffect(() => {
+    if (!hydrated) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("t")) return;
+    const tick = studioStartTick(project, url.searchParams.get("t"));
+    url.searchParams.delete("t");
+    window.history.replaceState(null, "", url);
+    if (tick !== null) engine.seek({ bar: 0, beat: 0, tick });
+    // Only when the project first loads; later edits must not move the playhead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
   useEffect(() => engine.subscribePluginStatus(setPluginStatuses), [engine]);
 
   useEffect(() => {

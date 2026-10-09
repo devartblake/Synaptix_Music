@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { formatClock, playbackItemKey } from "../../lib/player/playback-model";
+import { formatClock, playbackItemKey, studioHref } from "../../lib/player/playback-model";
 import { currentItem, usePlayer } from "../../lib/player/player-store";
 import { ChevronDownIcon, EditIcon, NextIcon, PauseIcon, PlayIcon, PreviousIcon, RepeatIcon } from "./icons";
 import { CoverArt } from "./CoverArt";
@@ -39,7 +39,8 @@ export function NowPlaying() {
               <ChevronDownIcon />
             </button>
             <span>{item.kind === "render" ? "Rendered mix" : item.soloTrackId ? "Track preview" : "Live mix"}</span>
-            <Link className={styles.iconButton} href={`/studio/${encodeURIComponent(item.projectId)}`} aria-label="Open in Studio">
+            {/* Editing continues from the listening position. */}
+            <Link className={styles.iconButton} href={studioHref(item.projectId, position)} aria-label="Open in Studio">
               <EditIcon />
             </Link>
           </div>

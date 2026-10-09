@@ -10,6 +10,16 @@
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; letter-spacing: -.03em; }
 .largeTitle { margin: 0; font-size: clamp(30px, 5vw, 40px); letter-spacing: -.03em; }
 
+.offlineBanner {
+  margin: -8px 0 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgb(246 184 74 / 35%);
+  background: rgb(246 184 74 / 10%);
+  color: #f7d79c;
+  font-size: 14px;
+  line-height: 1.45;
+}
 .search {
   width: 100%;
   min-height: 44px;
