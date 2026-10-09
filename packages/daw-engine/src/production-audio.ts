@@ -10,6 +10,13 @@ import {
   ENVELOPE_RELEASE_PARAMETER,
   ENVELOPE_SUSTAIN_PARAMETER,
   FILTER_FREQUENCY_PARAMETER,
+  FILTER_RESONANCE_PARAMETER,
+  FILTER_ENV_AMOUNT_PARAMETER,
+  FILTER_ENV_DECAY_PARAMETER,
+  LFO_CUTOFF_PARAMETER,
+  LFO_RATE_PARAMETER,
+  TREMOLO_PARAMETER,
+  VIBRATO_PARAMETER,
   resolveDeviceParameterValue,
   REVERB_SEND_PARAMETER
 } from "./device-parameters.ts";
@@ -51,7 +58,15 @@ export function resolveInstrumentProfile(track: Track): InstrumentProfile {
   return { ...resolveInstrumentDefinition(deviceType(track), track.name).profile };
 }
 
-export type EffectiveInstrumentSettings = InstrumentProfile;
+export type EffectiveInstrumentSettings = InstrumentProfile & {
+  resonance: number;
+  lfoRate: number;
+  vibratoCents: number;
+  lfoCutoffOctaves: number;
+  tremolo: number;
+  filterEnvOctaves: number;
+  filterEnvDecay: number;
+};
 
 export function resolveEffectiveInstrumentSettings(track: Track): EffectiveInstrumentSettings {
   const profile = resolveInstrumentProfile(track);
@@ -59,11 +74,31 @@ export function resolveEffectiveInstrumentSettings(track: Track): EffectiveInstr
   return {
     ...profile,
     filterFrequency: resolveDeviceParameterValue(device, FILTER_FREQUENCY_PARAMETER, profile.filterFrequency),
+    resonance: resolveDeviceParameterValue(device, FILTER_RESONANCE_PARAMETER, profile.resonance ?? 0),
+    // A rate and decay are needed for the depths to do anything, so they default to usable values.
+    lfoRate: resolveDeviceParameterValue(device, LFO_RATE_PARAMETER, profile.lfoRate ?? 5),
+    vibratoCents: resolveDeviceParameterValue(device, VIBRATO_PARAMETER, profile.vibratoCents ?? 0),
+    lfoCutoffOctaves: resolveDeviceParameterValue(device, LFO_CUTOFF_PARAMETER, profile.lfoCutoffOctaves ?? 0),
+    tremolo: resolveDeviceParameterValue(device, TREMOLO_PARAMETER, profile.tremolo ?? 0),
+    filterEnvOctaves: resolveDeviceParameterValue(device, FILTER_ENV_AMOUNT_PARAMETER, profile.filterEnvOctaves ?? 0),
+    filterEnvDecay: resolveDeviceParameterValue(device, FILTER_ENV_DECAY_PARAMETER, profile.filterEnvDecay ?? 0.2),
     attack: resolveDeviceParameterValue(device, ENVELOPE_ATTACK_PARAMETER, profile.attack),
     decay: resolveDeviceParameterValue(device, ENVELOPE_DECAY_PARAMETER, profile.decay),
     sustain: resolveDeviceParameterValue(device, ENVELOPE_SUSTAIN_PARAMETER, profile.sustain),
     release: resolveDeviceParameterValue(device, ENVELOPE_RELEASE_PARAMETER, profile.release),
     reverbSend: track.reverbSend ?? resolveDeviceParameterValue(device, REVERB_SEND_PARAMETER, profile.reverbSend)
+  };
+}
+
+/** The kernel's modulation for these settings (shared by preview and export). */
+export function instrumentModulation(settings: EffectiveInstrumentSettings) {
+  return {
+    lfoRate: settings.lfoRate,
+    vibratoCents: settings.vibratoCents,
+    lfoCutoffOctaves: settings.lfoCutoffOctaves,
+    tremolo: settings.tremolo,
+    filterEnvOctaves: settings.filterEnvOctaves,
+    filterEnvDecay: settings.filterEnvDecay
   };
 }
 

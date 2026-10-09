@@ -30,7 +30,7 @@ function InstrumentTile({ entry, name, selected, onSelect, showDescription = fal
       style={{ "--instrument-accent": INSTRUMENT_ACCENTS[entry.profile.kind] } as React.CSSProperties}>
       <input type="radio" name={name} value={entry.deviceType} checked={selected}
         onChange={() => onSelect(entry.deviceType)} />
-      <InstrumentIcon kind={entry.profile.kind} size={32} />
+      <InstrumentIcon kind={entry.profile.kind} deviceType={entry.deviceType} size={32} />
       <span>{entry.label}</span>
       {showDescription && <small>{entry.description}</small>}
     </label>

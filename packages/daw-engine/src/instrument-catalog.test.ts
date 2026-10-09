@@ -60,6 +60,28 @@ test("the Drum Kit starter beat keeps eighth-note hats, the last one opened", ()
   assert.deepEqual(hatBeats(46), [3.5]);
 });
 
+test("resonance defaults to 0 (the plain filter) and follows the Resonance control", () => {
+  const lead = createInstrumentTrack("synaptix-lead-synth", { id: "l" });
+  assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 0);
+  lead.devices[0]!.parameters = [{ id: "filterResonance", value: 0.65 }];
+  assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 0.65);
+  lead.devices[0]!.parameters = [{ id: "filterResonance", value: 3 }];
+  assert.equal(resolveEffectiveInstrumentSettings(lead).resonance, 1, "clamped to the control's range");
+});
+
+test("modulation is off unless an instrument or its controls turn it on", () => {
+  const settings = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-lead-synth", { id: "l" }));
+  assert.deepEqual(
+    [settings.vibratoCents, settings.lfoCutoffOctaves, settings.tremolo, settings.filterEnvOctaves],
+    [0, 0, 0, 0]
+  );
+  // The presets that showcase it ship with it on.
+  const acid = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-squelch", { id: "a" }));
+  assert.ok(acid.resonance > 0 && acid.filterEnvOctaves > 0);
+  const motion = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-motion", { id: "m" }));
+  assert.ok(motion.lfoCutoffOctaves > 0 && motion.vibratoCents > 0);
+});
+
 test("pads default to a wetter reverb send than drums", () => {
   const pad = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-pad", { id: "p" }));
   const drums = resolveEffectiveInstrumentSettings(createInstrumentTrack("synaptix-drum-synth", { id: "d" }));

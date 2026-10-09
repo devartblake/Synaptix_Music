@@ -86,9 +86,7 @@ deliberately).
 
 - Step 2, supersaw: **done.** Kernel oscillator `supersaw` (seven PolyBLEP saws at ratios
   0.989–1.011, fixed start phases, centre voice louder) and two catalog instruments, **Supersaw
-  Lead** (`synaptix-supersaw`) and **Unison Pad** (`synaptix-unison`). Stereo spread is not done:
-  voices are mono until the channel strip, in both preview and export; spreading needs a stereo
-  voice path and comes later. Cost: a dense all-supersaw project exports at 5.0× real time
+  Lead** (`synaptix-supersaw`) and **Unison Pad** (`synaptix-unison`). Stereo spread: **done** with the stereo voice path (saws panned −0.8 … 0.8, alternating sides). Cost: a dense all-supersaw project exports at 5.0× real time
   (master) and 3.5× (stems).
 
 - Step 3, Karplus–Strong: **done.** Kernel oscillator `plucked-string`: a delay line one period
@@ -161,14 +159,14 @@ recorded audio.
 
 ## Medium (one to two weeks each)
 
-| Instrument                     | What it is                                | What makes it longer                                                                                                                    |
-| ------------------------------ | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Acid Bass                      | 303-style squelch                         | Resonant state-variable filter with cutoff envelope and accent; coefficients change every sample and must stay stable and deterministic |
-| Resonant filter on every synth | A shared upgrade, not one instrument      | Same filter as Acid Bass, exposed as device parameters on all instruments                                                               |
-| Drawbar Organ                  | Classic organ registrations               | Additive: 9 sines per note; fine in Rust, heavy in TypeScript                                                                           |
-| Modulated Pads                 | Vibrato, filter sweeps, slow movement     | A modulation system (LFOs and envelopes routed to pitch, cutoff, level) that later instruments reuse                                    |
-| Wavetable Synth                | Morphing modern tones                     | Needs wavetable files, so it waits on the asset and licensing system (roadmap section 6), plus band-limited table interpolation         |
-| Noise and Riser FX             | Sweeps, whooshes, impacts for transitions | Filtered noise with long automated envelopes; useful for adaptive-music transitions                                                     |
+| Instrument                     | What it is                                | What makes it longer                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------ | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Acid Bass                      | 303-style squelch                         | **Done:** **Acid Bass** (`synaptix-squelch`): resonant saw (0.65) with a 3.5-octave, 0.12 s filter envelope                                                                                                                                                                                                                             |
+| Resonant filter on every synth | A shared upgrade, not one instrument      | **Done:** Resonance control (0–1) on every instrument. 0 keeps the one-pole filter (existing sounds byte-identical); above 0 a 12 dB state-variable low-pass at Filter Frequency, peak up to about +20 dB, `tan` from the kernel's own sine/cosine. Acid Bass (a preset using it with a cutoff envelope) waits on the modulation system |
+| Drawbar Organ                  | Classic organ registrations               | Additive: 9 sines per note; fine in Rust, heavy in TypeScript                                                                                                                                                                                                                                                                           |
+| Modulated Pads                 | Vibrato, filter sweeps, slow movement     | **Done:** modulation system (LFO to pitch, cutoff and level; filter envelope), six controls on every instrument, control-rate cutoff (16 samples). **Motion Pad** (`synaptix-motion`) is the first preset                                                                                                                               |
+| Wavetable Synth                | Morphing modern tones                     | Needs wavetable files, so it waits on the asset and licensing system (roadmap section 6), plus band-limited table interpolation                                                                                                                                                                                                         |
+| Noise and Riser FX             | Sweeps, whooshes, impacts for transitions | Filtered noise with long automated envelopes; useful for adaptive-music transitions                                                                                                                                                                                                                                                     |
 
 ## Longer (several weeks each; new subsystems)
 

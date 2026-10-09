@@ -4,6 +4,32 @@
 
 ### Added
 
+- The ten new instruments each have their own icon in the instrument picker and device panel, instead of reusing their family's:
+  - Supersaw Lead: stacked detuned saws.
+  - Unison Pad: saws spreading left and right.
+  - Plucked String: an acoustic guitar.
+  - FM Bell: a bell with a sine inside.
+  - FM Electric Piano: keys under a sine.
+  - Drum Kit: kick, snare and cymbal.
+  - 808 Bass: a thumping speaker labelled 808.
+  - Chiptune Lead: a game controller under a pixel pulse wave.
+  - Acid Bass: a resonant filter curve being swept.
+  - Motion Pad: a wave circled by motion arrows.
+
+  Each keeps its family's accent colour, so related instruments still read as related.
+- Added the **modulation system**. Every instrument gets six controls:
+  - **LFO Rate**, a sine LFO routed to **Vibrato** (cents), **LFO to Cutoff** (octaves) and **Tremolo**;
+  - **Filter Envelope** (octaves above the cutoff on each note) and **Filter Env Decay**.
+
+  All depths default to 0, so existing projects render byte-identical. It runs per voice in the shared Rust kernel, so preview and export match.
+  - Vibrato is a closed-form time warp of each oscillator's phase, so phases stay exact.
+  - The cutoff moves at control rate: every 16 samples, on a grid counted from the note's start, so block boundaries never change the result.
+  - `2^x` and `tan` come from the kernel's own deterministic functions.
+  - Two new presets show it off: **Acid Bass** (resonant saw with a snappy filter envelope, the 303 squelch) and **Motion Pad** (supersaw pad whose filter slowly breathes, with gentle vibrato).
+  - Moving the cutoff on a non-resonant instrument uses a `tan`-based one-pole coefficient, a hair different from the static one.
+  - Typical all-preset projects export at 12.8× (Acid Bass) and 2.6× (Motion Pad) real time.
+- Added the **stereo voice path**. The synthesis kernel renders every note in stereo, in exports and in the studio preview. Mono instruments write the same samples to both sides, so they render byte-identical. **Supersaw Lead and Unison Pad now spread their seven saws across the stereo field** (an equal-power pan per saw, alternating sides), with a filter per channel; this changes how those two instruments sound, on purpose. In the preview, instrument tracks now pan with the export's equal-power law in a pan stage after the inserts, because Tone's channel panner would fold stereo to mono. Checked in Chromium: the pan stage matches the export at every pan position, and the worklet's left and right channels match the export on every sample. The render engine version is now **1.2.0**. Deploy the studio and render worker together (the worker refuses requests for another engine). An all-supersaw dense project exports at 3.9× real time (was 5.0×).
+- Added a **Resonance** control to every instrument (0–1, default 0). At 0 the filter is the original one-pole low-pass, so every existing project renders byte-identical. Above 0 it switches to a 12 dB resonant low-pass (a state-variable filter) at the instrument's Filter Frequency, peaking up to about +20 dB as resonance rises to 1, and stable at full resonance. It runs in the shared Rust kernel, so preview and export match. Its coefficient needs `tan`, computed from the kernel's own sine and cosine so every platform agrees. Moving from 0 to just above it changes the filter slope from 6 dB to 12 dB per octave, which you can hear.
 - Drum Kit tracks now open in the drum step sequencer, with lanes for everything the kit plays: kick, rim, snare, clap, closed and open hats, three toms, crash and ride. Before, its device type didn't contain "drum", so it opened in the plain piano roll. A **Piano roll** button switches any drum track to the piano roll, for timing off the 16th-note grid or notes without a lane, and **Steps** switches back. On drum tracks the piano roll names rows and notes by drum ("Kick (C2)"); off-lane notes on the Drum Kit use the kit's own map (low notes kick, unmapped notes toms). Drum Synth keeps its eight lanes.
 - Added **Chiptune Lead** (instrument roadmap, second slice, step 3, which completes the slice): a band-limited 25% pulse, centred on zero, for the bright, nasal lead of retro game music. Preview and export match, and existing instruments render byte-identical.
 - Added **808 Bass** (instrument roadmap, second slice, step 2): a long, boomy sine bass whose pitch drops onto its note, with soft saturation. The saturation is a division (`x / (1 + |x|)`), not `tanh`, so every platform renders the same samples. Preview and export match, and existing instruments render byte-identical.

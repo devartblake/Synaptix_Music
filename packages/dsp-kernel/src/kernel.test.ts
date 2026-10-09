@@ -71,20 +71,42 @@ function referenceString(frequency: number, sampleRate: number, seed: number): (
   };
 }
 
+function worstDifference(actual: Float64Array, expected: Float64Array): number {
+  return actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
+}
+
+const SUPERSAW_PANS = [-0.8, 0.53, -0.27, 0.0, 0.27, -0.53, 0.8];
+
 function referenceVoice(
-  out: Float64Array,
+  out: { left: Float64Array; right: Float64Array },
   p: VoiceParams,
   noteStart: number,
   noteTotal: number
 ): void {
   const first = Math.max(0, -noteStart);
-  const end = Math.min(noteTotal, out.length - noteStart);
+  const end = Math.min(noteTotal, out.left.length - noteStart);
+  // Equal-power pan per saw, ×√2 so a centred saw is at full level on both sides.
+  const panLeft = SUPERSAW_PANS.map((pan) => Math.SQRT2 * Math.cos(((pan + 1) * Math.PI) / 4));
+  const panRight = SUPERSAW_PANS.map((pan) => Math.SQRT2 * Math.sin(((pan + 1) * Math.PI) / 4));
+  let rawRight = 0;
+  let filteredRight = 0;
+  let icRight1 = 0;
+  let icRight2 = 0;
   const dt = p.frequency / p.sampleRate;
   const supersawFrequencies = SUPERSAW_RATIOS.map((ratio) => p.frequency * ratio);
   const supersawDts = supersawFrequencies.map((frequency) => frequency / p.sampleRate);
   const string = referenceString(p.frequency, p.sampleRate, p.seed);
   let sweepPhase = 0;
   let filtered = 0;
+  // crates/dsp ResonantLowPass, with Math.sin / Math.cos for tan.
+  const angle = Math.PI * Math.min(Math.max(p.cutoff / p.sampleRate, 0), 0.49);
+  const g = Math.sin(angle) / Math.cos(angle);
+  const k = 2 - 1.9 * Math.min(Math.max(p.resonance, 0), 1);
+  const a1 = 1 / (1 + g * (g + k));
+  const a2 = g * a1;
+  const a3 = g * a2;
+  let ic1 = 0;
+  let ic2 = 0;
   for (let i = first; i < end; i++) {
     const time = i / p.sampleRate;
     const phase = time * p.frequency;
@@ -104,13 +126,18 @@ function referenceVoice(
       raw = Math.sin(2 * Math.PI * (carrier - Math.floor(carrier)));
     } else if (p.oscillator === "plucked-string") raw = string();
     else if (p.oscillator === "supersaw") {
-      let sum = 0;
+      let sumLeft = 0;
+      let sumRight = 0;
       for (let k = 0; k < 7; k++) {
         const voicePhase = time * supersawFrequencies[k]! + SUPERSAW_PHASES[k]!;
         const voiceCycle = voicePhase - Math.floor(voicePhase);
-        sum += SUPERSAW_LEVELS[k]! * (2 * voiceCycle - 1 - polyBlep(voiceCycle, supersawDts[k]!));
+        const saw =
+          SUPERSAW_LEVELS[k]! * (2 * voiceCycle - 1 - polyBlep(voiceCycle, supersawDts[k]!));
+        sumLeft += saw * panLeft[k]!;
+        sumRight += saw * panRight[k]!;
       }
-      raw = sum * SUPERSAW_GAIN;
+      raw = sumLeft * SUPERSAW_GAIN;
+      rawRight = sumRight * SUPERSAW_GAIN;
     } else if (p.oscillator === "sine") raw = Math.sin(2 * Math.PI * cycle);
     else if (p.oscillator === "square") {
       const half = cycle + 0.5;
@@ -125,7 +152,25 @@ function referenceVoice(
         polyBlep(fall >= 1 ? fall - 1 : fall, dt) +
         0.5;
     } else raw = cycle < 0.5 ? 4 * cycle - 1 : 3 - 4 * cycle;
-    filtered += p.alpha * (raw - filtered);
+    if (p.resonance > 0) {
+      const v3 = raw - ic2;
+      const v1 = a1 * ic1 + a2 * v3;
+      const v2 = ic2 + a2 * ic1 + a3 * v3;
+      ic1 = 2 * v1 - ic1;
+      ic2 = 2 * v2 - ic2;
+      filtered = v2;
+    } else filtered += p.alpha * (raw - filtered);
+    const stereo = p.oscillator === "supersaw";
+    if (stereo) {
+      if (p.resonance > 0) {
+        const v3 = rawRight - icRight2;
+        const v1 = a1 * icRight1 + a2 * v3;
+        const v2 = icRight2 + a2 * icRight1 + a3 * v3;
+        icRight1 = 2 * v1 - icRight1;
+        icRight2 = 2 * v2 - icRight2;
+        filteredRight = v2;
+      } else filteredRight += p.alpha * (rawRight - filteredRight);
+    }
 
     let envelope: number;
     if (time < p.attack) envelope = p.attack > 0 ? time / p.attack : 1;
@@ -141,7 +186,9 @@ function referenceVoice(
             ? p.sustain * (1 - sinceRelease / p.release)
             : 0;
     }
-    out[noteStart + i]! += filtered * envelope * p.velocityGain;
+    const value = filtered * envelope * p.velocityGain;
+    out.left[noteStart + i]! += value;
+    out.right[noteStart + i]! += stereo ? filteredRight * envelope * p.velocityGain : value;
   }
 }
 
@@ -164,7 +211,7 @@ for (const oscillator of OSCILLATORS) {
   test(`${oscillator}: kernel samples match the reference`, () => {
     const kernel = createNodeDspKernel();
     const length = 30_000;
-    const expected = new Float64Array(length);
+    const expected = { left: new Float64Array(length), right: new Float64Array(length) };
     kernel.beginTrack(length);
     // Overlapping notes, one starting before the buffer and one running past its end, with
     // every envelope stage and a high note whose PolyBLEP correction spans several samples.
@@ -187,6 +234,8 @@ for (const oscillator of OSCILLATORS) {
         noteDuration: 0.12,
         velocityGain: 0.8,
         seed: 0xdeadbeef,
+        cutoff: 2_000,
+        resonance: 0,
         ...overrides
       };
       kernel.renderVoice(params, start, total);
@@ -194,26 +243,58 @@ for (const oscillator of OSCILLATORS) {
     }
     const actual = kernel.trackSamples();
 
-    assert.equal(actual.length, length);
-    assert.ok(actual.some((s) => s !== 0));
+    assert.equal(actual.left.length, length);
+    assert.ok(actual.left.some((s) => s !== 0));
     if (
       oscillator === "sine" ||
       oscillator === "fm-bell" ||
       oscillator === "fm-piano" ||
-      oscillator === "808-bass"
+      oscillator === "808-bass" ||
+      oscillator === "supersaw"
     ) {
-      // Rounding differences between the kernel's sine and Math.sin; FM phase-modulates them,
-      // so allow a little more there.
-      const worst = actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
-      assert.ok(
-        worst < (oscillator === "sine" ? 1e-14 : 1e-12),
-        `${oscillator} differs by ${worst}`
-      );
+      // Rounding differences between the kernel's sine and Math.sin (the supersaw's pan gains
+      // use it too); FM phase-modulates them, so allow a little more there.
+      const tolerance = oscillator === "sine" ? 1e-14 : 1e-12;
+      for (const side of ["left", "right"] as const) {
+        const worst = worstDifference(actual[side], expected[side]);
+        assert.ok(worst < tolerance, `${oscillator} ${side} differs by ${worst}`);
+      }
     } else {
       assert.deepEqual(actual, expected);
     }
   });
 }
+
+test("the resonant filter matches the reference", () => {
+  // Its tan comes from the kernel's sine and cosine, so allow for their rounding; resonance
+  // amplifies it a little.
+  for (const resonance of [0.05, 0.6, 1]) {
+    const kernel = createNodeDspKernel();
+    const expected = { left: new Float64Array(20_000), right: new Float64Array(20_000) };
+    kernel.beginTrack(20_000);
+    const params: VoiceParams = {
+      oscillator: "sawtooth",
+      frequency: 220,
+      sampleRate: 48_000,
+      alpha: 0.35,
+      attack: 0.005,
+      decay: 0.1,
+      sustain: 0.7,
+      release: 0.05,
+      noteDuration: 0.3,
+      velocityGain: 0.8,
+      seed: 1,
+      cutoff: 1_500,
+      resonance
+    };
+    kernel.renderVoice(params, 100, 18_000);
+    referenceVoice(expected, params, 100, 18_000);
+    const actual = kernel.trackSamples();
+    const worst = worstDifference(actual.left, expected.left);
+    assert.ok(worst < 1e-9, `resonance ${resonance} differs by ${worst}`);
+    assert.ok(actual.left.some((s) => s !== 0));
+  }
+});
 
 test("beginTrack starts from silence", () => {
   const kernel = createNodeDspKernel();
@@ -230,11 +311,16 @@ test("beginTrack starts from silence", () => {
       release: 0,
       noteDuration: 1,
       velocityGain: 1,
-      seed: 1
+      seed: 1,
+      cutoff: 2_000,
+      resonance: 0
     },
     0,
     100
   );
   kernel.beginTrack(50);
-  assert.deepEqual(kernel.trackSamples(), new Float64Array(50));
+  assert.deepEqual(kernel.trackSamples(), {
+    left: new Float64Array(50),
+    right: new Float64Array(50)
+  });
 });

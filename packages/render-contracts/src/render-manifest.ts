@@ -4,8 +4,9 @@ export const RENDER_CONTRACT_VERSION = "1.0.0" as const;
 /**
  * Which synthesis made a render, recorded on its manifest and artifacts. Bump it whenever the
  * same project would render different audio. 1.1.0: Rust kernel with band-limited saw and square.
+ * 1.2.0: stereo voices (the supersaw instruments spread across the stereo field).
  */
-export const RENDER_ENGINE_VERSION = "1.1.0" as const;
+export const RENDER_ENGINE_VERSION = "1.2.0" as const;
 
 export const RenderFormatSchema = z.enum(["wav", "mp3", "ogg"]);
 export const PreviewOutputSchema = z

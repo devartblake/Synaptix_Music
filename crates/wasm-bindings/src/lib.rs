@@ -5,7 +5,7 @@
 
 use std::cell::RefCell;
 
-use synaptix_dsp::voice::{self, Oscillator, Voice, VoiceState};
+use synaptix_dsp::voice::{self, Modulation, Oscillator, Voice, VoiceState};
 
 thread_local! {
     static TRACK: RefCell<Vec<f64>> = const { RefCell::new(Vec::new()) };
@@ -16,19 +16,21 @@ thread_local! {
     static BLOCK: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Starts a track: a zeroed mono buffer of `len` samples that `render_voice` adds into.
-/// Returns its address; read it after the last voice (memory may grow on the next call here).
+/// Starts a track: a zeroed stereo buffer, `len` left samples then `len` right samples, that
+/// `render_voice` adds into. Returns its address; read it after the last voice (memory may grow
+/// on the next call here).
 #[no_mangle]
 pub extern "C" fn begin_track(len: u32) -> *const f64 {
     TRACK.with_borrow_mut(|track| {
         track.clear();
-        track.resize(len as usize, 0.0);
+        track.resize(2 * len as usize, 0.0);
         track.as_ptr()
     })
 }
 
 /// Adds one note to the current track. Sample positions are whole numbers passed as `f64`
-/// (JavaScript numbers). Returns 0 for an unknown oscillator code, 1 otherwise.
+/// (JavaScript numbers); the last six arguments are the voice's `Modulation` (all zero for
+/// none). Returns 0 for an unknown oscillator code, 1 otherwise.
 #[no_mangle]
 #[allow(clippy::too_many_arguments)]
 pub extern "C" fn render_voice(
@@ -43,6 +45,14 @@ pub extern "C" fn render_voice(
     note_duration: f64,
     velocity_gain: f64,
     seed: u32,
+    cutoff: f64,
+    resonance: f64,
+    lfo_rate: f64,
+    vibrato_cents: f64,
+    lfo_cutoff_octaves: f64,
+    tremolo: f64,
+    filter_env_octaves: f64,
+    filter_env_decay: f64,
     note_start: f64,
     note_total: f64,
 ) -> u32 {
@@ -58,11 +68,23 @@ pub extern "C" fn render_voice(
         note_duration,
         velocity_gain,
         seed,
+        cutoff,
+        resonance,
+        Modulation {
+            lfo_rate,
+            vibrato_cents,
+            lfo_cutoff_octaves,
+            tremolo,
+            filter_env_octaves,
+            filter_env_decay,
+        },
     ) else {
         return 0;
     };
     TRACK.with_borrow_mut(|track| {
-        voice::render_voice(track, &params, note_start as i64, note_total as i64)
+        let half = track.len() / 2;
+        let (left, right) = track.split_at_mut(half);
+        voice::render_voice(left, right, &params, note_start as i64, note_total as i64)
     });
     1
 }
@@ -83,6 +105,14 @@ pub extern "C" fn start_voice(
     note_duration: f64,
     velocity_gain: f64,
     seed: u32,
+    cutoff: f64,
+    resonance: f64,
+    lfo_rate: f64,
+    vibrato_cents: f64,
+    lfo_cutoff_octaves: f64,
+    tremolo: f64,
+    filter_env_octaves: f64,
+    filter_env_decay: f64,
     start: f64,
     total: f64,
 ) -> u32 {
@@ -98,6 +128,16 @@ pub extern "C" fn start_voice(
         note_duration,
         velocity_gain,
         seed,
+        cutoff,
+        resonance,
+        Modulation {
+            lfo_rate,
+            vibrato_cents,
+            lfo_cutoff_octaves,
+            tremolo,
+            filter_env_octaves,
+            filter_env_decay,
+        },
     ) else {
         return 0;
     };
@@ -118,16 +158,17 @@ pub extern "C" fn release_voices(frame: f64) {
 }
 
 /// Mixes every sounding note into frames `block_start .. block_start + len` and returns the
-/// address of `len` `f32` samples. Finished notes are dropped.
+/// address of `len` left then `len` right `f32` samples. Finished notes are dropped.
 #[no_mangle]
 pub extern "C" fn render_block(block_start: f64, len: u32) -> *const f32 {
     let len = len as usize;
     MIX.with_borrow_mut(|mix| {
         mix.clear();
-        mix.resize(len, 0.0);
+        mix.resize(2 * len, 0.0);
+        let (left, right) = mix.split_at_mut(len);
         VOICES.with_borrow_mut(|voices| {
             for voice in voices.iter_mut() {
-                voice.render(mix, block_start as i64);
+                voice.render(left, right, block_start as i64);
             }
             voices.retain(|voice| !voice.finished());
         });
@@ -152,6 +193,9 @@ fn voice_params(
     note_duration: f64,
     velocity_gain: f64,
     seed: u32,
+    cutoff: f64,
+    resonance: f64,
+    modulation: Modulation,
 ) -> Option<Voice> {
     Some(Voice {
         oscillator: Oscillator::from_code(oscillator)?,
@@ -165,5 +209,8 @@ fn voice_params(
         note_duration,
         velocity_gain,
         seed,
+        cutoff,
+        resonance,
+        modulation,
     })
 }

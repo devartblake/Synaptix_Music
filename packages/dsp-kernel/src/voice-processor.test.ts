@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { kernelWasmBytes, onePoleAlpha, OSCILLATOR_CODES, type KernelOscillator } from "./index.ts";
+import {
+  kernelWasmBytes,
+  NO_MODULATION,
+  onePoleAlpha,
+  OSCILLATOR_CODES,
+  type KernelOscillator,
+  type VoiceModulation
+} from "./index.ts";
 import { createNodeDspKernel } from "./node.ts";
 import {
   VOICE_PROCESSOR_NAME,
@@ -47,6 +54,8 @@ interface Note {
   frequency: number;
   time: number;
   noteDuration: number;
+  resonance?: number;
+  modulation?: VoiceModulation;
 }
 
 const ENVELOPE = { attack: 0.01, decay: 0.05, sustain: 0.6, release: 0.08 };
@@ -61,11 +70,16 @@ function noteMessage(note: Note): VoiceProcessorMessage {
     noteDuration: note.noteDuration,
     velocityGain: 0.75,
     seed: 0xc0ffee,
+    cutoff: 2_400,
+    resonance: note.resonance ?? 0,
+    modulation: note.modulation ?? NO_MODULATION,
     time: note.time
   };
 }
 
-function exportSamples(notes: readonly Note[], length: number): Float64Array {
+type Stereo<T> = { left: T; right: T };
+
+function exportSamples(notes: readonly Note[], length: number): Stereo<Float64Array> {
   const kernel = createNodeDspKernel();
   kernel.beginTrack(length);
   for (const note of notes) {
@@ -78,7 +92,10 @@ function exportSamples(notes: readonly Note[], length: number): Float64Array {
         ...ENVELOPE,
         noteDuration: note.noteDuration,
         velocityGain: 0.75,
-        seed: 0xc0ffee
+        seed: 0xc0ffee,
+        cutoff: 2_400,
+        resonance: note.resonance ?? 0,
+        modulation: note.modulation
       },
       Math.round(note.time * SAMPLE_RATE),
       Math.round((note.noteDuration + ENVELOPE.release) * SAMPLE_RATE)
@@ -87,26 +104,36 @@ function exportSamples(notes: readonly Note[], length: number): Float64Array {
   return kernel.trackSamples();
 }
 
-function play(processor: FakeProcessor, length: number, before?: (frame: number) => void) {
-  const out = new Float32Array(length);
+function play(
+  processor: FakeProcessor,
+  length: number,
+  before?: (frame: number) => void
+): Stereo<Float32Array> {
+  const out = { left: new Float32Array(length), right: new Float32Array(length) };
   for (frame.value = 0; frame.value < length; frame.value += BLOCK) {
     before?.(frame.value);
-    const outputs = [[new Float32Array(BLOCK)]];
+    // A stereo output, as the studio creates the node.
+    const outputs = [[new Float32Array(BLOCK), new Float32Array(BLOCK)]];
     assert.equal(processor.process([], outputs), true);
-    out.set(outputs[0]![0]!.subarray(0, Math.min(BLOCK, length - frame.value)), frame.value);
+    const count = Math.min(BLOCK, length - frame.value);
+    out.left.set(outputs[0]![0]!.subarray(0, count), frame.value);
+    out.right.set(outputs[0]![1]!.subarray(0, count), frame.value);
   }
   return out;
 }
 
 /** Exact match, reporting the first differing sample instead of diffing whole buffers. */
-function assertSameSamples(actual: Float32Array, expected: Float64Array): void {
-  assert.equal(actual.length, expected.length);
-  const index = actual.findIndex((sample, i) => sample !== Math.fround(expected[i]!));
-  assert.equal(
-    index,
-    -1,
-    `sample ${index}: ${actual[index]} vs ${Math.fround(expected[index] ?? 0)}`
-  );
+function assertSameSamples(actual: Stereo<Float32Array>, expected: Stereo<Float64Array>): void {
+  for (const side of ["left", "right"] as const) {
+    const [a, e] = [actual[side], expected[side]];
+    assert.equal(a.length, e.length);
+    const index = a.findIndex((sample, i) => sample !== Math.fround(e[i]!));
+    assert.equal(
+      index,
+      -1,
+      `${side} sample ${index}: ${a[index]} vs ${Math.fround(e[index] ?? 0)}`
+    );
+  }
 }
 
 test("the preview worklet plays exactly the samples an export renders", () => {
@@ -124,7 +151,24 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "drum-kit", frequency: 73.41619197935188, time: 0.38, noteDuration: 0.1 },
     { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 },
     { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 },
-    { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 }
+    { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 },
+    { oscillator: "sawtooth", frequency: 146.83, time: 0.47, noteDuration: 0.1, resonance: 0.8 },
+    // Every modulation at once, on a resonant supersaw.
+    {
+      oscillator: "supersaw",
+      frequency: 196,
+      time: 0.5,
+      noteDuration: 0.08,
+      resonance: 0.5,
+      modulation: {
+        lfoRate: 6,
+        vibratoCents: 30,
+        lfoCutoffOctaves: 1,
+        tremolo: 0.4,
+        filterEnvOctaves: 2,
+        filterEnvDecay: 0.03
+      }
+    }
   ];
   const length = Math.round(0.6 * SAMPLE_RATE);
   const processor = loadProcessor();
@@ -134,7 +178,9 @@ test("the preview worklet plays exactly the samples an export renders", () => {
   const preview = play(processor, length);
 
   assertSameSamples(preview, exportSamples(notes, length));
-  assert.ok(preview.some((s) => s !== 0));
+  assert.ok(preview.left.some((s) => s !== 0));
+  // The supersaw note spreads, so the preview really is stereo.
+  assert.ok(preview.left.some((s, i) => s !== preview.right[i]));
 });
 
 test("release ends held notes with their release, and silences notes not yet started", () => {
@@ -159,5 +205,7 @@ test("release ends held notes with their release, and silences notes not yet sta
     length
   );
   assertSameSamples(preview, expected);
-  assert.ok(preview.subarray(releaseFrame + ENVELOPE.release * SAMPLE_RATE).every((s) => s === 0));
+  assert.ok(
+    preview.left.subarray(releaseFrame + ENVELOPE.release * SAMPLE_RATE).every((s) => s === 0)
+  );
 });

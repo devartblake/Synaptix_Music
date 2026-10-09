@@ -1,10 +1,12 @@
+import type { VoiceModulation } from "./index.ts";
+
 /**
  * The studio preview's AudioWorklet processor: plays notes through the kernel in real time.
  *
  * It is plain JavaScript in a string because worklet modules load from a URL (the studio uses a
  * Blob URL) and can't import. The kernel's bytes arrive in `processorOptions.wasm` and are
- * compiled here, off the main thread. One node plays one track, mono; the track's channel strip
- * pans it, as in exports. Rendering in 128-frame blocks makes exactly the samples an export
+ * compiled here, off the main thread. One node plays one track, in stereo (most voices are the
+ * same on both sides; the supersaw spreads); the track's pan stage after it pans as exports do. Rendering in 128-frame blocks makes exactly the samples an export
  * makes (see voice-processor.test.ts).
  */
 
@@ -24,6 +26,9 @@ export type VoiceProcessorMessage =
       noteDuration: number;
       velocityGain: number;
       seed: number;
+      cutoff: number;
+      resonance: number;
+      modulation: VoiceModulation;
       /** AudioContext time the note starts. */
       time: number;
     }
@@ -46,6 +51,9 @@ class SynaptixKernelVoiceProcessor extends AudioWorkletProcessor {
         message.oscillator, message.frequency, sampleRate, message.alpha,
         message.attack, message.decay, message.sustain, message.release,
         message.noteDuration, message.velocityGain, message.seed,
+        message.cutoff, message.resonance,
+        message.modulation.lfoRate, message.modulation.vibratoCents, message.modulation.lfoCutoffOctaves,
+        message.modulation.tremolo, message.modulation.filterEnvOctaves, message.modulation.filterEnvDecay,
         Math.round(message.time * sampleRate),
         Math.round((message.noteDuration + message.release) * sampleRate)
       );
@@ -58,8 +66,9 @@ class SynaptixKernelVoiceProcessor extends AudioWorkletProcessor {
     const channels = outputs[0];
     const length = channels[0].length;
     const address = this.kernel.render_block(currentFrame, length);
-    const block = new Float32Array(this.kernel.memory.buffer, address, length);
-    for (const channel of channels) channel.set(block);
+    const { buffer } = this.kernel.memory;
+    channels[0].set(new Float32Array(buffer, address, length));
+    if (channels[1]) channels[1].set(new Float32Array(buffer, address + 4 * length, length));
     return true;
   }
 }

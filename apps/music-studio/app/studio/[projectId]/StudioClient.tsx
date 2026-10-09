@@ -31,6 +31,7 @@ import {
   instrumentDefinition,
   resolveInstrumentDefinition,
   DEVICE_PARAMETER_DEFINITIONS,
+  type DeviceParameterUnit,
   FREQUENCY_DRONE_DEVICE_TYPE,
   resolveFrequencyDroneDevice,
   ENVELOPE_ATTACK_PARAMETER,
@@ -38,6 +39,13 @@ import {
   ENVELOPE_RELEASE_PARAMETER,
   ENVELOPE_SUSTAIN_PARAMETER,
   FILTER_FREQUENCY_PARAMETER,
+  FILTER_RESONANCE_PARAMETER,
+  FILTER_ENV_AMOUNT_PARAMETER,
+  FILTER_ENV_DECAY_PARAMETER,
+  LFO_CUTOFF_PARAMETER,
+  LFO_RATE_PARAMETER,
+  TREMOLO_PARAMETER,
+  VIBRATO_PARAMETER,
   primaryDevice,
   resolveEffectiveInstrumentSettings,
   REVERB_SEND_PARAMETER,
@@ -171,10 +179,19 @@ function createStarterProjectV1(projectId: string, options: CreateEmptyProjectOp
   return project;
 }
 
-type NumericSettingsKey = "filterFrequency" | "attack" | "decay" | "sustain" | "release" | "reverbSend";
+type NumericSettingsKey =
+  | "filterFrequency" | "resonance" | "attack" | "decay" | "sustain" | "release" | "reverbSend"
+  | "lfoRate" | "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves" | "filterEnvDecay";
 
 const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
   [FILTER_FREQUENCY_PARAMETER]: "filterFrequency",
+  [FILTER_RESONANCE_PARAMETER]: "resonance",
+  [LFO_RATE_PARAMETER]: "lfoRate",
+  [VIBRATO_PARAMETER]: "vibratoCents",
+  [LFO_CUTOFF_PARAMETER]: "lfoCutoffOctaves",
+  [TREMOLO_PARAMETER]: "tremolo",
+  [FILTER_ENV_AMOUNT_PARAMETER]: "filterEnvOctaves",
+  [FILTER_ENV_DECAY_PARAMETER]: "filterEnvDecay",
   [ENVELOPE_ATTACK_PARAMETER]: "attack",
   [ENVELOPE_DECAY_PARAMETER]: "decay",
   [ENVELOPE_SUSTAIN_PARAMETER]: "sustain",
@@ -614,9 +631,12 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     await execute(new SetDeviceParameterEditorCommand(trackId, deviceId, parameterId, gesture.initial, next));
   }
 
-  function formatParameterValue(unit: "hz" | "seconds" | "ratio" | "count", value: number): string {
+  function formatParameterValue(unit: DeviceParameterUnit, value: number): string {
     if (unit === "count") return String(Math.round(value));
-    if (unit === "hz") return `${Math.round(value)} Hz`;
+    // Slow rates (an LFO) need their decimals; audio frequencies don't.
+    if (unit === "hz") return value < 100 ? `${value.toFixed(2)} Hz` : `${Math.round(value)} Hz`;
+    if (unit === "cents") return `${Math.round(value)} ct`;
+    if (unit === "octaves") return `${value.toFixed(2)} oct`;
     if (unit === "seconds") return `${value.toFixed(3)} s`;
     return value.toFixed(2);
   }
@@ -635,7 +655,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone")).map((definition) => {
           const droneKeys: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
           const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
-          const step = definition.unit === "count" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : 10) : definition.unit === "ratio" ? 0.01 : 0.001;
+          const step = definition.unit === "count" || definition.unit === "cents" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : definition.maximum <= 20 ? 0.05 : 10) : definition.unit === "ratio" || definition.unit === "octaves" ? 0.01 : 0.001;
           return (
             <CommitSlider key={definition.id} label={definition.label} value={value}
               min={definition.minimum} max={definition.maximum} step={step} disabled={!hydrated}
@@ -899,7 +919,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onClose={() => setWorkspace("arrangement")}
       />}
       {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={() => setWorkspace("arrangement")} onSync={async () => coordinatorRef.current?.drain()} />}
-      {workspace === "devices" && <section aria-label="Devices and effects" className="device-workspace"><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p>{project.tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} size={28} />{definition.label}</p>; })()}{renderDeviceControls(track)}</fieldset>)}<Button onClick={() => setWorkspace("arrangement")}>Back to arrangement</Button></section>}
+      {workspace === "devices" && <section aria-label="Devices and effects" className="device-workspace"><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p>{project.tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} deviceType={definition.deviceType} size={28} />{definition.label}</p>; })()}{renderDeviceControls(track)}</fieldset>)}<Button onClick={() => setWorkspace("arrangement")}>Back to arrangement</Button></section>}
       {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={() => setWorkspace("arrangement")} />}
         </section>
 
