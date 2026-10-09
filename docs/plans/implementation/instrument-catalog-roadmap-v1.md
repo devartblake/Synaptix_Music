@@ -12,20 +12,20 @@ for.
 **Catalog:** 12 built-in instruments in `packages/daw-engine/src/instrument-catalog.ts`, plus the
 frequency-drone device.
 
-| Instrument | Oscillator | Notes |
-|---|---|---|
-| Drum Synth | sine | short sine hits; no noise, so no real snare or hats |
-| Sub Bass | sine | |
-| Bass Synth | square | |
-| Lead Synth | sawtooth | |
-| Warm Pad | triangle | |
-| Pluck | sawtooth | short envelope on a saw, not a plucked string |
-| Electric Piano | sine | |
-| Organ | square | |
-| String Ensemble | sawtooth | |
-| Brass Section | sawtooth | |
-| Bell | sine | |
-| Poly Synth | triangle | |
+| Instrument      | Oscillator | Notes                                               |
+| --------------- | ---------- | --------------------------------------------------- |
+| Drum Synth      | sine       | short sine hits; no noise, so no real snare or hats |
+| Sub Bass        | sine       |                                                     |
+| Bass Synth      | square     |                                                     |
+| Lead Synth      | sawtooth   |                                                     |
+| Warm Pad        | triangle   |                                                     |
+| Pluck           | sawtooth   | short envelope on a saw, not a plucked string       |
+| Electric Piano  | sine       |                                                     |
+| Organ           | square     |                                                     |
+| String Ensemble | sawtooth   |                                                     |
+| Brass Section   | sawtooth   |                                                     |
+| Bell            | sine       |                                                     |
+| Poly Synth      | triangle   |                                                     |
 
 **Voice:** one oscillator → one-pole low-pass → ADSR → velocity, per note.
 
@@ -63,12 +63,12 @@ PolyBLEP below) updates those checksums in the same change and says so in the ch
 In this order. Each step ships on its own and keeps the golden test green (or updates it
 deliberately).
 
-| # | Step | Kind | Improves or adds | Why first |
-|---|---|---|---|---|
-| 1 | **PolyBLEP oscillators** (band-limited saw, square, pulse) | Engine upgrade | Removes aliasing from Bass Synth, Lead Synth, Pluck, Organ, String Ensemble, Brass Section; export now sounds like the preview | The smallest real kernel; proves Rust → WASM → AudioWorklet and render worker, and the parity test, on sounds that already exist |
-| 2 | **Supersaw / unison** (3–7 detuned saws per note, stereo spread) | New instrument | **Supersaw Lead**, **Unison Pad** | Multiplies voice cost, which is exactly what the kernel is for |
-| 3 | **Karplus–Strong pluck** (delay line + loss filter, seeded noise burst) | New instrument | **Plucked String** (guitar, harp, koto colours) | Cheap, large quality jump over the saw pluck; introduces seeded noise |
-| 4 | **2-operator FM** (sine modulating sine, envelope on the index) | New instrument | **FM Bell**, **FM Electric Piano** | Distinctive tone with tiny CPU; establishes per-voice modulation |
+| #   | Step                                                                    | Kind           | Improves or adds                                                                                                               | Why first                                                                                                                        |
+| --- | ----------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **PolyBLEP oscillators** (band-limited saw, square, pulse)              | Engine upgrade | Removes aliasing from Bass Synth, Lead Synth, Pluck, Organ, String Ensemble, Brass Section; export now sounds like the preview | The smallest real kernel; proves Rust → WASM → AudioWorklet and render worker, and the parity test, on sounds that already exist |
+| 2   | **Supersaw / unison** (3–7 detuned saws per note, stereo spread)        | New instrument | **Supersaw Lead**, **Unison Pad**                                                                                              | Multiplies voice cost, which is exactly what the kernel is for                                                                   |
+| 3   | **Karplus–Strong pluck** (delay line + loss filter, seeded noise burst) | New instrument | **Plucked String** (guitar, harp, koto colours)                                                                                | Cheap, large quality jump over the saw pluck; introduces seeded noise                                                            |
+| 4   | **2-operator FM** (sine modulating sine, envelope on the index)         | New instrument | **FM Bell**, **FM Electric Piano**                                                                                             | Distinctive tone with tiny CPU; establishes per-voice modulation                                                                 |
 
 **Progress**
 
@@ -88,36 +88,36 @@ instruments, and no asset work.
 These reuse the voice model (oscillator → filter → envelope) with small additions. None needs
 recorded audio.
 
-| Instrument | What it is | DSP needed | CPU | Notes |
-|---|---|---|---|---|
-| PolyBLEP saw/square/pulse | Band-limited versions of today's waves | Polynomial correction at each discontinuity | Low | First slice, step 1 |
-| Supersaw Lead / Unison Pad | 3–7 detuned saws, stereo spread | Several oscillators per voice, detune, pan | Medium (× voices) | First slice, step 2 |
-| Plucked String | Guitar, harp, koto | Karplus–Strong: delay line, averaging loss filter, seeded noise | Low | First slice, step 3 |
-| FM Bell, FM Electric Piano | Glassy bells, DX-style keys | 2-operator FM, index envelope | Low | First slice, step 4 |
-| Chiptune Lead / Arp | Retro game sound | Pulse with 12.5 / 25 / 50% duty, built-in arpeggio | Low | Strong fit for a trivia game; needs step 1 |
-| Synth Drum Kit | Kick, snare, closed/open hat, clap | Kick: sine with pitch drop. Snare/hat/clap: filtered seeded noise + short envelopes | Low | Replaces the sine-only Drum Synth; the render manifest already carries the seed |
-| 808 Bass | Long boomy bass with a pitch drop | Sine + pitch envelope + soft clipping | Low | |
-| Sub Bass upgrade | Cleaner low end | Optional saturation and glide | Low | Small change to an existing instrument |
+| Instrument                 | What it is                             | DSP needed                                                                          | CPU               | Notes                                                                           |
+| -------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------- |
+| PolyBLEP saw/square/pulse  | Band-limited versions of today's waves | Polynomial correction at each discontinuity                                         | Low               | First slice, step 1                                                             |
+| Supersaw Lead / Unison Pad | 3–7 detuned saws, stereo spread        | Several oscillators per voice, detune, pan                                          | Medium (× voices) | First slice, step 2                                                             |
+| Plucked String             | Guitar, harp, koto                     | Karplus–Strong: delay line, averaging loss filter, seeded noise                     | Low               | First slice, step 3                                                             |
+| FM Bell, FM Electric Piano | Glassy bells, DX-style keys            | 2-operator FM, index envelope                                                       | Low               | First slice, step 4                                                             |
+| Chiptune Lead / Arp        | Retro game sound                       | Pulse with 12.5 / 25 / 50% duty, built-in arpeggio                                  | Low               | Strong fit for a trivia game; needs step 1                                      |
+| Synth Drum Kit             | Kick, snare, closed/open hat, clap     | Kick: sine with pitch drop. Snare/hat/clap: filtered seeded noise + short envelopes | Low               | Replaces the sine-only Drum Synth; the render manifest already carries the seed |
+| 808 Bass                   | Long boomy bass with a pitch drop      | Sine + pitch envelope + soft clipping                                               | Low               |                                                                                 |
+| Sub Bass upgrade           | Cleaner low end                        | Optional saturation and glide                                                       | Low               | Small change to an existing instrument                                          |
 
 ## Medium (one to two weeks each)
 
-| Instrument | What it is | What makes it longer |
-|---|---|---|
-| Acid Bass | 303-style squelch | Resonant state-variable filter with cutoff envelope and accent; coefficients change every sample and must stay stable and deterministic |
-| Resonant filter on every synth | A shared upgrade, not one instrument | Same filter as Acid Bass, exposed as device parameters on all instruments |
-| Drawbar Organ | Classic organ registrations | Additive: 9 sines per note; fine in Rust, heavy in TypeScript |
-| Modulated Pads | Vibrato, filter sweeps, slow movement | A modulation system (LFOs and envelopes routed to pitch, cutoff, level) that later instruments reuse |
-| Wavetable Synth | Morphing modern tones | Needs wavetable files, so it waits on the asset and licensing system (roadmap section 6), plus band-limited table interpolation |
-| Noise and Riser FX | Sweeps, whooshes, impacts for transitions | Filtered noise with long automated envelopes; useful for adaptive-music transitions |
+| Instrument                     | What it is                                | What makes it longer                                                                                                                    |
+| ------------------------------ | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Acid Bass                      | 303-style squelch                         | Resonant state-variable filter with cutoff envelope and accent; coefficients change every sample and must stay stable and deterministic |
+| Resonant filter on every synth | A shared upgrade, not one instrument      | Same filter as Acid Bass, exposed as device parameters on all instruments                                                               |
+| Drawbar Organ                  | Classic organ registrations               | Additive: 9 sines per note; fine in Rust, heavy in TypeScript                                                                           |
+| Modulated Pads                 | Vibrato, filter sweeps, slow movement     | A modulation system (LFOs and envelopes routed to pitch, cutoff, level) that later instruments reuse                                    |
+| Wavetable Synth                | Morphing modern tones                     | Needs wavetable files, so it waits on the asset and licensing system (roadmap section 6), plus band-limited table interpolation         |
+| Noise and Riser FX             | Sweeps, whooshes, impacts for transitions | Filtered noise with long automated envelopes; useful for adaptive-music transitions                                                     |
 
 ## Longer (several weeks each; new subsystems)
 
-| Instrument | What it needs |
-|---|---|
+| Instrument                                           | What it needs                                                                                                                                                                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sampled Piano, Orchestral Strings, Choir, Real Drums | The asset and licensing system first (ingestion, SHA-256 checks, provenance and licences); sample storage and streaming; high-quality resampling (one of the roadmap's named Rust/WASM kernels); velocity layers and round-robins |
-| Physical models: Marimba, Mallets, Bowed Strings | Modal synthesis or waveguides; heavier DSP and tuning by ear |
-| Vocal / Formant Synth ("ooh", "aah") | Formant filter banks and vowel morphing |
-| Granular Textures | Sample-based and CPU-heavy (many grains per note); waits on assets |
+| Physical models: Marimba, Mallets, Bowed Strings     | Modal synthesis or waveguides; heavier DSP and tuning by ear                                                                                                                                                                      |
+| Vocal / Formant Synth ("ooh", "aah")                 | Formant filter banks and vowel morphing                                                                                                                                                                                           |
+| Granular Textures                                    | Sample-based and CPU-heavy (many grains per note); waits on assets                                                                                                                                                                |
 
 ## Rules every new instrument follows
 
