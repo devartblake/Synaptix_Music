@@ -4,6 +4,19 @@
 
 ### Added
 
+- The ten new instruments each have their own icon in the instrument picker and device panel, instead of reusing their family's:
+  - Supersaw Lead: stacked detuned saws.
+  - Unison Pad: saws spreading left and right.
+  - Plucked String: an acoustic guitar.
+  - FM Bell: a bell with a sine inside.
+  - FM Electric Piano: keys under a sine.
+  - Drum Kit: kick, snare and cymbal.
+  - 808 Bass: a thumping speaker labelled 808.
+  - Chiptune Lead: a game controller under a pixel pulse wave.
+  - Acid Bass: a resonant filter curve being swept.
+  - Motion Pad: a wave circled by motion arrows.
+
+  Each keeps its family's accent colour, so related instruments still read as related.
 - Added the **modulation system**. Every instrument gets six controls:
   - **LFO Rate**, a sine LFO routed to **Vibrato** (cents), **LFO to Cutoff** (octaves) and **Tremolo**;
   - **Filter Envelope** (octaves above the cutoff on each note) and **Filter Env Decay**.
