@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
+import { createInstrumentTrack, INSTRUMENT_CATALOG } from "@synaptix/daw-engine";
 import { createEmptyProject, defaultMixer, type MusicProject, type Track } from "@synaptix/project-model";
 import {
   RenderResultSchema,
@@ -371,4 +373,50 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
   assert.equal(peak(render()), 0);
   const stem = renderProjectOffline(value, manifest({ scope: { kind: "stems", trackIds: ["track-1"] } })).artifacts[0]!.bytes;
   assert.ok(peak(stem) > 0, "isolated stems exclude bus and master controls");
+});
+
+// Golden output. Renders are artifacts players hear and packages are verified by checksum, so a
+// speed-up (or a future WASM synthesis kernel) must not change a single sample. One track per
+// catalog instrument covers every oscillator and envelope shape. If this fails, the audio changed:
+// only update the expected values for an intended sound change, and say so in the changelog.
+test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
+  const value = createEmptyProject("golden", { revisionId: "golden-r1" });
+  value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {
+    const instrument = createInstrumentTrack(entry.deviceType, { id: `golden-${index}` });
+    instrument.clips = [
+      {
+        id: `golden-clip-${index}`,
+        kind: "midi",
+        name: entry.label,
+        range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: PPQ * 8 },
+        loop: false,
+        notes: [0, 1, 2, 3, 4, 5].map((n) => ({
+          id: `golden-${index}-${n}`,
+          pitch: 40 + index * 2 + n * 3,
+          velocity: 60 + n * 10,
+          startTick: n * PPQ + index * 11,
+          durationTicks: PPQ / 2 + n * 40
+        }))
+      }
+    ];
+    return instrument;
+  });
+  const golden = (scope: RenderManifest["scope"]) =>
+    manifest({
+      projectId: "golden",
+      revisionId: "golden-r1",
+      scope,
+      range: { startTick: 0, endTick: PPQ * 8 },
+      output: { format: "wav", sampleRate: 48000, bitDepth: 24, normalizePeakDbfs: null, includeTailSeconds: 2 }
+    });
+
+  const master = renderProjectOffline(value, golden({ kind: "master" }));
+  const stems = renderProjectOffline(value, golden({ kind: "stems", trackIds: value.tracks.map((t) => t.id) }));
+  const stemsDigest = createHash("sha256")
+    .update(stems.artifacts.map((artifact) => artifact.metadata.checksumSha256).join(","))
+    .digest("hex");
+
+  assert.equal(value.tracks.length, INSTRUMENT_CATALOG.length);
+  assert.equal(master.artifacts[0]!.metadata.checksumSha256, "74894a966fe34df49a8ffc2fbf5bccdcec1d9e5b4212c7d4a5a91f286450eddc");
+  assert.equal(stemsDigest, "bcd949b5c0e94514745fd70300c10ecfc7a6cf7835a2ed8810594c6e2d450279");
 });

@@ -53,40 +53,8 @@ const MASTER_COMPRESSOR = {
   releaseSeconds: 0.15
 } as const;
 
-const OSCILLATORS: Record<
-  EffectiveInstrumentSettings["oscillator"],
-  (cyclePhase: number) => number
-> = {
-  sine: (cycle) => Math.sin(2 * Math.PI * cycle),
-  square: (cycle) => (cycle < 0.5 ? 1 : -1),
-  sawtooth: (cycle) => 2 * cycle - 1,
-  triangle: (cycle) => (cycle < 0.5 ? 4 * cycle - 1 : 3 - 4 * cycle)
-};
-
-function oscillatorValue(kind: EffectiveInstrumentSettings["oscillator"], phase: number): number {
-  const cycle = phase - Math.floor(phase);
-  return OSCILLATORS[kind](cycle);
-}
-
 function midiToFrequency(pitch: number): number {
   return 440 * 2 ** ((pitch - 69) / 12);
-}
-
-function envelopeValue(
-  settings: EffectiveInstrumentSettings,
-  timeSeconds: number,
-  noteDurationSeconds: number
-): number {
-  const { attack, decay, sustain, release } = settings;
-  if (timeSeconds < 0) return 0;
-  if (timeSeconds < attack) return attack > 0 ? timeSeconds / attack : 1;
-  const sinceDecayStart = timeSeconds - attack;
-  if (sinceDecayStart < decay)
-    return decay > 0 ? 1 - (1 - sustain) * (sinceDecayStart / decay) : sustain;
-  if (timeSeconds < noteDurationSeconds) return sustain;
-  const sinceRelease = timeSeconds - noteDurationSeconds;
-  if (sinceRelease >= release) return 0;
-  return release > 0 ? sustain * (1 - sinceRelease / release) : 0;
 }
 
 export function ticksToSeconds(ticks: number, ppq: number, bpm: number): number {
@@ -105,6 +73,74 @@ function trackAudible(track: Track, tracks: readonly Track[]): boolean {
 interface TickRange {
   startTick: number;
   endTick: number;
+}
+
+const OSCILLATOR_CODES = { sine: 0, square: 1, sawtooth: 2, triangle: 3 } as const;
+
+/**
+ * One note: oscillator -> one-pole low-pass -> ADSR -> velocity, added into the track buffer.
+ *
+ * This is the renderer's hot loop (docs/development/dsp-profiling.md), so the oscillator and
+ * envelope are computed inline (no per-sample calls or table lookups) and the sample range is
+ * clipped to the buffer once. The golden-checksum test in offline-renderer.test.ts fails if a
+ * change here alters the rendered audio.
+ */
+function renderVoice(
+  left: Float64Array,
+  right: Float64Array,
+  settings: EffectiveInstrumentSettings,
+  noteStartSample: number,
+  noteTotalSamples: number,
+  totalSamples: number,
+  sampleRate: number,
+  frequency: number,
+  alpha: number,
+  noteDurationSeconds: number,
+  velocityGain: number
+): void {
+  const oscillator = OSCILLATOR_CODES[settings.oscillator];
+  const { attack, decay, sustain, release } = settings;
+  // Samples before the buffer start are skipped without touching the filter, as before.
+  const first = Math.max(0, -noteStartSample);
+  const end = Math.min(noteTotalSamples, totalSamples - noteStartSample);
+  let filtered = 0;
+  for (let sampleIndex = first; sampleIndex < end; sampleIndex++) {
+    const timeSeconds = sampleIndex / sampleRate;
+    const phase = timeSeconds * frequency;
+    const cycle = phase - Math.floor(phase);
+    const raw =
+      oscillator === 0
+        ? Math.sin(2 * Math.PI * cycle)
+        : oscillator === 1
+          ? cycle < 0.5
+            ? 1
+            : -1
+          : oscillator === 2
+            ? 2 * cycle - 1
+            : cycle < 0.5
+              ? 4 * cycle - 1
+              : 3 - 4 * cycle;
+    filtered += alpha * (raw - filtered);
+
+    let envelope: number;
+    if (timeSeconds < attack) envelope = attack > 0 ? timeSeconds / attack : 1;
+    else {
+      const sinceDecayStart = timeSeconds - attack;
+      if (sinceDecayStart < decay)
+        envelope = decay > 0 ? 1 - (1 - sustain) * (sinceDecayStart / decay) : sustain;
+      else if (timeSeconds < noteDurationSeconds) envelope = sustain;
+      else {
+        const sinceRelease = timeSeconds - noteDurationSeconds;
+        envelope =
+          sinceRelease >= release ? 0 : release > 0 ? sustain * (1 - sinceRelease / release) : 0;
+      }
+    }
+
+    const value = filtered * envelope * velocityGain;
+    const target = noteStartSample + sampleIndex;
+    left[target]! += value;
+    right[target]! += value;
+  }
 }
 
 function renderTrackBuffer(
@@ -142,18 +178,19 @@ function renderTrackBuffer(
       const noteStartSample = Math.round(noteStartSeconds * sampleRate);
       const noteTotalSamples = Math.round((noteDurationSeconds + settings.release) * sampleRate);
 
-      let filtered = 0;
-      for (let sampleIndex = 0; sampleIndex < noteTotalSamples; sampleIndex++) {
-        const targetSample = noteStartSample + sampleIndex;
-        if (targetSample < 0 || targetSample >= totalSamples) continue;
-        const timeSeconds = sampleIndex / sampleRate;
-        const raw = oscillatorValue(settings.oscillator, timeSeconds * frequency);
-        filtered += alpha * (raw - filtered);
-        const value =
-          filtered * envelopeValue(settings, timeSeconds, noteDurationSeconds) * velocityGain;
-        left[targetSample] = (left[targetSample] ?? 0) + value;
-        right[targetSample] = (right[targetSample] ?? 0) + value;
-      }
+      renderVoice(
+        left,
+        right,
+        settings,
+        noteStartSample,
+        noteTotalSamples,
+        totalSamples,
+        sampleRate,
+        frequency,
+        alpha,
+        noteDurationSeconds,
+        velocityGain
+      );
     }
   }
 
