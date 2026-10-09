@@ -36,6 +36,33 @@ def test_every_role_has_suitable_instruments_and_a_mix() -> None:
         assert role in ROLE_MIX
 
 
+# Riser and Downsweep FX are one-shot transitions with no musical part to play, so no role
+# offers them.
+TRANSITION_FX = {"synaptix-riser", "synaptix-downsweep"}
+
+
+def test_every_playable_catalog_instrument_is_offered_by_some_role() -> None:
+    offered = {instrument for options in ROLE_INSTRUMENTS.values() for instrument in options}
+    assert offered == set(INSTRUMENTS) - TRANSITION_FX
+
+
+def test_role_defaults_stay_put_as_instruments_are_added() -> None:
+    # Plans that ask for no particular instrument must keep sounding the same.
+    defaults = {role: options[0] for role, options in ROLE_INSTRUMENTS.items()}
+    assert defaults == {
+        "drums": "synaptix-drum-synth",
+        "bass": "synaptix-bass-synth",
+        "sub-bass": "synaptix-sub-bass",
+        "harmony": "synaptix-poly-synth",
+        "pad": "synaptix-pad",
+        "arpeggio": "synaptix-pluck",
+        "melody": "synaptix-lead-synth",
+        "countermelody": "synaptix-strings",
+        "stabs": "synaptix-brass",
+        "sparkle": "synaptix-bell",
+    }
+
+
 @pytest.mark.parametrize(
     ("key", "mood", "energy", "complexity", "expected"),
     [
