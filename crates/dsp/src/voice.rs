@@ -7,6 +7,9 @@
 
 use core::f64::consts::FRAC_PI_2;
 
+/// 1 / 2π.
+const FRAC_1_2PI: f64 = 0.159_154_943_091_895_35;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Oscillator {
     Sine,
@@ -19,7 +22,36 @@ pub enum Oscillator {
     Supersaw,
     /// Karplus–Strong plucked string: a seeded noise burst circulating in a tuned, lossy delay.
     PluckedString,
+    /// Two-operator FM with an inharmonic ratio: glassy bell.
+    FmBell,
+    /// Two-operator FM with a harmonic ratio and a fast-falling index: DX-style electric piano.
+    FmPiano,
 }
+
+/// A two-operator FM preset: a sine modulator at `ratio` × the note frequency phase-modulates a
+/// sine carrier. The index (brightness) falls from `start` towards `end` as
+/// `end + (start - end) / (1 + time · fall)`: a division, not `exp`, so it is the same on every
+/// platform.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FmPreset {
+    pub ratio: f64,
+    pub start: f64,
+    pub end: f64,
+    pub fall: f64,
+}
+
+pub const FM_BELL: FmPreset = FmPreset {
+    ratio: 3.5,
+    start: 5.0,
+    end: 0.5,
+    fall: 4.0,
+};
+pub const FM_PIANO: FmPreset = FmPreset {
+    ratio: 1.0,
+    start: 2.5,
+    end: 0.3,
+    fall: 12.0,
+};
 
 /// How much of each pass around the string survives (higher rings longer).
 pub const STRING_FEEDBACK: f64 = 0.996;
@@ -42,6 +74,8 @@ impl Oscillator {
             3 => Some(Self::Triangle),
             4 => Some(Self::Supersaw),
             5 => Some(Self::PluckedString),
+            6 => Some(Self::FmBell),
+            7 => Some(Self::FmPiano),
             _ => None,
         }
     }
@@ -196,6 +230,11 @@ impl VoiceState {
         } = *voice;
         let supersaw_frequencies = SUPERSAW_RATIOS.map(|ratio| voice.frequency * ratio);
         let supersaw_dts = supersaw_frequencies.map(|frequency| frequency / voice.sample_rate);
+        let fm = match voice.oscillator {
+            Oscillator::FmPiano => FM_PIANO,
+            _ => FM_BELL,
+        };
+        let modulator_frequency = voice.frequency * fm.ratio;
         let mut filtered = self.filtered;
         let mut string = self.string.take();
         for sample_index in first..end {
@@ -204,6 +243,14 @@ impl VoiceState {
             let cycle = phase - phase.floor();
             let raw = match voice.oscillator {
                 Oscillator::PluckedString => string.as_mut().map_or(0.0, PluckedString::next),
+                Oscillator::FmBell | Oscillator::FmPiano => {
+                    let modulator_phase = time * modulator_frequency;
+                    let modulator = sine_cycle(modulator_phase - modulator_phase.floor());
+                    let index = fm.end + (fm.start - fm.end) / (1.0 + time * fm.fall);
+                    // Phase modulation in cycles: index radians is index / 2π cycles.
+                    let carrier = cycle + index * modulator * FRAC_1_2PI;
+                    sine_cycle(carrier - carrier.floor())
+                }
                 Oscillator::Supersaw => {
                     let mut sum = 0.0;
                     for k in 0..7 {
@@ -431,6 +478,8 @@ mod tests {
             Oscillator::Triangle,
             Oscillator::Supersaw,
             Oscillator::PluckedString,
+            Oscillator::FmBell,
+            Oscillator::FmPiano,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -505,6 +554,26 @@ mod tests {
         };
         assert_eq!(render(7), render(7));
         assert_ne!(render(7), render(8));
+    }
+
+    #[test]
+    fn fm_gets_mellower_as_the_index_falls() {
+        // Brightness as the share of sample-to-sample change (a rough high-frequency measure):
+        // the start of an FM note must be brighter than its tail.
+        for oscillator in [Oscillator::FmBell, Oscillator::FmPiano] {
+            let mut out = vec![0.0; 48_000];
+            render_voice(&mut out, &voice(oscillator), 0, 48_000);
+            let brightness = |range: &[f64]| {
+                let change: f64 = range.windows(2).map(|w| (w[1] - w[0]).abs()).sum();
+                change / range.iter().map(|s| s.abs()).sum::<f64>()
+            };
+            let early = brightness(&out[..4_800]);
+            let late = brightness(&out[43_200..]);
+            assert!(
+                early > late * 1.5,
+                "{oscillator:?}: early {early}, late {late}"
+            );
+        }
     }
 
     #[test]

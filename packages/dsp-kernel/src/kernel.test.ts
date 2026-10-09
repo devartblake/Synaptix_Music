@@ -7,7 +7,7 @@ import { createNodeDspKernel } from "./node.ts";
 /**
  * The kernel must make exactly the samples this plain TypeScript does: that is what lets the
  * studio preview and the render worker share it, and it proves the WebAssembly arithmetic is
- * the same IEEE-754 arithmetic as JavaScript's. Only the sine differs (the kernel's own
+ * the same IEEE-754 arithmetic as JavaScript's. Only sines differ (the kernel's own
  * polynomial instead of Math.sin, so every platform agrees), by at most a rounding step.
  */
 function polyBlep(t: number, dt: number): number {
@@ -27,6 +27,13 @@ const SUPERSAW_RATIOS = [0.989, 0.9937, 0.998, 1.0, 1.002, 1.0063, 1.011];
 const SUPERSAW_PHASES = [0.37, 0.71, 0.13, 0.0, 0.53, 0.89, 0.29];
 const SUPERSAW_LEVELS = [0.6, 0.6, 0.6, 1.0, 0.6, 0.6, 0.6];
 const SUPERSAW_GAIN = 0.405;
+
+// crates/dsp FM_BELL and FM_PIANO.
+const FM = {
+  "fm-bell": { ratio: 3.5, start: 5, end: 0.5, fall: 4 },
+  "fm-piano": { ratio: 1, start: 2.5, end: 0.3, fall: 12 }
+} as const;
+const FRAC_1_2PI = 0.15915494309189535;
 
 // crates/dsp PluckedString, step for step.
 function referenceString(frequency: number, sampleRate: number, seed: number): () => number {
@@ -80,7 +87,14 @@ function referenceVoice(
     const phase = time * p.frequency;
     const cycle = phase - Math.floor(phase);
     let raw: number;
-    if (p.oscillator === "plucked-string") raw = string();
+    if (p.oscillator === "fm-bell" || p.oscillator === "fm-piano") {
+      const fm = FM[p.oscillator];
+      const modulatorPhase = time * (p.frequency * fm.ratio);
+      const modulator = Math.sin(2 * Math.PI * (modulatorPhase - Math.floor(modulatorPhase)));
+      const index = fm.end + (fm.start - fm.end) / (1 + time * fm.fall);
+      const carrier = cycle + index * modulator * FRAC_1_2PI;
+      raw = Math.sin(2 * Math.PI * (carrier - Math.floor(carrier)));
+    } else if (p.oscillator === "plucked-string") raw = string();
     else if (p.oscillator === "supersaw") {
       let sum = 0;
       for (let k = 0; k < 7; k++) {
@@ -122,7 +136,9 @@ const OSCILLATORS: KernelOscillator[] = [
   "sawtooth",
   "triangle",
   "supersaw",
-  "plucked-string"
+  "plucked-string",
+  "fm-bell",
+  "fm-piano"
 ];
 
 for (const oscillator of OSCILLATORS) {
@@ -161,9 +177,14 @@ for (const oscillator of OSCILLATORS) {
 
     assert.equal(actual.length, length);
     assert.ok(actual.some((s) => s !== 0));
-    if (oscillator === "sine") {
+    if (oscillator === "sine" || oscillator === "fm-bell" || oscillator === "fm-piano") {
+      // Rounding differences between the kernel's sine and Math.sin; FM phase-modulates them,
+      // so allow a little more there.
       const worst = actual.reduce((max, s, i) => Math.max(max, Math.abs(s - expected[i]!)), 0);
-      assert.ok(worst < 1e-14, `sine differs by ${worst}`);
+      assert.ok(
+        worst < (oscillator === "sine" ? 1e-14 : 1e-12),
+        `${oscillator} differs by ${worst}`
+      );
     } else {
       assert.deepEqual(actual, expected);
     }

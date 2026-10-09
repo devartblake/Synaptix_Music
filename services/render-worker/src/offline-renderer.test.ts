@@ -379,7 +379,8 @@ test("master rendering respects bus routing, return mute, and post-compressor ma
 // catalog instrument covers every oscillator and envelope shape. If this fails, the audio changed:
 // only update the expected values for an intended sound change, and say so in the changelog.
 // Intended changes so far: band-limited (PolyBLEP) saw and square in the Rust kernel changed the
-// six saw/square instruments; Supersaw Lead, Unison Pad and Plucked String were added.
+// six saw/square instruments; Supersaw Lead, Unison Pad, Plucked String,
+// FM Bell and FM Electric Piano were added.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -395,9 +396,11 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-poly-synth": "6961e425915149f4c87df542c8e13e3574de198603c905dc9dc0d962cc9b9a58",
   "synaptix-supersaw": "e2acdc9199ea39648e814ddbbfd4f312adb4abd11690c62ec295434ce06ea005",
   "synaptix-unison": "0cf154540b68ff8f61a82dc872237cb1d6b5091f0eacefdbb46525dc46646bdc",
-  "synaptix-guitar": "ae489fee1eb8737c62a2928eb40d1a3085bdb3b27797be4bce4b34b48137a8c8"
+  "synaptix-guitar": "ae489fee1eb8737c62a2928eb40d1a3085bdb3b27797be4bce4b34b48137a8c8",
+  "synaptix-fm-glass": "7a0b9b7eb136c82e815f53ee428e96242627419998e87bd2108907bf664bf958",
+  "synaptix-fm-ep": "12c06005b9ccd593f7784ef1ea501853b3755c2553f800e19ab96e9524404b0a"
 };
-const GOLDEN_MASTER = "30de8aa01ac6cd37e8e967ad1204afb7ae08b6e06ae07e166567368ebd933625";
+const GOLDEN_MASTER = "3901642eff4a453bac61028540370fac590c5982a82b07ea9865c302b7ea83f7";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {

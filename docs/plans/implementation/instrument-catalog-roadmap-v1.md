@@ -1,6 +1,6 @@
 # Instrument Catalog Roadmap v1
 
-**Status:** in progress · **Created:** 2026-10-09 · **First slice:** steps 1–3 done (see below)
+**Status:** first slice done · **Created:** 2026-10-09 · **First slice:** steps 1–4 done (see below)
 
 Every instrument Synaptix Music could add, grouped by how quickly it can ship, with what each
 needs. It follows the render-speed plan in [`../../development/dsp-profiling.md`](../../development/dsp-profiling.md):
@@ -97,6 +97,19 @@ deliberately).
   feedback 0.996. Catalog instrument **Plucked String** (`synaptix-guitar`). The noise seed comes
   from the note's id, so the preview and every export pluck the same string. Cost: about the
   same as the default synths (dense project, 9.4× real time master, 5.4× stems).
+
+- Step 4, two-operator FM: **done.** Kernel presets `fm-bell` (modulator ratio 3.5, index 5 →
+  0.5) and `fm-piano` (ratio 1, index 2.5 → 0.3, falling faster). The index falls as
+  `end + (start − end) / (1 + t · fall)`, a division rather than `exp`, so every platform agrees.
+  Catalog instruments **FM Bell** (`synaptix-fm-glass`) and **FM Electric Piano**
+  (`synaptix-fm-ep`). An FM voice costs about 1.4× a sine voice. With every track on FM, the
+  typical scenario renders at 3.5× real time (master) and 3.3× (stems), against 4.9× and 4.4× for
+  the sine Bell. Long releases are what make bell-like instruments expensive: in the dense
+  scenario the existing Bell is 1.7× and FM is 1.2×.
+
+**First slice complete.** One Rust kernel now renders exports and plays the preview, sample for
+sample. Six existing instruments are band-limited, and five are new (Supersaw Lead, Unison Pad,
+Plucked String, FM Bell, FM Electric Piano). No asset work was needed. Next candidates are in the quick-wins table.
 
 Result: the kernel proven in both places, six existing instruments improved, three to five new
 instruments, and no asset work.
