@@ -4,46 +4,52 @@
 
 ### Added
 
-- The ten new instruments each have their own icon in the instrument picker and device panel, instead of reusing their family's:
-  - Supersaw Lead: stacked detuned saws.
-  - Unison Pad: saws spreading left and right.
-  - Plucked String: an acoustic guitar.
-  - FM Bell: a bell with a sine inside.
-  - FM Electric Piano: keys under a sine.
-  - Drum Kit: kick, snare and cymbal.
-  - 808 Bass: a thumping speaker labelled 808.
-  - Chiptune Lead: a game controller under a pixel pulse wave.
-  - Acid Bass: a resonant filter curve being swept.
-  - Motion Pad: a wave circled by motion arrows.
-
-  Each keeps its family's accent colour, so related instruments still read as related.
-- Added the **modulation system**. Every instrument gets six controls:
-  - **LFO Rate**, a sine LFO routed to **Vibrato** (cents), **LFO to Cutoff** (octaves) and **Tremolo**;
+- **Rust synthesis kernel: preview and export now sound the same** (#58, #59). Every instrument note is synthesized by `crates/dsp`, compiled to WebAssembly and embedded in `packages/dsp-kernel/src/kernel-wasm.ts`. It is a plain module with no JavaScript glue, so the same code runs in the render worker for exports and in an AudioWorklet for the studio preview.
+  - **Preview matches export sample for sample.** It replaces the Tone.js synths and their 12 dB filter, so preview tone moved slightly towards the export. Checked by running the shipped worklet in 128-frame blocks against the export path, and in Chromium's audio thread.
+  - **Saw and square waves are band-limited (PolyBLEP),** so exports of Bass Synth, Lead Synth, Pluck, Organ, String Ensemble and Brass Section changed on purpose: less harsh aliasing. Sine and triangle instruments render byte-identical to before.
+  - **Deterministic on every platform:** only plain IEEE-754 arithmetic in a fixed order; sine, `2^x` and `tan` come from the kernel's own functions.
+  - **Guard rails:**
+    - a TypeScript reference test checks the kernel's arithmetic;
+    - golden tests pin every instrument's stem, plus one hit of every Drum Kit drum;
+    - CI rebuilds the embedded WebAssembly and fails if it differs.
+  - **Faster renders:** dense project master 5.8× → 9.4× real time.
+  - The unused wasm-bindgen gain stub is gone.
+- **Ten new instruments, 22 in all** (#60–#62, #64–#66, #70). None of them changed an existing instrument's sound.
+  - **Supersaw Lead** and **Unison Pad** (#60): seven band-limited saws detuned about ±19 cents, spread across the stereo field (#69).
+  - **Plucked String** (#61): a Karplus–Strong string (guitar, harp and koto colours). Its noise is seeded from each note's id, so preview and every export pluck the same string.
+  - **FM Bell** and **FM Electric Piano** (#62): two-operator FM whose brightness falls over the note.
+  - **Drum Kit** (#64): kick, rim, snare, clap, closed and open hats, crash, ride and tuned toms. The note picks the drum from the General MIDI map. It sits alongside Drum Synth, which is unchanged.
+  - **808 Bass** (#65): a long sine bass whose pitch drops onto the note, with soft saturation.
+  - **Chiptune Lead** (#66): a band-limited 25% pulse, the retro game lead.
+  - **Acid Bass** and **Motion Pad** (#70): presets for the new filter and modulation controls (below).
+  - **Distinct icons** (#71): each new instrument has its own picker and device-panel icon (stacked saws, an acoustic guitar, a game controller and so on) in its family's colour.
+- **Filter and modulation controls on every instrument** (#68, #70). All default to off, so existing projects render byte-identical.
+  - **Resonance** (0–1): above 0, a 12 dB resonant low-pass at the Filter Frequency, up to about +20 dB and stable at full resonance. Going from 0 to just above it changes the slope from 6 dB to 12 dB per octave, which you can hear.
+  - **LFO Rate**, routed to **Vibrato** (cents), **LFO to Cutoff** (octaves) and **Tremolo**.
   - **Filter Envelope** (octaves above the cutoff on each note) and **Filter Env Decay**.
-
-  All depths default to 0, so existing projects render byte-identical. It runs per voice in the shared Rust kernel, so preview and export match.
-  - Vibrato is a closed-form time warp of each oscillator's phase, so phases stay exact.
-  - The cutoff moves at control rate: every 16 samples, on a grid counted from the note's start, so block boundaries never change the result.
-  - `2^x` and `tan` come from the kernel's own deterministic functions.
-  - Two new presets show it off: **Acid Bass** (resonant saw with a snappy filter envelope, the 303 squelch) and **Motion Pad** (supersaw pad whose filter slowly breathes, with gentle vibrato).
-  - Moving the cutoff on a non-resonant instrument uses a `tan`-based one-pole coefficient, a hair different from the static one.
-  - Typical all-preset projects export at 12.8× (Acid Bass) and 2.6× (Motion Pad) real time.
-- Added the **stereo voice path**. The synthesis kernel renders every note in stereo, in exports and in the studio preview. Mono instruments write the same samples to both sides, so they render byte-identical. **Supersaw Lead and Unison Pad now spread their seven saws across the stereo field** (an equal-power pan per saw, alternating sides), with a filter per channel; this changes how those two instruments sound, on purpose. In the preview, instrument tracks now pan with the export's equal-power law in a pan stage after the inserts, because Tone's channel panner would fold stereo to mono. Checked in Chromium: the pan stage matches the export at every pan position, and the worklet's left and right channels match the export on every sample. The render engine version is now **1.2.0**. Deploy the studio and render worker together (the worker refuses requests for another engine). An all-supersaw dense project exports at 3.9× real time (was 5.0×).
-- Added a **Resonance** control to every instrument (0–1, default 0). At 0 the filter is the original one-pole low-pass, so every existing project renders byte-identical. Above 0 it switches to a 12 dB resonant low-pass (a state-variable filter) at the instrument's Filter Frequency, peaking up to about +20 dB as resonance rises to 1, and stable at full resonance. It runs in the shared Rust kernel, so preview and export match. Its coefficient needs `tan`, computed from the kernel's own sine and cosine so every platform agrees. Moving from 0 to just above it changes the filter slope from 6 dB to 12 dB per octave, which you can hear.
-- Drum Kit tracks now open in the drum step sequencer, with lanes for everything the kit plays: kick, rim, snare, clap, closed and open hats, three toms, crash and ride. Before, its device type didn't contain "drum", so it opened in the plain piano roll. A **Piano roll** button switches any drum track to the piano roll, for timing off the 16th-note grid or notes without a lane, and **Steps** switches back. On drum tracks the piano roll names rows and notes by drum ("Kick (C2)"); off-lane notes on the Drum Kit use the kit's own map (low notes kick, unmapped notes toms). Drum Synth keeps its eight lanes.
-- Added **Chiptune Lead** (instrument roadmap, second slice, step 3, which completes the slice): a band-limited 25% pulse, centred on zero, for the bright, nasal lead of retro game music. Preview and export match, and existing instruments render byte-identical.
-- Added **808 Bass** (instrument roadmap, second slice, step 2): a long, boomy sine bass whose pitch drops onto its note, with soft saturation. The saturation is a division (`x / (1 + |x|)`), not `tanh`, so every platform renders the same samples. Preview and export match, and existing instruments render byte-identical.
-- Added **Drum Kit** (instrument roadmap, second slice, step 1): kick, rim, snare, clap, closed and open hats, crash, ride and tuned toms, with the note picking the drum from the General MIDI map. Every hit is synthesized by the Rust kernel from pitched sines and noise seeded from the note, so the studio preview and every export sound identical. It is added alongside Drum Synth, which renders byte-identical; no existing instrument changes.
-- The render worker now stamps its own engine version (`RENDER_ENGINE_VERSION`) on artifact manifests instead of copying the request's, and refuses requests for an engine it doesn't run. A submission gets `409 engine_version_mismatch` with "reload the studio"; a job already queued is retried, so an older worker can still take it during a rolling deploy. Audio can no longer be labelled with an engine that didn't make it. Deploy the studio and the worker together when the engine version changes (runbook: `docs/operations/stage-12-deployment-certification.md`).
-- Added **FM Bell** and **FM Electric Piano** (instrument roadmap, first slice, step 4, which completes the slice). They use two-operator FM kernel presets: a sine modulator phase-modulates a sine carrier, and the modulation index falls over the note, so the bell's inharmonic shimmer and the piano's bright attack mellow as they ring. The index curve is a division rather than `exp`, so every platform renders the same samples. Existing instruments render byte-identical. An FM voice costs about 1.4× a sine voice; a typical project with every track on FM still exports at 3.5× real time.
-- Added **Plucked String** (instrument roadmap, first slice, step 3). It uses a Karplus–Strong kernel oscillator: a seeded noise burst circulating in a tuned, lossy delay line, for guitar, harp and koto colours. The noise is seeded from each note's id, so the studio preview and every export of a project pluck exactly the same string. Existing instruments render byte-identical, and it costs about the same as the other synths.
-- Added two instruments, **Supersaw Lead** and **Unison Pad** (instrument roadmap, first slice, step 2). Both use a new kernel oscillator, `supersaw`: seven band-limited saws detuned by about ±19 cents, with fixed start phases so renders stay deterministic. Like every instrument, they sound the same in the studio preview and in exports. Existing instruments render byte-identical. The golden test now pins each instrument's stem separately, so a sound change shows which instruments it touched. An all-supersaw dense project still exports at 5.0× real time (master) and 3.5× (stems).
-- The studio preview now plays instrument tracks and note auditions through the Rust synthesis kernel in an AudioWorklet, the same code that renders exports, so **what you hear while editing is what an export renders**: same band-limited oscillators, one-pole filter and envelope, sample for sample (checked by running the shipped worklet in 128-frame blocks against the export path, and once in Chromium's real audio thread). This replaces the Tone.js synths and their 12 dB filter, so preview tone changes slightly towards the export. The kernel's WebAssembly is now embedded in `packages/dsp-kernel/src/kernel-wasm.ts` instead of a separate `.wasm` file, so the studio bundle needs no loader setup.
-- Added the Rust synthesis kernel and band-limited oscillators (instrument roadmap, first slice, step 1). Every instrument note in an export is now rendered by `crates/dsp` compiled to WebAssembly (`packages/dsp-kernel`, a plain module with no JavaScript glue so the studio preview's AudioWorklet can load the same file next). Saw and square waves are now PolyBLEP band-limited, so **exports of Bass Synth, Lead Synth, Pluck, Organ, String Ensemble and Brass Section change**: less harsh aliasing, closer to the studio preview. Sine and triangle instruments render byte-identical to before; the golden checksums are updated for the intended change. A parity test checks the kernel against a TypeScript reference sample for sample, and CI rebuilds the checked-in `.wasm` and fails if it differs. The unused wasm-bindgen gain stub is gone. Renders now record engine version **1.1.0** (`RENDER_ENGINE_VERSION` in `@synaptix/render-contracts`, used by the studio's export and freeze manifests), so audio from the earlier renderer is distinguishable. Existing renders, freezes and certified packages stay valid: they are checked against their own recorded checksums, never re-rendered.
-- Added the instrument catalog roadmap (`docs/plans/implementation/instrument-catalog-roadmap-v1.md`): every instrument Synaptix Music could add, grouped into quick wins, medium and longer work, with the DSP, CPU cost and dependencies of each. It records the decided first slice for the Rust synthesis kernel (PolyBLEP oscillators, supersaw, Karplus–Strong pluck, 2-operator FM) and the rules every new instrument follows: same sound in preview and export, seeded determinism, golden-checksum coverage and profiling.
-- Offline renders are 1.5–1.9× faster with byte-identical audio: the synthesis loop computes the oscillator and envelope inline and clips each note to the buffer once (worst-case 32-track stems export: 1.1× → 1.9× real time). A golden-checksum test (one track per catalog instrument, master and stems) now fails on any change to rendered audio, guarding later optimizations and the planned WASM synthesis kernel.
-- Added a per-player render-job limit (operational hardening): a signed-in player may have at most `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` (default 10, `0` = off) queued or running render jobs, and a submission over it answers 429 `render_quota_exceeded`. One dense stems render can hold a worker for minutes, so a single player could otherwise fill the queue. Submissions are serialized per player so concurrent requests can't overshoot; replaying an accepted request is never refused; private callers aren't limited.
-- Profiled the offline renderer (Stage 12, step 9): `npm run profile -w @synaptix/render-worker` renders typical, dense and worst-case projects and times each stage. No DSP kernel is a bottleneck (effects and encoding run 40–160× real time; synthesis dominates), so Rust/WASM stays deferred. The WAV encoder no longer allocates per frame: byte-identical output, 2× faster at 24-bit. Results and the revisit criteria are in `docs/development/dsp-profiling.md`.
+  - **How it stays deterministic:** vibrato warps each oscillator's phase in closed form, and a moving cutoff updates every 16 samples on a grid from the note's start. That keeps preview blocks and exports identical, and keeps Motion Pad affordable.
+- **Stereo voice path** (#69). Notes render in stereo in exports and the preview. Mono instruments write the same samples to both sides, and the supersaw instruments spread their saws.
+  - The preview now pans instrument tracks with the export's equal-power law, in a stage after the inserts, because Tone's channel panner folded stereo to mono.
+  - Checked in Chromium: both channels match the export on every sample.
+- **Render engine version** (#58, #63, #69). Renders record which synthesis made them (`RENDER_ENGINE_VERSION` in `@synaptix/render-contracts`).
+  - **History:** 1.1.0 is the Rust kernel with band-limited saw and square; 1.2.0 adds stereo voices.
+  - **The worker owns the version:** it stamps its own version on artifact manifests, and turns away requests for another engine. A new submission gets `409 engine_version_mismatch` ("reload the studio"). A job already queued is retried, so an older worker can take it during a rolling deploy.
+  - **Existing evidence stays valid:** renders, freezes and certified packages are checked against their own recorded checksums, never re-rendered.
+  - **Deploy the studio and render worker together** when the version changes (runbook: `docs/operations/stage-12-deployment-certification.md`).
+- **Drum editing** (#67).
+  - Drum Kit tracks open in the step sequencer, with a lane for everything the kit plays.
+  - A **Piano roll** button opens any drum track in the piano roll (for off-grid timing or notes without a lane), and **Steps** switches back.
+  - On drum tracks the piano roll names rows and notes by drum, e.g. "Kick (C2)".
+- **Instrument catalog roadmap** (#57, `docs/plans/implementation/instrument-catalog-roadmap-v1.md`): every instrument Synaptix Music could add, grouped by effort, with the DSP, CPU cost and dependencies of each. It also lists the rules every new instrument follows and tracks progress; slices 1 and 2 and the filter, modulation and stereo infrastructure are done.
+- **Render profiling and speed-ups** (#54, #56).
+  - **Profiling:** `npm run profile -w @synaptix/render-worker` times typical, dense and worst-case projects. Synthesis dominates; effects and encoding run 40–160× real time.
+  - **WAV encoder:** no longer allocates per frame. Output is byte-identical and 2× faster at 24-bit.
+  - **Synthesis loop:** made 1.5–1.9× faster in TypeScript before the Rust kernel replaced it.
+  - **Results:** in `docs/development/dsp-profiling.md`, with each step's numbers and the revisit criteria.
+- **Per-player render-job limit** (#55, operational hardening): a signed-in player may have at most `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` (default 10, `0` = off) queued or running render jobs. A submission over the limit gets 429 `render_quota_exceeded`.
+  - One dense stems render can hold a worker for minutes, so a single player could otherwise fill the queue.
+  - Submissions are serialized per player, so concurrent requests can't overshoot.
+  - Replaying an accepted request is never refused, and private callers aren't limited.
 - Added an offline app shell (#49): a service worker precaches Home, Library and an offline page, saves Library and Studio pages for offline use, and never touches `/api/*`. The studio is installable (manifest and icon); the Library shows an offline banner and disables **Download for offline** without a connection. Turn the worker off with `NEXT_PUBLIC_SERVICE_WORKER=off`; `next dev` never registers it.
 - Added studio handoff from the player (#49): "Open in Studio" and "Edit in Studio" pass the listening position (`?t=`), and the studio opens at that point, snapped to the beat.
 - Changed prototype audio to queued jobs with live progress (#49): the MusicGen service runs jobs first-in first-out on one GPU worker (Redis when `REDIS_URL` is set), with `POST /audio/jobs`, status, a server-sent event stream, audio and cancel. The studio's panel shows the queue position, model loading and a progress bar, and resumes a job after a reload.
@@ -85,7 +91,8 @@
 
 ### Fixed
 
-- The generation API's instrument list now includes the ten instruments added to the studio catalog (Supersaw Lead through Motion Pad), so its catalog-parity test passes again. Generated arrangements don't use them yet: each role's suitable instruments are unchanged, and the plan still swaps an unsuitable choice for the role's default.
+- The Drum Kit's starter beat now has a closed hat on every eighth note; it skipped beat 3 (#67).
+- The generation API's instrument list now includes the ten new studio instruments (#72), so its catalog-parity test passes again. PR CI only runs the Python job when Python files change, so the PRs that added the instruments didn't catch the gap; `main`'s full run did. Generated arrangements don't use them yet: each role's suitable instruments are unchanged, and the plan still swaps an unsuitable choice for the role's default.
 - Fixed studio sign-in being refused by the platform, which requires a product registration on its game sign-in route: the studio now signs in through the platform's studio routes instead. Before, every sign-in showed "That email and password don't match".
 - Fixed studio edits being silently lost when made while the previous edit was still saving (the editor history refuses overlapping operations, and the mixer ignored clicks while busy). Edits, undo and redo now queue and each builds on the latest project; cloud uploads no longer hold up the queue. This also fixes the flaky mixer-meter UI test.
 - Added Linux visual-regression baselines, generated in the Playwright 1.63 Ubuntu 24.04 image, so CI (ubuntu-latest) compares against reviewed images instead of failing on missing snapshots.
