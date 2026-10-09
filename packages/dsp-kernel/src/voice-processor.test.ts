@@ -154,6 +154,8 @@ test("the preview worklet plays exactly the samples an export renders", () => {
     { oscillator: "drum-kit", frequency: 92.4986056779086, time: 0.4, noteDuration: 0.05 },
     { oscillator: "808-bass", frequency: 55, time: 0.42, noteDuration: 0.15 },
     { oscillator: "pulse-25", frequency: 987.77, time: 0.45, noteDuration: 0.1 },
+    { oscillator: "pulse-12", frequency: 659.25, time: 0.46, noteDuration: 0.1 },
+    { oscillator: "chip-triangle", frequency: 65.41, time: 0.465, noteDuration: 0.1 },
     { oscillator: "sawtooth", frequency: 146.83, time: 0.47, noteDuration: 0.1, resonance: 0.8 },
     // Wide noise with a rising (negative) filter envelope, as Riser FX uses.
     {

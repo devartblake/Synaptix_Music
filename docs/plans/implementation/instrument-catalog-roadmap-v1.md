@@ -156,6 +156,9 @@ device panel.
 - Step 3, FM mallets: **done.** Kernel FM presets `fm-marimba` (4:1, index falls in tens of
   milliseconds) and `fm-vibraphone` (4:1, gentler fall), as **FM Marimba** (`synaptix-marimba`) and
   **FM Vibraphone** (`synaptix-vibes`, with a 5 Hz tremolo).
+- Step 4, NES pack: **done.** Kernel oscillators `pulse-12` (band-limited 12.5% pulse) and
+  `chip-triangle` (4-bit, 32-step staircase), as **NES Pulse** (`synaptix-nes-pulse`) and **Chip
+  Triangle** (`synaptix-nes-triangle`).
 
 ## Quick wins (days each)
 

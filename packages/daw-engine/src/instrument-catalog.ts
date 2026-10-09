@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell" | "fx";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25" | "noise" | "fm-marimba" | "fm-vibraphone";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25" | "noise" | "fm-marimba" | "fm-vibraphone" | "pulse-12" | "chip-triangle";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -279,6 +279,22 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
     profile: { kind: "bell", oscillator: "fm-vibraphone", attack: 0.002, decay: 2, sustain: 0.2, release: 1.2,
       filterFrequency: 8000, lfoRate: 5, tremolo: 0.35, reverbSend: 0.3, destinationBus: "music" },
     starterPattern: [[0, 65, 2], [0, 69, 2], [0, 72, 2], [2, 64, 2], [2, 67, 2], [2, 71, 2]]
+  },
+  {
+    deviceType: "synaptix-nes-pulse", label: "NES Pulse", description: "Band-limited 12.5% pulse: the thinnest, buzziest console lead.",
+    keywords: ["nes-pulse", "nes pulse"],
+    profile: { kind: "lead", oscillator: "pulse-12", attack: 0.001, decay: 0.1, sustain: 0.6, release: 0.03,
+      filterFrequency: 12000, reverbSend: 0.06, destinationBus: "music" },
+    starterPattern: [[0, 76, 0.25], [0.25, 79, 0.25], [0.5, 84, 0.5], [1, 83, 0.25], [1.25, 79, 0.25], [1.5, 76, 0.5],
+      [2, 74, 0.5], [2.5, 76, 0.5], [3, 72, 1]]
+  },
+  {
+    // The NES triangle channel had no volume control, so the preset keeps a flat, full sustain.
+    deviceType: "synaptix-nes-triangle", label: "Chip Triangle", description: "The console's 4-bit stepped triangle: a soft, buzzy chiptune bass.",
+    keywords: ["nes-triangle", "chip triangle"],
+    profile: { kind: "bass", oscillator: "chip-triangle", attack: 0.001, decay: 0.01, sustain: 1, release: 0.02,
+      filterFrequency: 12000, reverbSend: 0, destinationBus: "music" },
+    starterPattern: [[0, 36, 0.5], [0.5, 48, 0.5], [1, 36, 0.5], [1.5, 48, 0.5], [2, 41, 0.5], [2.5, 53, 0.5], [3, 43, 0.5], [3.5, 55, 0.5]]
   }
 ];
 

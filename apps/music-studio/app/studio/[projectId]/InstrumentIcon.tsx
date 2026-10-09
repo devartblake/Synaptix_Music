@@ -256,6 +256,19 @@ const SLICE_3_ARTWORK: Record<string, React.ReactNode> = {
     <rect x="24" y="22" width="7" height="18" rx="1.5" />
     <rect x="34" y="23" width="7" height="16" rx="1.5" />
     <path d="M4 31h37" stroke="var(--instrument-accent)" strokeOpacity="0.6" />
+  </>,
+  // A thin pixel pulse over a cartridge.
+  "synaptix-nes-pulse": <>
+    <path d="M4 14h3V6h3v8h9V6h3v8h9V6h3v8h8" stroke="var(--instrument-accent)" strokeWidth="2.5"
+      strokeLinecap="square" strokeLinejoin="miter" />
+    <path d="M12 22h24v20H12z" fill="var(--instrument-accent)" fillOpacity="0.2" />
+    <path d="M16 22v-2h16v2M17 34h14M17 38h14" />
+  </>,
+  // A stepped (pixel) triangle wave.
+  "synaptix-nes-triangle": <>
+    <path d="M4 40v-4h4v-4h4v-4h4v-4h4v-4h4v-4h4v4h4v4h4v4h4v4h4v4h4v4" stroke="var(--instrument-accent)"
+      strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter" fill="var(--instrument-accent)" fillOpacity="0.15" />
+    <path d="M4 8h40" strokeOpacity="0.3" strokeDasharray="2 3" />
   </>
 };
 

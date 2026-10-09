@@ -51,7 +51,9 @@ export const OSCILLATOR_CODES = {
   "pulse-25": 10,
   noise: 11,
   "fm-marimba": 12,
-  "fm-vibraphone": 13
+  "fm-vibraphone": 13,
+  "pulse-12": 14,
+  "chip-triangle": 15
 } as const;
 export type KernelOscillator = keyof typeof OSCILLATOR_CODES;
 
