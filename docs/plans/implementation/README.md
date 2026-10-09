@@ -81,7 +81,7 @@ Stage 12 is implementation-complete: production audio, durable jobs, exact-revis
 6. ~~Implement deterministic offline WAV rendering, reverb/master compression, checksum evidence, and an exact-revision platform loader.~~ Done in code; backend PR #525 and staging configuration remain deployment gates.
 7. ~~Add stem rendering and preview packages.~~ Done for Stage 12: dry track stems, bounded previews, naming, artifact manifests, and signed delivery are implemented. Retention enforcement moves into Stage 13 publication hardening.
 8. ~~Add MP3/OGG conversion only after WAV certification.~~ Done with deterministic FFmpeg packaging.
-9. Profile DSP workloads before assigning any kernel to Rust/WASM.
+9. ~~Profile DSP workloads before assigning any kernel to Rust/WASM.~~ Done: no candidate kernel is a bottleneck (effects and encoding run 40–160× real time; synthesis dominates, and the worst-case stems export runs at 1.2× real time), so Rust/WASM stays deferred. The WAV encoder is 2× faster at 24-bit. See `docs/development/dsp-profiling.md` and `npm run profile -w @synaptix/render-worker`.
 10. Operational gate: provision production credentials and execute `docs/operations/stage-12-deployment-certification.md` in staging.
 
 ## Stage Started in Parallel

@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types --test --test-concurrency=1 src/*.test.ts"
+    "test": "node --experimental-transform-types --test --test-concurrency=1 src/*.test.ts",
+    "profile": "node --experimental-transform-types scripts/profile-render.ts"
   },
   "dependencies": {
     "@synaptix/daw-engine": "0.1.0",
