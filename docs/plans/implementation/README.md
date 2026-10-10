@@ -66,6 +66,7 @@ This index records completed Synaptix Music implementation slices and the curren
 | Floating, movable piano roll menus | #96 | The Edit and Rename menus open in the top layer, stay open for repeated edits, and move by their grip (drag or arrow keys) |
 | Project origin badges | #97 | Home-page cards marked Generated, Edited or Hand-composed, from an arrangement fingerprint stored when a generation is applied |
 | Browser view drop-down; home tab bar on phones | #99 | The Browser's views in one drop-down; the home page's floating tab bar on phones only |
+| SynaptixPlay status in the DAW inspector | #98 | The inspector says whether the project's adaptive music is live in SynaptixPlay games (live version, publishing, not live, not published, unavailable) |
 
 ## In Review
 
@@ -73,8 +74,7 @@ These pull requests are open, or about to be, at the revision date.
 
 | Work | Pull request | Result |
 | ---- | -----------: | ------ |
-| SynaptixPlay status in the DAW inspector | #98 | The inspector says whether the project's adaptive music is live in SynaptixPlay games (live version, publishing, not live, not published, unavailable) |
-| Studio UI v2, step 9a (phone layout) | opening | The DAW layout at every width: one column on phones with a More menu, and the Browser and inspector opening over the timeline; an Inspector button on tablets |
+| Studio UI v2, step 9a (phone layout) | #101 | The DAW layout at every width: one column on phones with a More menu, and the Browser and inspector opening over the timeline; an Inspector button on tablets |
 
 Next: Studio UI v2 step 9b makes the DAW layout the default and removes the classic layout, after porting its remaining UI tests.
 

@@ -655,6 +655,82 @@ test("the inspector's SynaptixPlay card says whether the music is live in games"
   ).toEqual([]);
 });
 
+test("on a phone the DAW layout is one column: every view is reachable and the side panels open over it", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("synaptix-music:studio-layout:v1", JSON.stringify({ shell: "v2" })));
+  await openStudio(page);
+  await expect(page.locator(".studio-v2")).toBeVisible();
+  const fits = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const axe = async () => expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await fits();
+  await axe();
+  const more = page.getByRole("button", { name: "More", exact: true });
+
+  // The Browser and inspector open over the timeline from More; Escape closes them and focus returns.
+  await more.click();
+  await page.getByRole("button", { name: "Browser", exact: true }).click();
+  const browser = page.getByRole("complementary", { name: "Browser" });
+  await expect(browser.getByRole("heading", { name: "Browser" })).toBeFocused();
+  await expect(browser.getByRole("button", { name: "Drum Synth", exact: true })).toBeVisible();
+  await fits();
+  await axe();
+  await page.keyboard.press("Escape");
+  await expect(browser).toBeHidden();
+  await expect(more).toBeFocused();
+  await more.click();
+  await page.getByRole("button", { name: "Inspector", exact: true }).click();
+  const inspector = page.getByRole("complementary", { name: "Project inspector" });
+  await expect(inspector.getByRole("heading", { name: "Project inspector" })).toBeFocused();
+  await inspector.getByRole("button", { name: "Close" }).click();
+  await expect(inspector).toBeHidden();
+
+  // The dock's three tabs work, with the editor, device chain and mixer each fitting the width.
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  const dock = page.getByRole("region", { name: "Dock" });
+  await expect(dock.getByRole("region", { name: "Piano roll editor" })).toBeVisible();
+  await fits();
+  await dock.getByRole("tab", { name: /^Devices/ }).click();
+  await expect(dock.getByRole("region", { name: "Lead Melody devices" })).toBeVisible();
+  await fits();
+  await dock.getByRole("tab", { name: /^Mixer/ }).click();
+  await expect(dock.getByRole("group", { name: "Mixer channels" })).toBeVisible();
+  await fits();
+  await axe();
+
+  // Generate, Export (from More) and Adaptive states.
+  await page.getByRole("button", { name: "Generate", exact: true }).click();
+  await expect(page.getByRole("complementary", { name: "Generate" }).getByRole("heading", { name: "Create a project variation" })).toBeVisible();
+  await fits();
+  await page.keyboard.press("Escape");
+  await more.click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Export" }).getByRole("heading", { name: "Render & export" })).toBeVisible();
+  await fits();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Adaptive states", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Author adaptive states" })).toBeVisible();
+  await fits();
+  await axe();
+});
+
+test("on a tablet the inspector opens over the timeline from the transport bar", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "tablet", "Desktop shows the inspector beside the timeline.");
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const toggle = page.getByRole("button", { name: "Inspector", exact: true });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  const inspector = page.getByRole("complementary", { name: "Project inspector" });
+  await expect(inspector.getByRole("heading", { name: "Project inspector" })).toBeFocused();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(inspector).toBeHidden();
+  await expect(toggle).toBeFocused();
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);

@@ -649,6 +649,23 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     setWorkspace("arrangement");
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`.studio-transportbar [data-opens="${opener}"]`)?.focus());
   }
+  // DAW layout on narrow screens: the Browser or inspector opened over the timeline.
+  const [panelOverlay, setPanelOverlay] = useState<"browser" | "inspector" | null>(null);
+  function togglePanelOverlay(panel: "browser" | "inspector"): void {
+    const opening = panelOverlay !== panel;
+    setPanelOverlay(opening ? panel : null);
+    requestAnimationFrame(() => {
+      if (opening) document.querySelector<HTMLElement>(`#studio-${panel} h2`)?.focus();
+      else document.querySelector<HTMLElement>(`.studio-transportbar [data-opens="${panel}"]`)?.focus();
+    });
+  }
+  function closePanelOverlay(): void {
+    const panel = panelOverlay;
+    setPanelOverlay(null);
+    // The opener may be inside the More menu, which has closed; then focus the menu's button.
+    requestAnimationFrame(() => (document.querySelector<HTMLElement>(`.studio-transportbar [data-opens="${panel}"]`)
+      ?? document.querySelector<HTMLElement>(".studio-transportbar [aria-controls][aria-expanded]"))?.focus());
+  }
   useEffect(() => {
     if (!v2) return;
     const onKey = (event: KeyboardEvent) => {
@@ -764,7 +781,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
     bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel} selection={selection}
     publication={panelLayout.v2 ? { revisionId: project.revisionId, refreshKey: workspace, onOpenAdaptive: () => setWorkspace("adaptive") } : undefined}
-    onOpenGenerator={() => setWorkspace("generation")} />;
+    onOpenGenerator={() => setWorkspace("generation")}
+    overlay={panelLayout.v2 ? { open: panelOverlay === "inspector", onClose: closePanelOverlay } : undefined} />;
 
   // DAW layout: a track takes its own colour, else its instrument family's (as the engine resolves it).
   const dawTrackColor = (track: Track) => track.color ?? INSTRUMENT_ACCENTS[resolveInstrumentDefinition((primaryDevice(track) ?? track.devices[0])?.deviceType ?? "", track.name).profile.kind];
@@ -772,8 +790,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   if (panelLayout.v2) {
     const { dockTab, dockOpen } = panelLayout.layout;
     const dockClip = activeClip && builtinView.tracks.find((track) => track.id === activeClip.trackId);
+    const browserOverlay = panelOverlay === "browser" && !panelLayout.navigationVisible;
     return (
-      <main className="studio-v2"
+      <main className={`studio-v2${panelLayout.mobile ? " studio-v2-phone" : ""}`}
         onFocus={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
         onPointerOver={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
         style={{
@@ -785,14 +804,23 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           view={workspace === "adaptive" ? "adaptive" : "arrange"}
           onView={(view) => setWorkspace(view === "adaptive" ? "adaptive" : "arrangement")}
           onGenerate={() => setWorkspace("generation")} onExport={() => setWorkspace("render")}
-          layoutMenu={<LayoutMenu panelLayout={panelLayout} onReset={() => undefined} />} />
+          layoutMenu={<LayoutMenu panelLayout={panelLayout} onReset={() => undefined} />}
+          compact={panelLayout.mobile}
+          panels={[
+            ...(!panelLayout.navigationVisible && panelLayout.mobile ? [{ id: "browser" as const, label: "Browser", open: panelOverlay === "browser", onToggle: () => togglePanelOverlay("browser") }] : []),
+            ...(!panelLayout.inspectorVisible && panelLayout.narrow ? [{ id: "inspector" as const, label: "Inspector", open: panelOverlay === "inspector", onToggle: () => togglePanelOverlay("inspector") }] : [])
+          ]} />
         <div className="studio-v2-banners">{banners}</div>
         <div className="studio-v2-body">
-          <aside id="studio-browser" className="studio-browser" aria-label="Browser" hidden={!panelLayout.navigationVisible}>
-            <ResizeHandle label="Browser panel size" controls="studio-browser" orientation="vertical"
-              value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />
+          <aside id="studio-browser" aria-label="Browser"
+            className={`studio-browser${browserOverlay ? " studio-overlay studio-overlay-left" : ""}`}
+            hidden={!panelLayout.navigationVisible && !browserOverlay}
+            onKeyDown={browserOverlay ? (event) => { if (event.key === "Escape") { event.preventDefault(); closePanelOverlay(); } } : undefined}>
+            {!browserOverlay && <ResizeHandle label="Browser panel size" controls="studio-browser" orientation="vertical"
+              value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />}
             <div className="studio-sidebar-scroll">
-              <h2 className="panel-label">Browser</h2>
+              <div className="studio-overlay-heading"><h2 className="panel-label" tabIndex={-1}>Browser</h2>
+                {browserOverlay && <Button className="studio-overlay-close" onClick={closePanelOverlay}>Close</Button>}</div>
               <StudioBrowser project={builtinView} value={newInstrument} onChange={setNewInstrument}
                 selectedTrack={inspectedTrack} disabled={!hydrated}
                 onAdd={(deviceType) => void addInstrument(deviceType)}

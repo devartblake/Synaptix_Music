@@ -26,7 +26,7 @@ export function LayoutMenu({ panelLayout, onReset }: { panelLayout: PanelLayout;
       {panelLayout.narrow && <p>Side panels hide on smaller screens to keep the editor usable. Your desktop layout is remembered.</p>}
       <Button onClick={() => { panelLayout.reset(); onReset(); }}>Reset layout</Button>
       <p>Drag a panel edge to resize, or focus it and use the arrow keys.</p>
-      <Button aria-pressed={v2} disabled={panelLayout.mobile}
+      <Button aria-pressed={v2}
         onClick={() => panelLayout.update({ shell: v2 ? "v1" : "v2" })}>DAW layout (preview)</Button>
     </DisclosureMenu>
   );
