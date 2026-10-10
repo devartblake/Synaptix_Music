@@ -167,6 +167,46 @@ test("the loop is set by dragging the brace or pressing L on a clip, and undoes 
   await expect(page.getByRole("img", { name: /^Loop: bars/ })).toHaveCount(0);
 });
 
+test("the docked piano roll names chords, shades the scale and keeps rarer edits in a menu", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  // The FM Electric Piano starter plays C major then D minor chords.
+  await page.getByRole("button", { name: /^All instruments/ }).click();
+  await page.getByRole("dialog", { name: "Choose an instrument" }).getByText("FM Electric Piano", { exact: true }).click();
+  await page.getByRole("button", { name: "Add instrument track" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).last().click();
+  const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
+
+  // One toolbar row: no insert-note fields (drawing on the grid replaces them); rarer edits in Edit.
+  await expect(roll.getByLabel("New note pitch")).toHaveCount(0);
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(roll.getByRole("button", { name: "Duplicate" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // The Chord Panel names what plays; selecting a chord's notes names it too.
+  const chords = roll.getByRole("list", { name: "Chords" });
+  await expect(chords.getByRole("listitem").first()).toHaveText("C");
+  await expect(chords.getByRole("listitem").nth(1)).toHaveText("Dm");
+  await roll.getByRole("button", { name: /^C4, tick 0,/ }).click();
+  await roll.getByRole("button", { name: /^E4, tick 0,/ }).click({ modifiers: ["Shift"] });
+  await roll.getByRole("button", { name: /^G4, tick 0,/ }).click({ modifiers: ["Shift"] });
+  await expect(roll.getByRole("status", { name: "Note selection" })).toHaveText("3 selected · C");
+
+  // Scale: Auto reads C major from the notes; a chosen key is remembered for the project.
+  const scale = roll.getByLabel("Scale");
+  await expect(scale.locator("option:checked")).toHaveText("Auto (C major)");
+  await scale.selectOption({ label: "A minor" });
+  await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await page.getByRole("button", { name: "Edit", exact: true }).last().click();
+  await expect(page.getByRole("region", { name: "Dock" }).getByLabel("Scale").locator("option:checked")).toHaveText("A minor");
+
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);

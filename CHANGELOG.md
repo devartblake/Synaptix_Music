@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Piano roll in the DAW dock (Studio UI v2, step 4a).**
+  - **Keyboard and toolbar:** the keys look like a keyboard (black keys shorter, C rows labelled). The toolbar fits on one row: Preview, Grid, Snap, Scale, Chords, Quantize, an **Edit** menu (duplicate, transpose, copy, cut, paste, delete, stop sound) and compact zoom. The insert-note fields are gone, since drawing on the grid replaces them.
+  - **Scale:** **Scale** shades the rows in the key. **Auto** detects the key from the clip's notes, and a chosen key is remembered per project in this browser.
+  - **Chord Panel** (inspired by FL Studio 2026): **Chords** shows a lane naming the chords along the clip (for example C, Dm, Am7, C/E), and the selection readout names the chord of the selected notes.
+  - Drum clips keep their drum names. The classic layout's piano roll is unchanged.
 - **Section markers and a loop brace in the DAW layout (Studio UI v2, step 3b).** Two lanes above the ruler:
   - **Markers:** "+ Marker" adds a section marker at the playhead's bar and opens it for naming. Click a marker to jump to it, double-click or press F2 to rename it, and press Delete to remove it.
   - **Loop:** drag across bars to set the loop and turn it on, or press L to loop the bars the selected clip covers. × clears the loop. A saved loop that is switched off shows as a dashed brace.
