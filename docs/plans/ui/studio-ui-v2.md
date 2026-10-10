@@ -203,3 +203,4 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
 - 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).
+- 2026-10-10: the piano roll's Edit and Rename menus float (`DisclosureMenu floating`, a top-layer popover placed from its button), so the dock can't clip them; chosen over a modal so the notes stay in view.
