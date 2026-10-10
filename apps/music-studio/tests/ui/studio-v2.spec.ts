@@ -613,6 +613,48 @@ test("Generate opens a drawer beside the timeline and Export a dialog; Escape cl
   await expect(exportButton).toBeFocused();
 });
 
+test("the inspector's SynaptixPlay card says whether the music is live in games", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "tablet", "The inspector is hidden on tablet layouts.");
+  const card = page.getByRole("complementary", { name: "Project inspector" }).getByRole("region", { name: "SynaptixPlay" });
+
+  // Never published: it says so and opens Adaptive states, where publishing happens.
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  await expect(card.getByRole("status")).toHaveText("Not in SynaptixPlay yet");
+  await card.getByRole("button", { name: "Open Adaptive states" }).click();
+  await expect(page.getByRole("heading", { name: "Author adaptive states" })).toBeVisible();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
+
+  // A package with an active version from an earlier revision: live, with a nudge to publish again.
+  const packageId = "10000000-0000-4000-8000-0000000000aa";
+  await page.evaluate((id) => localStorage.setItem("synaptix-music:adaptive:v1:visual-baseline", JSON.stringify({ packageId: id })), packageId);
+  let available = true;
+  await page.route(`**/api/platform/adaptive-packages/${packageId}/versions`, (route) => available
+    ? route.fulfill({ json: [
+      { version: 1, revisionId: "earlier", projectChecksumSha256: "a".repeat(64), createdAt: "2026-10-01T12:00:00.000Z", retentionStatus: "superseded", expiresAt: null },
+      { version: 2, revisionId: "earlier", projectChecksumSha256: "b".repeat(64), createdAt: "2026-10-05T12:00:00.000Z", retentionStatus: "active", expiresAt: null }
+    ] })
+    : route.fulfill({ status: 503, json: { message: "Platform unavailable" } }));
+  await page.getByRole("button", { name: "Adaptive states", exact: true }).click();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
+  await expect(card.getByRole("status")).toHaveText("Live in SynaptixPlay · version 2");
+  await expect(card).toContainText("Games play version 2, published");
+  await expect(card).toContainText("The project has changed since.");
+
+  // When the platform can't answer, it says so and can check again.
+  available = false;
+  await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await expect(card.getByRole("status")).toHaveText("Status unavailable");
+  available = true;
+  await card.getByRole("button", { name: "Check again" }).click();
+  await expect(card.getByRole("status")).toHaveText("Live in SynaptixPlay · version 2");
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);

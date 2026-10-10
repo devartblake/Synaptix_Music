@@ -4,9 +4,10 @@ import { Button } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import type { Clip, Track } from "@synaptix/project-model";
 import type { useStudioLayout } from "../../../lib/editor/use-studio-layout";
+import { PublicationCard } from "./PublicationCard";
 
 /** Right panel: project facts, the generator entry point and publication readiness. */
-export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm, syncLabel, onOpenGenerator, selection }: {
+export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm, syncLabel, onOpenGenerator, selection, publication }: {
   panelLayout: ReturnType<typeof useStudioLayout>;
   projectId: string;
   trackCount: number;
@@ -16,6 +17,8 @@ export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm,
   onOpenGenerator: () => void;
   /** The DAW layout: the selected clip and its track, shown above the project facts. */
   selection?: { clip: Clip; track: Track; instrument: string; output: string; bars: number; startBar: number } | null;
+  /** The DAW layout: whether the project's adaptive music is live in SynaptixPlay (else a fixed note). */
+  publication?: { revisionId: string; refreshKey: string; onOpenAdaptive: () => void };
 }) {
   return (
     <aside id="studio-inspector" className="studio-inspector" aria-label="Project inspector" hidden={!panelLayout.inspectorVisible}>
@@ -47,11 +50,13 @@ export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm,
         <p>Create a variation from the active project while preserving its canonical revision history.</p>
         <Button className="generation-cta" onClick={onOpenGenerator}>Open generator</Button>
       </section>
-      <section className="inspector-card">
-        <strong>Publication readiness</strong>
-        <div className="adaptive-row"><span className="adaptive-orb" />Stage 12 artifacts supported</div>
-        <p>Certification evidence and immutable adaptive-package publication remain visible gates.</p>
-      </section>
+      {publication
+        ? <PublicationCard projectId={projectId} {...publication} />
+        : <section className="inspector-card">
+          <strong>Publication readiness</strong>
+          <div className="adaptive-row"><span className="adaptive-orb" />Stage 12 artifacts supported</div>
+          <p>Certification evidence and immutable adaptive-package publication remain visible gates.</p>
+        </section>}
     </aside>
   );
 }

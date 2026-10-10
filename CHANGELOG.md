@@ -18,6 +18,13 @@
 - **Renamable note labels (from FL Studio 2026).** Notes can carry a name, such as "Hook" or "Kick", that the DAW piano roll shows in place of the pitch.
   - **Editing:** select notes, open **Rename** next to **Labels**, type a name and press Enter. A blank name or **Clear label** removes it. Each rename is one undo step, and copy and paste keep the labels.
   - **Schema:** an optional `label` (1–32 characters) on MIDI notes in TypeScript/Zod, both JSON Schemas and both Python models. Projects without labels are unchanged, including their checksums.
+- **The DAW inspector says whether the music is live in SynaptixPlay.** The "Publication readiness" card, which showed the same fixed text for every project, is now a **SynaptixPlay** card with the project's real status:
+  - **Live in SynaptixPlay · version N**, with the date it was published. It adds a nudge to publish again if the project has changed since, and notes a newer version that is still being finalized.
+  - **Publishing version N** while the platform finalizes it.
+  - **Not live**, when the last version was revoked, expired or replaced.
+  - **Not in SynaptixPlay yet**, with a button to Adaptive states, where publishing happens.
+  - **Status unavailable**, with **Check again**, when the platform can't be reached or you're signed out.
+  - The classic layout keeps its old card until it is removed.
 - **The project key travels with the project.** Projects now store an optional key: a tonic pitch class and one of the generator's seven modes.
   - **Schema:** the field is in TypeScript/Zod, both JSON Schemas and both Python models. Projects without a key are unchanged, including their checksums.
   - **Editing:** choosing a key in the piano roll's **Scale** menu saves it to the project as an undoable edit, and **Auto** clears it and detects the key from the clip's notes. Hiding the shading (**Off**) stays a per-browser choice.
