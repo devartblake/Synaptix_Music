@@ -33,3 +33,10 @@ export function transportLabel(project: MusicProject, ticks: number): string {
   const tick = Math.max(0, Math.floor(ticks));
   return `${Math.floor(tick / perBar) + 1}:${Math.floor((tick % perBar) / ppq) + 1}:${String(tick % ppq).padStart(3, "0")}`;
 }
+
+/** Clock time at a tick, as m:ss.s, at the first tempo (the engine's current timing contract). */
+export function transportTime(project: MusicProject, ticks: number): string {
+  const bpm = project.tempoMap[0]?.bpm ?? 120;
+  const tenths = Math.floor((Math.max(0, ticks) / project.transport.ticksPerQuarterNote) * (60 / bpm) * 10);
+  return `${Math.floor(tenths / 600)}:${String(Math.floor((tenths % 600) / 10)).padStart(2, "0")}.${tenths % 10}`;
+}

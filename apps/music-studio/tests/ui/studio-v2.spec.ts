@@ -81,6 +81,39 @@ test("the layout choice and dock state survive a reload, and the classic layout 
   await expect(page.locator(".studio-v2")).toHaveCount(0);
 });
 
+test("tracks take their instrument family's colour and show a level and the clock", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  // Colours follow what each track plays as, resolved like the audio engine does (device, then
+  // track name): the demo's Drums are drums, "Bass" plays as a bass, Harmony as a poly synth.
+  const colour = (name: string) => page.locator("[data-variant='daw'] [style*='--track-color']")
+    .filter({ has: page.getByText(name, { exact: true }) }).first()
+    .evaluate((row) => getComputedStyle(row).getPropertyValue("--track-color").trim());
+  expect(await colour("Drums")).toBe("#ff7a59");
+  expect(await colour("Bass")).toBe("#6379ff");
+  expect(await colour("Harmony")).toBe("#8994ff");
+  const level = page.getByRole("meter", { name: "Drums level" });
+  await expect(level).toHaveAttribute("aria-valuenow", "-60");
+  await expect(page.getByLabel("Playback time")).toContainText("0:00.0");
+  await expect(page.getByLabel("Playback position")).toContainText("1:1:000");
+});
+
+test("an empty project asks for a first instrument and adds it in one step", async ({ page }) => {
+  await page.route("**/api/platform/**", (route) =>
+    route.fulfill({ status: 503, json: { message: "Platform unavailable" } })
+  );
+  await page.addInitScript(() => localStorage.setItem("synaptix-music:studio-layout:v1", JSON.stringify({ shell: "v2" })));
+  await page.goto("/");
+  await page.getByRole("button", { name: "Find or create project" }).click();
+  await page.getByLabel("New project name").fill("Empty start");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await expect(page.getByText("Start with an instrument")).toBeVisible();
+  await page.getByRole("button", { name: "Add Warm Pad track" }).click();
+  await expect(page.getByRole("button", { name: "Mute Warm Pad" })).toBeVisible();
+  await expect(page.getByText("Start with an instrument")).toHaveCount(0);
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
