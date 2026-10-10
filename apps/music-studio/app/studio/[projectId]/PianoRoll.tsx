@@ -26,6 +26,7 @@ import {
   AddMidiNotesCommand,
   DuplicateMidiNotesCommand,
   MoveMidiNotesCommand,
+  HumanizeMidiNotesCommand,
   QuantizeMidiNotesCommand,
   RemoveMidiNotesCommand,
   ResizeMidiNotesCommand,
@@ -193,6 +194,10 @@ function PianoRollEditor({
   const tonal = daw && !noteLabel;
   const [scaleSetting, setScaleSetting] = useScaleSetting(project.projectId);
   const [chordsShown, setChordsShown] = useState(true);
+  // Draw adds a note with one click; Select (the default) drags out a marquee. B switches.
+  const [tool, setTool] = useState<"select" | "draw">("select");
+  const [labelsShown, setLabelsShown] = useState(false);
+  const [ghostTrackId, setGhostTrackId] = useState("");
   // "Kick (C1)" on drum tracks, "C4" otherwise.
   const describe = (pitch: number) => {
     const drum = noteLabel?.(pitch);
@@ -268,6 +273,21 @@ function PianoRollEditor({
   );
   const selectedChord = tonal && selectedIds.length >= 3
     ? chordName(clip.notes.filter((note) => selected.has(note.id)).map((note) => note.pitch)) : null;
+
+  // Ghost notes: another track's notes under this clip's time span, drawn faintly for reference.
+  const clipStart = barTicks(project) * clip.range.start.bar + project.transport.ticksPerQuarterNote * clip.range.start.beat + clip.range.start.tick;
+  const ghostCandidates = daw ? project.tracks.filter((candidate) => candidate.id !== trackId && candidate.clips.some((c) => c.kind === "midi")) : [];
+  const ghostNotes = useMemo(() => {
+    const ghost = project.tracks.find((candidate) => candidate.id === ghostTrackId);
+    if (!ghost) return [];
+    return ghost.clips.flatMap((other) => {
+      if (other.kind !== "midi") return [];
+      const otherStart = barTicks(project) * other.range.start.bar + project.transport.ticksPerQuarterNote * other.range.start.beat + other.range.start.tick;
+      return other.notes
+        .map((note) => ({ ...note, startTick: otherStart + note.startTick - clipStart }))
+        .filter((note) => note.startTick >= 0 && note.startTick < clip.range.durationTicks);
+    });
+  }, [project, ghostTrackId, clipStart, clip.range.durationTicks]);
 
   async function addNote(event: React.MouseEvent<HTMLDivElement>): Promise<void> {
     if (event.target !== event.currentTarget) return;
@@ -345,6 +365,10 @@ function PianoRollEditor({
 
   function beginMarquee(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.target !== event.currentTarget) return;
+    if (daw && tool === "draw" && event.button === 0) {
+      void addNote(event);
+      return;
+    }
     const rect = event.currentTarget.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -437,6 +461,11 @@ function PianoRollEditor({
   function keyboard(event: React.KeyboardEvent, noteId?: string) {
     const ids = noteId && !selected.has(noteId) ? [noteId] : selectedIds;
     const modifier = event.ctrlKey || event.metaKey;
+    if (daw && !modifier && !event.altKey && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      setTool((current) => current === "draw" ? "select" : "draw");
+      return;
+    }
     if (modifier && event.key.toLowerCase() === "a") {
       event.preventDefault();
       setSelected(new Set(clip.notes.map((note) => note.id)));
@@ -525,6 +554,10 @@ function PianoRollEditor({
       {daw && <Toolbar>
         <strong>{clip.name}</strong>
         {onOpenSteps && <Button onClick={onOpenSteps}>Steps</Button>}
+        <span className={styles.toolGroup} role="group" aria-label="Tool">
+          <Button aria-pressed={tool === "select"} title="Select: drag to select notes, double-click to add (B switches)" onClick={() => setTool("select")}>Select</Button>
+          <Button aria-pressed={tool === "draw"} title="Draw: click to add a note (B switches)" onClick={() => setTool("draw")}>Draw</Button>
+        </span>
         <label title="Play notes as you add, select, move, or press piano keys">
           <input type="checkbox" checked={preview.enabled} onChange={(event) => preview.setEnabled(event.target.checked)} /> Preview
         </label>
@@ -548,7 +581,18 @@ function PianoRollEditor({
         {tonal && <Button aria-pressed={chordsShown} onClick={() => setChordsShown(!chordsShown)} title="Name the chords along the clip">Chords</Button>}
         <Button disabled={!selectedIds.length || pending}
           onClick={() => void onExecute(new QuantizeMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))}>Quantize</Button>
+        <Button disabled={!selectedIds.length || pending} title="Nudge the selected notes' timing and velocity a little, at random"
+          onClick={() => void onExecute(new HumanizeMidiNotesCommand(trackId, clip.id, selectedIds,
+            { timingTicks: Math.max(1, Math.min(30, Math.round(gridTicks / 8))), velocity: 12, seed: (Date.now() & 0x7fffffff) || 1 }))}>Humanize</Button>
         <DisclosureMenu label="Edit">{editActions}</DisclosureMenu>
+        {ghostCandidates.length > 0 && <label title="Show another track's notes faintly behind these">
+          Ghost{" "}
+          <select value={ghostTrackId} onChange={(event) => setGhostTrackId(event.target.value)}>
+            <option value="">None</option>
+            {ghostCandidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
+          </select>
+        </label>}
+        <Button aria-pressed={labelsShown} onClick={() => setLabelsShown(!labelsShown)} title="Write each note's name on it">Labels</Button>
         <label className={styles.compactZoom}>H{" "}
           <input type="range" aria-label="Horizontal zoom" min={0.5} max={4} step={0.25} value={horizontalZoom}
             onChange={(event) => setHorizontalZoom(clampZoom(Number(event.target.value)))} />
@@ -782,6 +826,7 @@ function PianoRollEditor({
             <div
               ref={gridRef}
               className={styles.pianoGrid}
+              data-tool={daw ? tool : undefined}
               role="group"
               aria-label="MIDI notes"
               aria-describedby="note-keyboard-help"
@@ -809,6 +854,15 @@ function PianoRollEditor({
                   <div key={pitch} aria-hidden="true" className={styles.scaleRow}
                     style={{ top: (highest - pitch) * rowHeight, height: rowHeight }} />
                 ))}
+              {ghostNotes.filter((note) => note.pitch <= highest && note.pitch >= lowest).map((note) => (
+                <div key={`ghost-${note.id}`} aria-hidden="true" className={styles.ghostNote} data-ghost-pitch={note.pitch}
+                  style={{
+                    left: (note.startTick / clip.range.durationTicks) * editorWidth,
+                    top: (highest - note.pitch) * rowHeight + 3,
+                    width: Math.max(4, (Math.min(note.durationTicks, clip.range.durationTicks - note.startTick) / clip.range.durationTicks) * editorWidth),
+                    height: rowHeight - 6
+                  }} />
+              ))}
               <Playhead
                 engine={engine}
                 project={project}
@@ -856,6 +910,7 @@ function PianoRollEditor({
                     height: rowHeight - 4
                   }}
                 >
+                  {daw && labelsShown && <span className={styles.noteLabel} aria-hidden="true">{noteLabel?.(note.pitch) ?? noteName(note.pitch)}</span>}
                   <span
                     className={styles.noteResize}
                     aria-hidden="true"

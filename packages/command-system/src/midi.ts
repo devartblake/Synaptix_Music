@@ -213,6 +213,48 @@ export class QuantizeMidiNotesCommand extends MidiNotesCommand {
   }
 }
 
+/**
+ * Nudges each selected note's start by up to ±timingTicks and its velocity by up to ±velocity, at
+ * random but from a seed: a redo reproduces exactly the same result. Notes stay inside the clip
+ * and velocities inside 1–127.
+ */
+export class HumanizeMidiNotesCommand extends MidiNotesCommand {
+  readonly kind = "humanize-midi-notes";
+  readonly noteIds: ReadonlySet<string>;
+  constructor(
+    trackId: string,
+    clipId: string,
+    noteIds: readonly string[],
+    readonly amount: { timingTicks: number; velocity: number; seed: number },
+    options: MidiCommandOptions = {}
+  ) {
+    if (noteIds.length === 0) throw new Error("At least one MIDI note ID is required.");
+    if (!(amount.timingTicks >= 0 && amount.velocity >= 0)) throw new RangeError("Humanize amounts must not be negative.");
+    super(trackId, clipId, options);
+    this.noteIds = new Set(noteIds);
+  }
+  protected mutate(notes: MidiNote[], clip: MidiClip): MidiNote[] {
+    let state = (this.amount.seed >>> 0) || 0x9e3779b9;
+    // xorshift32, in -1..1.
+    const next = () => {
+      state ^= state << 13; state >>>= 0;
+      state ^= state >>> 17;
+      state ^= state << 5; state >>>= 0;
+      return (state / 0xffffffff) * 2 - 1;
+    };
+    return notes.map((note) => {
+      if (!this.noteIds.has(note.id)) return note;
+      const startTick = Math.round(note.startTick + next() * this.amount.timingTicks);
+      const velocity = Math.round(note.velocity + next() * this.amount.velocity);
+      return {
+        ...note,
+        startTick: Math.max(0, Math.min(clip.range.durationTicks - note.durationTicks, startTick)),
+        velocity: Math.max(1, Math.min(127, velocity))
+      };
+    });
+  }
+}
+
 export class DuplicateMidiNotesCommand extends MidiNotesCommand {
   readonly kind = "duplicate-midi-notes";
   readonly noteIds: ReadonlySet<string>;

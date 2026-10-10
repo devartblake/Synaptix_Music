@@ -125,7 +125,13 @@ Each step is one PR with its own visual baselines and UI tests.
      - **Chord Panel** (from FL Studio 2026): a lane naming the chords along the clip, and the chord of the selected notes.
      - **Key setting:** the project model has no key, so the scale is a per-project view setting remembered in the browser. It defaults to **Auto**, which detects the key from the clip's notes (`lib/editor/music-theory.ts`). This avoids a schema change across TypeScript, JSON Schema and Python.
      - Drum clips keep their drum names and get no scale or chords. All of this is in the DAW layout only.
-   - **4b:** ghost notes from one chosen track, Draw/Select tools, humanize, and optional note labels (FL Studio 2026).
+   - **4b, done:**
+     - **Tools:** Select/Draw (in Draw one click adds a note; **B** switches).
+     - **Ghost notes:** another track's notes shown faintly behind the clip.
+     - **Humanize:** a seeded, undoable nudge of timing and velocity (`HumanizeMidiNotesCommand`).
+     - **Labels:** a toggle that writes each note's name on it.
+     - FL Studio 2026's _renamable_ note labels would need a note field in the project schema, so they go with the key schema change below.
+   - **Project key, next (decided 2026-10-10):** the key becomes project data so it travels with the project. That means a schema field in TypeScript/Zod, JSON Schema and Python, a command with undo, and the piano roll reading it, with Auto kept as the fallback. It is scheduled after step 5.
    - **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
 5. **Dock: Devices.** A left-to-right chain with knobs (arrow keys, double-click to reset) and foldable devices; Modulation folds as a device. The Devices workspace is removed. **Done when** every current parameter is reachable and the device-panel tests are ported.
 6. **Dock: Mixer.** Channel strips with vertical faders, live meters, insert slots (the existing chain shown as slots), pan and reverb-send knobs, mute/solo and routing. Master shows loudness and peak. The mixer drawer is removed. **Done when** mixer tests are ported, and meters show peak and RMS per strip.
@@ -169,3 +175,4 @@ Each step is one PR with its own visual baselines and UI tests.
   - **Undo:** new `SetLoopRegionEditorCommand` and `SetMarkersEditorCommand` make each change one undo step.
   - **Account:** the account control moved to the status bar so the transport bar stays on one row.
 - 2026-10-10: step 4a done (DAW piano roll: keyboard, one-row toolbar, scale shading, Chord Panel). The key is a view setting with auto-detect rather than project data.
+- 2026-10-10: step 4b done (tools, ghost notes, humanize, labels). The project owner decided the key should be project data; that work is scheduled after step 5.

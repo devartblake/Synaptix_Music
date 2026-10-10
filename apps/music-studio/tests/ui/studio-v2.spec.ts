@@ -207,6 +207,49 @@ test("the docked piano roll names chords, shades the scale and keeps rarer edits
   ).toEqual([]);
 });
 
+test("piano roll tools: draw with one click, ghost another track, humanize and label notes", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
+  const grid = roll.getByRole("group", { name: "MIDI notes" });
+  const notes = grid.locator("[data-note-id]");
+  const before = await notes.count();
+
+  // Draw: one click on an empty spot (the top row is above the melody) adds a note; undo removes it.
+  await roll.getByRole("button", { name: "Draw", exact: true }).click();
+  const box = (await grid.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.3, box.y + 4);
+  await expect(notes).toHaveCount(before + 1);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(notes).toHaveCount(before);
+  // B switches back to Select.
+  await grid.focus();
+  await page.keyboard.press("b");
+  await expect(roll.getByRole("button", { name: "Select", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  // Ghost notes: the Bass track's notes show faintly, and go again with None.
+  await roll.getByLabel("Ghost").selectOption({ label: "Bass" });
+  expect(await grid.locator("[data-ghost-pitch]").count()).toBeGreaterThan(0);
+  await roll.getByLabel("Ghost").selectOption({ label: "None" });
+  await expect(grid.locator("[data-ghost-pitch]")).toHaveCount(0);
+
+  // Humanize moves some selected notes a little; one undo puts every note back.
+  const starts = () => notes.evaluateAll((all) => all.map((note) => `${note.getAttribute("data-start")}:${note.getAttribute("data-velocity")}`));
+  const original = await starts();
+  await grid.focus();
+  await page.keyboard.press("Control+a");
+  await roll.getByRole("button", { name: "Humanize" }).click();
+  await expect.poll(starts).not.toEqual(original);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect.poll(starts).toEqual(original);
+
+  // Labels write each note's name on it.
+  await roll.getByRole("button", { name: "Labels" }).click();
+  await expect(notes.first()).toContainText(/^[A-G]#?\d$/);
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
