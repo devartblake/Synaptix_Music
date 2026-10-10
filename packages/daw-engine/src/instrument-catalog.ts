@@ -4,7 +4,7 @@ export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
   | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell" | "fx";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25" | "noise";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25" | "noise" | "fm-marimba" | "fm-vibraphone";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -264,6 +264,21 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
       filterFrequency: 250, resonance: 0.3, filterEnvOctaves: 5.5, filterEnvDecay: 0.25,
       reverbSend: 0.3, destinationBus: "music" },
     starterPattern: [[0, 60, 2]]
+  },
+  {
+    deviceType: "synaptix-marimba", label: "FM Marimba", description: "Two-operator FM mallet: a woody knock that settles into a warm tone.",
+    keywords: ["marimba", "xylophone"],
+    profile: { kind: "bell", oscillator: "fm-marimba", attack: 0.001, decay: 0.7, sustain: 0, release: 0.5,
+      filterFrequency: 9000, reverbSend: 0.2, destinationBus: "music" },
+    starterPattern: [[0, 72, 0.5], [0.5, 76, 0.5], [1, 79, 0.5], [1.5, 84, 0.5], [2, 79, 0.5], [2.5, 76, 0.5], [3, 74, 0.5], [3.5, 71, 0.5]]
+  },
+  {
+    // The tremolo stands in for the vibraphone's spinning resonator fans.
+    deviceType: "synaptix-vibes", label: "FM Vibraphone", description: "Two-operator FM metal bars with a slow tremolo: soft, shimmering chords.",
+    keywords: ["vibraphone", "vibes"],
+    profile: { kind: "bell", oscillator: "fm-vibraphone", attack: 0.002, decay: 2, sustain: 0.2, release: 1.2,
+      filterFrequency: 8000, lfoRate: 5, tremolo: 0.35, reverbSend: 0.3, destinationBus: "music" },
+    starterPattern: [[0, 65, 2], [0, 69, 2], [0, 72, 2], [2, 64, 2], [2, 67, 2], [2, 71, 2]]
   }
 ];
 

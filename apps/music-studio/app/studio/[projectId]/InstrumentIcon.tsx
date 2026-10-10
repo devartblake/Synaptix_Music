@@ -238,6 +238,24 @@ const SLICE_3_ARTWORK: Record<string, React.ReactNode> = {
       fill="var(--instrument-accent)" fillOpacity="0.15" />
     <path d="M30 8l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="currentColor" stroke="none" />
     <path d="M40 18l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor" stroke="none" />
+  </>,
+  // Wooden bars getting shorter, with a mallet striking one.
+  "synaptix-marimba": <>
+    <rect x="4" y="18" width="7" height="24" rx="1.5" fill="var(--instrument-accent)" fillOpacity="0.3" />
+    <rect x="14" y="20" width="7" height="20" rx="1.5" fill="var(--instrument-accent)" fillOpacity="0.3" />
+    <rect x="24" y="22" width="7" height="16" rx="1.5" fill="var(--instrument-accent)" fillOpacity="0.3" />
+    <rect x="34" y="24" width="7" height="12" rx="1.5" fill="var(--instrument-accent)" fillOpacity="0.3" />
+    <path d="M30 4l-11 13" strokeWidth="2" />
+    <circle cx="31.5" cy="3.5" r="3" fill="currentColor" stroke="none" />
+  </>,
+  // Metal bars with a tremolo wave over them.
+  "synaptix-vibes": <>
+    <path d="M4 10q3-5 6 0t6 0 6 0 6 0 6 0 6 0 6 0" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <rect x="4" y="20" width="7" height="22" rx="1.5" />
+    <rect x="14" y="21" width="7" height="20" rx="1.5" />
+    <rect x="24" y="22" width="7" height="18" rx="1.5" />
+    <rect x="34" y="23" width="7" height="16" rx="1.5" />
+    <path d="M4 31h37" stroke="var(--instrument-accent)" strokeOpacity="0.6" />
   </>
 };
 

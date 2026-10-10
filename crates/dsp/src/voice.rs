@@ -35,6 +35,12 @@ pub enum Oscillator {
     Pulse25,
     /// White noise (xorshift32 seeded from the note), independent on each side so it is wide.
     Noise,
+    /// Two-operator FM at a 4:1 ratio (a tuned bar's first overtone) whose brightness dies in
+    /// tens of milliseconds: a wooden mallet strike.
+    FmMarimba,
+    /// Two-operator FM at a 4:1 ratio with a slower, gentler fall: a metal bar, for presets that
+    /// add tremolo.
+    FmVibraphone,
 }
 
 /// How hard the 808 drives its soft clipper (higher is grittier).
@@ -63,6 +69,18 @@ pub const FM_PIANO: FmPreset = FmPreset {
     start: 2.5,
     end: 0.3,
     fall: 12.0,
+};
+pub const FM_MARIMBA: FmPreset = FmPreset {
+    ratio: 4.0,
+    start: 3.5,
+    end: 0.0,
+    fall: 40.0,
+};
+pub const FM_VIBRAPHONE: FmPreset = FmPreset {
+    ratio: 4.0,
+    start: 2.0,
+    end: 0.15,
+    fall: 8.0,
 };
 
 /// How much of each pass around the string survives (higher rings longer).
@@ -95,6 +113,8 @@ impl Oscillator {
             9 => Some(Self::Bass808),
             10 => Some(Self::Pulse25),
             11 => Some(Self::Noise),
+            12 => Some(Self::FmMarimba),
+            13 => Some(Self::FmVibraphone),
             _ => None,
         }
     }
@@ -357,6 +377,8 @@ impl VoiceState {
         let supersaw_right = SUPERSAW_PANS.map(|pan| pan_gain(pan, 0.0)); // sin
         let fm = match voice.oscillator {
             Oscillator::FmPiano => FM_PIANO,
+            Oscillator::FmMarimba => FM_MARIMBA,
+            Oscillator::FmVibraphone => FM_VIBRAPHONE,
             _ => FM_BELL,
         };
         let modulator_frequency = voice.frequency * fm.ratio;
@@ -431,7 +453,10 @@ impl VoiceState {
                     sweep_phase += pitch / voice.sample_rate;
                     soft_clip(tone * BASS_808_DRIVE) / soft_clip(BASS_808_DRIVE)
                 }
-                Oscillator::FmBell | Oscillator::FmPiano => {
+                Oscillator::FmBell
+                | Oscillator::FmPiano
+                | Oscillator::FmMarimba
+                | Oscillator::FmVibraphone => {
                     let modulator_phase = clock * modulator_frequency;
                     let modulator = sine_cycle(modulator_phase - modulator_phase.floor());
                     let index = fm.end + (fm.start - fm.end) / (1.0 + time * fm.fall);
@@ -1179,6 +1204,8 @@ mod tests {
             Oscillator::Bass808,
             Oscillator::Pulse25,
             Oscillator::Noise,
+            Oscillator::FmMarimba,
+            Oscillator::FmVibraphone,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -1250,7 +1277,12 @@ mod tests {
     fn fm_gets_mellower_as_the_index_falls() {
         // Brightness as the share of sample-to-sample change (a rough high-frequency measure):
         // the start of an FM note must be brighter than its tail.
-        for oscillator in [Oscillator::FmBell, Oscillator::FmPiano] {
+        for oscillator in [
+            Oscillator::FmBell,
+            Oscillator::FmPiano,
+            Oscillator::FmMarimba,
+            Oscillator::FmVibraphone,
+        ] {
             let mut out = vec![0.0; 48_000];
             render_mono(&mut out, &voice(oscillator), 0, 48_000);
             let brightness = |range: &[f64]| {
