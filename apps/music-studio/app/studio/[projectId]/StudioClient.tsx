@@ -63,6 +63,7 @@ import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
 import { MixerDrawer } from "./MixerDrawer";
 import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
+import { DeviceChain } from "./DeviceChain";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
 import { InstrumentAdder, LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
@@ -178,6 +179,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [workspace, setWorkspace] = useState<Workspace>("arrangement");
   // Per track, whether its device's Modulation section is open (unset: open when it is in use).
   const [modulationOpen, setModulationOpen] = useState<Record<string, boolean>>({});
+  // v2 dock Devices tab: the track shown; it follows the clip being edited.
+  const [deviceTrackId, setDeviceTrackId] = useState<string | null>(null);
   const [mixerOpen, setMixerOpen] = useState(false);
   const [newInstrument, setNewInstrument] = useState("synaptix-pad");
   const mixerToggleRef = useRef<HTMLButtonElement>(null);
@@ -618,6 +621,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
   function openInDock(clip: ActiveClip): void {
     setActiveClip(clip);
+    setDeviceTrackId(null);
     panelLayout.update({ dockTab: "editor", dockOpen: true });
   }
   const [hint, setHint] = useState("Alt+1, Alt+2 and Alt+3 switch the dock · Alt+S switches Arrange and Adaptive states");
@@ -765,10 +769,20 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             <StudioDock tab={dockTab} open={dockOpen} onTab={chooseDockTab}
               height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax}
               onResize={(dockHeight) => panelLayout.update({ dockHeight })}
-              context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Every track" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
+              context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Device chain" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
               panels={{
                 editor: pianoRoll("daw") || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
-                devices: <DevicesWorkspace tracks={project.tracks} {...deviceControls} />,
+                devices: <DeviceChain tracks={project.tracks} trackId={deviceTrackId ?? activeClip?.trackId ?? null}
+                  onTrack={setDeviceTrackId} {...deviceControls}
+                  inserts={(chainTrack) => { const track = project.tracks.find((candidate) => candidate.id === chainTrack.id); return track && <PluginRack track={track}
+                    statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
+                    onExecute={(command) => void execute(command)}
+                    freeze={{ evidence: freezeEvidence, progress: freezeProgress, onFreeze: (trackId, deviceId) => void freezePlugin(trackId, deviceId) }}
+                    gestures={{
+                      begin: beginDeviceGesture,
+                      preview: previewDeviceParameter,
+                      end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
+                    }} />; }} />,
                 mixer: <MixerDrawer docked project={builtinView} engine={engine} storageStatus={storageStatus}
                   height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax} onResize={() => undefined}
                   syncLabel={syncLabel} onExecute={executeV1} onExport={() => setWorkspace("render")} onClose={() => undefined} />

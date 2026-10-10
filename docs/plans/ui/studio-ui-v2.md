@@ -133,7 +133,11 @@ Each step is one PR with its own visual baselines and UI tests.
      - FL Studio 2026's _renamable_ note labels would need a note field in the project schema, so they go with the key schema change below.
    - **Project key, next (decided 2026-10-10):** the key becomes project data so it travels with the project. That means a schema field in TypeScript/Zod, JSON Schema and Python, a command with undo, and the piano roll reading it, with Auto kept as the fallback. It is scheduled after step 5.
    - **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
-5. **Dock: Devices.** A left-to-right chain with knobs (arrow keys, double-click to reset) and foldable devices; Modulation folds as a device. The Devices workspace is removed. **Done when** every current parameter is reachable and the device-panel tests are ported.
+5. **Dock: Devices.** **Done.** The Devices tab shows one track's chain, left to right:
+   - **Devices:** Instrument (icon, on/off), Filter, Envelope (with an ADSR drawing), Modulation (folded unless in use; shares the classic panel's fold state), Reverb send, then the track's plug-in inserts. Drone tracks show their drone controls.
+   - **Track:** a Track picker, which follows the clip being edited.
+   - **Knobs** (`components/ui/Knob.tsx`, `role="slider"`): drag up and down, use the arrow keys or Page Up/Down, Home/End, or double-click to reset to the instrument's default. Each gesture is one command, the same one the classic sliders send. Cutoff moves logarithmically.
+   - The classic Devices page stays until step 9; the DAW layout no longer reaches it. Every parameter is reachable in the chain.
 6. **Dock: Mixer.** Channel strips with vertical faders, live meters, insert slots (the existing chain shown as slots), pan and reverb-send knobs, mute/solo and routing. Master shows loudness and peak. The mixer drawer is removed. **Done when** mixer tests are ported, and meters show peak and RMS per strip.
 7. **Browser and inspector.** Search; family groups; drag to add or swap a track; Patterns (starter phrases and generator output); Project (clips, renders). The inspector follows the selection. **Done when** dragging has a keyboard equivalent (Enter adds a track, Shift+Enter swaps), and the instrument-picker tests are ported.
 8. **Adaptive states, Generate, Export.** A Session-style states grid with intensity and a transitions strip, built on the existing adaptive graph; Generate as a drawer; Export as a dialog. **Done when** the adaptive authoring, generation and render UI tests are ported.
@@ -176,3 +180,4 @@ Each step is one PR with its own visual baselines and UI tests.
   - **Account:** the account control moved to the status bar so the transport bar stays on one row.
 - 2026-10-10: step 4a done (DAW piano roll: keyboard, one-row toolbar, scale shading, Chord Panel). The key is a view setting with auto-detect rather than project data.
 - 2026-10-10: step 4b done (tools, ghost notes, humanize, labels). The project owner decided the key should be project data; that work is scheduled after step 5.
+- 2026-10-10: step 5 done (device chain with knobs in the dock).

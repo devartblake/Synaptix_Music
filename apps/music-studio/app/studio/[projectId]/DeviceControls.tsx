@@ -35,7 +35,7 @@ type NumericSettingsKey =
   | "filterFrequency" | "resonance" | "attack" | "decay" | "sustain" | "release" | "reverbSend"
   | "lfoRate" | "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves" | "filterEnvDecay";
 
-const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
+export const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
   [FILTER_FREQUENCY_PARAMETER]: "filterFrequency",
   [FILTER_RESONANCE_PARAMETER]: "resonance",
   [LFO_RATE_PARAMETER]: "lfoRate",
@@ -52,17 +52,17 @@ const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
 };
 
 // Shown in the device panel's collapsible Modulation section.
-const MODULATION_PARAMETERS = new Set([
+export const MODULATION_PARAMETERS = new Set([
   FILTER_ENV_AMOUNT_PARAMETER, FILTER_ENV_DECAY_PARAMETER, LFO_RATE_PARAMETER,
   VIBRATO_PARAMETER, LFO_CUTOFF_PARAMETER, TREMOLO_PARAMETER
 ]);
 
 /** Whether any modulation is audible: rates and decay times do nothing while every depth is 0. */
-function modulationInUse(settings: Pick<Record<NumericSettingsKey, number>, "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves">): boolean {
+export function modulationInUse(settings: Pick<Record<NumericSettingsKey, number>, "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves">): boolean {
   return settings.vibratoCents > 0 || settings.lfoCutoffOctaves > 0 || settings.tremolo > 0 || settings.filterEnvOctaves !== 0;
 }
 
-function formatParameterValue(unit: DeviceParameterUnit, value: number): string {
+export function formatParameterValue(unit: DeviceParameterUnit, value: number): string {
   if (unit === "count") return String(Math.round(value));
   // Slow rates (an LFO) need their decimals; audio frequencies don't.
   if (unit === "hz") return value < 100 ? `${value.toFixed(2)} Hz` : `${Math.round(value)} Hz`;
@@ -96,9 +96,8 @@ export function DeviceControls({ track, hydrated, onExecute, modulationOpen, onM
       {(() => {
         const definitions = DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone"));
         const renderSlider = (definition: (typeof definitions)[number]) => {
-        const droneKeys: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
-        const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
-        const step = definition.unit === "count" || definition.unit === "cents" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : definition.maximum <= 20 ? 0.05 : 10) : definition.unit === "ratio" || definition.unit === "octaves" ? 0.01 : 0.001;
+        const value = isDrone ? settings[DRONE_SETTINGS_KEY[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
+        const step = parameterStep(definition);
         return (
           <CommitSlider key={definition.id} label={definition.label} value={value}
             min={definition.minimum} max={definition.maximum} step={step} disabled={!hydrated}
@@ -132,3 +131,11 @@ export function DevicesWorkspace({ tracks, onClose, ...controls }: Omit<DeviceCo
 }) {
   return <section aria-label="Devices and effects" className="device-workspace">{onClose && <><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p></>}{tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} deviceType={definition.deviceType} size={28} />{definition.label}</p>; })()}<DeviceControls track={track} {...controls} /></fieldset>)}{onClose && <Button onClick={onClose}>Back to arrangement</Button>}</section>;
 }
+
+/** The slider/knob step for a parameter. */
+export function parameterStep(definition: { id: string; unit: DeviceParameterUnit; maximum: number }): number {
+  return definition.unit === "count" || definition.unit === "cents" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : definition.maximum <= 20 ? 0.05 : 10) : definition.unit === "ratio" || definition.unit === "octaves" ? 0.01 : 0.001;
+}
+
+/** Drone parameter ids to their resolved-settings keys. */
+export const DRONE_SETTINGS_KEY: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
