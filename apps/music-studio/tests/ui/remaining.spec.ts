@@ -113,6 +113,19 @@ test("devices support keyboard history and the editing viewport has an accessibl
     "aria-pressed",
     "false"
   );
+  // Modulation the preset doesn't use stays tucked away until asked for. Once opened it stays open
+  // while being edited, even when the edit takes it back to unused (it must not snap shut).
+  const modulation = bass.locator("summary", { hasText: "Modulation" });
+  const tremolo = bass.getByRole("slider", { name: "Tremolo", exact: true });
+  await expect(tremolo).toBeHidden();
+  await modulation.press("Enter");
+  await tremolo.press("ArrowRight");
+  await expect(tremolo).toHaveValue("0.01");
+  await expect(modulation).toContainText("in use");
+  await tremolo.press("ArrowLeft");
+  await expect(tremolo).toHaveValue("0");
+  await expect(modulation).not.toContainText("in use");
+  await expect(tremolo).toBeVisible();
   expect(
     (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze())
       .violations
