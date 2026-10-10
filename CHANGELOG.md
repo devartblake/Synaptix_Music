@@ -7,6 +7,7 @@
 - **The DAW layout works on phones and tablets (Studio UI v2, step 9a).**
   - **Phones:** it's one column. Generate stays in the transport bar, and a **More** menu holds Export and the Browser and Inspector panels, which open over the timeline. Phones no longer fall back to the classic layout when the DAW layout is chosen.
   - **Tablets:** an **Inspector** button opens the inspector over the timeline, which couldn't be reached before.
+- **Cloud badges on the home page.** Projects in the **Cloud projects** list carry a white cloud badge. Local project cards that sync to the cloud (every project except the browser-only demo) carry a blue one beside their Generated, Edited or Hand-composed label.
 - **The DAW piano roll's Edit and Rename menus float.** They open above everything else, below their button or above it when there's more room there, so the dock's height no longer cuts them off or hides them under the Browser. They stay open while you edit, so you can press +1 repeatedly and watch the notes move. The Edit actions are laid out three across. Drag a menu's grip to move it anywhere on screen, or focus the grip and use the arrow keys (Shift for bigger steps). It reopens where you left it, and Home on the grip puts it back beside its button.
 - **Project cards show where the music came from.** Each local project on the home page is marked with its own colour, icon and label:
   - **Generated** (purple, ✦): made with the generator and not changed since.
