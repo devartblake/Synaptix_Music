@@ -308,6 +308,92 @@ test("selected notes are renamed and cleared as undoable edits, and their labels
   ).toEqual([]);
 });
 
+test("the piano roll's Edit menu floats above the dock, fully visible, and stays open for repeated edits", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
+  const note = roll.getByRole("group", { name: "MIDI notes" }).locator("[data-note-id]").first();
+  const id = await note.getAttribute("data-note-id");
+  const pitch = Number(await note.getAttribute("data-pitch"));
+  await note.click();
+
+  // At the default dock height the panel is taller than the dock: it must still be wholly on screen,
+  // and nothing (the dock edge, the Browser) may cover its controls.
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const panel = page.getByRole("group", { name: "Edit controls" });
+  const box = (await panel.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  for (const name of ["Duplicate", "Delete", "Stop sound"]) {
+    const control = panel.getByRole("button", { name, exact: true });
+    expect(await control.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    }), `${name} is covered`).toBe(true);
+  }
+
+  // The notes stay in view and the panel stays open, so +1 can be pressed again and again.
+  const moved = roll.locator(`[data-note-id="${id}"]`);
+  await panel.getByRole("button", { name: "Transpose up" }).click();
+  await expect(moved).toHaveAttribute("data-pitch", String(pitch + 1));
+  // Newer browsers blur a focused button that disables itself while its edit saves, with focus going
+  // nowhere; that must not close the panel. (Dispatched here so every browser exercises it.)
+  await panel.getByRole("button", { name: "Transpose up" }).evaluate((element) =>
+    element.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null })));
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: "Transpose up" }).click();
+  await expect(moved).toHaveAttribute("data-pitch", String(pitch + 2));
+  await expect(panel).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(roll.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
+
+  // The panel is movable: drag its grip, or use the arrow keys on it. It reopens where it was left,
+  // stays on screen, and Home puts it back beside its button.
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const grip = panel.getByRole("button", { name: "Move Edit panel" });
+  const start = (await panel.boundingBox())!;
+  const handle = (await grip.boundingBox())!;
+  await page.mouse.move(handle.x + 20, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 20 + 300, handle.y + handle.height / 2 - 120, { steps: 6 });
+  await page.mouse.up();
+  const dragged = (await panel.boundingBox())!;
+  expect(Math.round(dragged.x - start.x)).toBe(300);
+  expect(Math.round(dragged.y - start.y)).toBe(-120);
+  await grip.press("ArrowLeft");
+  await grip.press("Shift+ArrowDown");
+  const nudged = (await panel.boundingBox())!;
+  expect(Math.round(nudged.x - dragged.x)).toBe(-10);
+  expect(Math.round(nudged.y - dragged.y)).toBe(40);
+  // Dragging far off screen keeps it wholly visible.
+  const gripNow = (await grip.boundingBox())!;
+  await page.mouse.move(gripNow.x + 10, gripNow.y + gripNow.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(viewport.width + 500, -500, { steps: 4 });
+  await page.mouse.up();
+  const clamped = (await panel.boundingBox())!;
+  expect(clamped.x + clamped.width).toBeLessThanOrEqual(viewport.width);
+  expect(clamped.y).toBeGreaterThanOrEqual(0);
+  await page.keyboard.press("Escape");
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const reopened = (await panel.boundingBox())!;
+  expect(Math.round(reopened.x)).toBe(Math.round(clamped.x));
+  expect(Math.round(reopened.y)).toBe(Math.round(clamped.y));
+  await grip.press("Home");
+  const home = (await panel.boundingBox())!;
+  expect(Math.round(home.x)).toBe(Math.round(start.x));
+  expect(Math.round(home.y)).toBe(Math.round(start.y));
+});
+
 test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);

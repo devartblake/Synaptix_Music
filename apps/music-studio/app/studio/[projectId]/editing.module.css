@@ -578,6 +578,12 @@
   background: rgb(244 247 252 / 8%);
   pointer-events: none;
 }
+/* The DAW piano roll's Edit panel: three across (duplicate and transpose, clipboard, delete and stop). */
+.editActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
 .labelForm {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -626,7 +626,7 @@ function PianoRollEditor({
         <Button disabled={!selectedIds.length || pending} title="Nudge the selected notes' timing and velocity a little, at random"
           onClick={() => void onExecute(new HumanizeMidiNotesCommand(trackId, clip.id, selectedIds,
             { timingTicks: Math.max(1, Math.min(30, Math.round(gridTicks / 8))), velocity: 12, seed: (Date.now() & 0x7fffffff) || 1 }))}>Humanize</Button>
-        <DisclosureMenu label="Edit">{editActions}</DisclosureMenu>
+        <DisclosureMenu label="Edit" floating><div className={styles.editActions}>{editActions}</div></DisclosureMenu>
         {ghostCandidates.length > 0 && <label title="Show another track's notes faintly behind these">
           Ghost{" "}
           <select value={ghostTrackId} onChange={(event) => setGhostTrackId(event.target.value)}>
@@ -635,7 +635,7 @@ function PianoRollEditor({
           </select>
         </label>}
         <Button aria-pressed={labelsShown} onClick={() => setLabelsShown(!labelsShown)} title="Write each note's label, or its pitch, on it">Labels</Button>
-        <DisclosureMenu label="Rename">{labelForm}</DisclosureMenu>
+        <DisclosureMenu label="Rename" floating>{labelForm}</DisclosureMenu>
         <label className={styles.compactZoom}>H{" "}
           <input type="range" aria-label="Horizontal zoom" min={0.5} max={4} step={0.25} value={horizontalZoom}
             onChange={(event) => setHorizontalZoom(clampZoom(Number(event.target.value)))} />
