@@ -199,6 +199,17 @@ const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
   [REVERB_SEND_PARAMETER]: "reverbSend"
 };
 
+// Shown in the device panel's collapsible Modulation section.
+const MODULATION_PARAMETERS = new Set([
+  FILTER_ENV_AMOUNT_PARAMETER, FILTER_ENV_DECAY_PARAMETER, LFO_RATE_PARAMETER,
+  VIBRATO_PARAMETER, LFO_CUTOFF_PARAMETER, TREMOLO_PARAMETER
+]);
+
+/** Whether any modulation is audible: rates and decay times do nothing while every depth is 0. */
+function modulationInUse(settings: Pick<Record<NumericSettingsKey, number>, "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves">): boolean {
+  return settings.vibratoCents > 0 || settings.lfoCutoffOctaves > 0 || settings.tremolo > 0 || settings.filterEnvOctaves !== 0;
+}
+
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
 type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
 type ActiveClip = { trackId: string; clipId: string };
@@ -215,6 +226,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [historyVersion, setHistoryVersion] = useState(0);
   const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
   const [workspace, setWorkspace] = useState<Workspace>("arrangement");
+  // Per track, whether its device's Modulation section is open (unset: open when it is in use).
+  const [modulationOpen, setModulationOpen] = useState<Record<string, boolean>>({});
   const [mixerOpen, setMixerOpen] = useState(false);
   const [newInstrument, setNewInstrument] = useState("synaptix-pad");
   const mixerToggleRef = useRef<HTMLButtonElement>(null);
@@ -652,7 +665,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         <Button aria-label={`${track.name} device enabled`} aria-pressed={device.enabled} onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
           Device {device.enabled ? "On" : "Off"}
         </Button>
-        {DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone")).map((definition) => {
+        {(() => {
+          const definitions = DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone"));
+          const renderSlider = (definition: (typeof definitions)[number]) => {
           const droneKeys: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
           const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
           const step = definition.unit === "count" || definition.unit === "cents" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : definition.maximum <= 20 ? 0.05 : 10) : definition.unit === "ratio" || definition.unit === "octaves" ? 0.01 : 0.001;
@@ -664,7 +679,19 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                 ? liftEditorCommandToV2(new SetTrackSendEditorCommand(track.id, track.reverbSend, next))
                 : new SetDeviceParameterEditorCommand(track.id, device.id, definition.id, value, next))} />
           );
-        })}
+          };
+          if (isDrone) return definitions.map(renderSlider);
+          const modulation = definitions.filter((definition) => MODULATION_PARAMETERS.has(definition.id));
+          const inUse = modulationInUse(settings as ReturnType<typeof resolveEffectiveInstrumentSettings>);
+          return <>
+            {definitions.filter((definition) => !MODULATION_PARAMETERS.has(definition.id)).map(renderSlider)}
+            <details className="device-modulation" open={modulationOpen[track.id] ?? inUse}
+              onToggle={(event) => { const open = event.currentTarget.open; setModulationOpen((current) => current[track.id] === open ? current : { ...current, [track.id]: open }); }}>
+              <summary>Modulation{inUse && <span className="device-modulation-state"> · in use</span>}</summary>
+              <div className="device-modulation-controls">{modulation.map(renderSlider)}</div>
+            </details>
+          </>;
+        })()}
       </div>
     );
   }

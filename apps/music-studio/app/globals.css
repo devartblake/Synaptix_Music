@@ -257,3 +257,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .intensity-map meter { width: 100%; accent-color: var(--sx-accent); }
 .transition-graph { border-left: 3px solid var(--sx-accent); padding-left: 12px; overflow-wrap: anywhere; }
 @container (max-width: 700px) { .device-workspace { grid-template-columns: 1fr; padding: 16px; } }
+.device-modulation { border-top: 1px solid var(--sx-line); padding-top: 8px; }
+.device-modulation > summary { cursor: pointer; font-size: 0.85rem; font-weight: 600; padding: 4px 0; }
+.device-modulation-state { color: var(--sx-text-muted); font-weight: 400; }
+.device-modulation-controls { display: grid; gap: 6px; padding-top: 6px; }

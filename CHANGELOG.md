@@ -94,6 +94,10 @@
 
 - Studio sign-in uses SynaptixPlay's own studio routes (`/api/v1/auth/studio/login` and `/studio/refresh`), separate from the game clients: only the studio's server calls them, with `SYNAPTIX_PLATFORM_SERVICE_TOKEN` (the backend's `ServiceTokens:MusicStudio`), and the platform assigns the studio identity. Sessions now last: the studio's server keeps the refresh token in an HttpOnly cookie and renews the session a minute before the 8-minute access token ends, and when the studio is reopened (`PUT /api/auth/session`).
 
+### Changed
+
+- **Tidier device panel.** Each device now shows filter, envelope and reverb send first. The six modulation controls (Filter Envelope, Filter Env Decay, LFO Rate, Vibrato, LFO to Cutoff, Tremolo) move into a collapsible **Modulation** section. It starts open for presets that use modulation (such as Wobble Bass or FM Vibraphone), where it is marked "in use", and closed otherwise. It stays open while you edit, even if the edit takes it back to unused. A device without modulation is about a quarter shorter. The section is a native disclosure, so Tab and Enter work. The Devices visual baselines are updated.
+
 ### Fixed
 
 - The Drum Kit's starter beat now has a closed hat on every eighth note; it skipped beat 3 (#67).
