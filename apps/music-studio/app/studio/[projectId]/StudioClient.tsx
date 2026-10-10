@@ -699,7 +699,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </>;
       }} />
   );
-  const pianoRoll = activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine}
+  const pianoRoll = (variant?: "daw") => activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine} variant={variant}
     project={builtinView}
     trackId={activeClip.trackId}
     clipId={activeClip.clipId}
@@ -767,7 +767,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               onResize={(dockHeight) => panelLayout.update({ dockHeight })}
               context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Every track" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
               panels={{
-                editor: pianoRoll || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
+                editor: pianoRoll("daw") || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
                 devices: <DevicesWorkspace tracks={project.tracks} {...deviceControls} />,
                 mixer: <MixerDrawer docked project={builtinView} engine={engine} storageStatus={storageStatus}
                   height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax} onResize={() => undefined}
@@ -821,7 +821,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       </div>
 
       <div id="midi-view" role="tabpanel" aria-labelledby="midi-view-tab" hidden={!activeClip}>
-      {pianoRoll}
+      {pianoRoll()}
       </div>
       </>}
 

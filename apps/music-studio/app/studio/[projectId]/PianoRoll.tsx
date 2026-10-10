@@ -1,8 +1,8 @@
 "use client";
 
-import { Button, Panel, Toolbar } from "../../../components/ui/StudioControls";
+import { Button, DisclosureMenu, Panel, Toolbar } from "../../../components/ui/StudioControls";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AudioTransport } from "@synaptix/daw-engine";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
 import {
@@ -17,6 +17,7 @@ import {
   writeNoteClipboard
 } from "../../../lib/editor/note-clipboard";
 import { Playhead } from "./TransportPosition";
+import { chordName, chordTimeline, detectKey, inScale, keyLabel, PITCH_NAMES, SCALES, type MusicalKey, type ScaleMode } from "../../../lib/editor/music-theory";
 import styles from "./editing.module.css";
 
 import type { EditorCommand } from "@synaptix/command-system/editor";
@@ -67,6 +68,8 @@ export interface PianoRollProps {
   clipId: string;
   onExecute(command: EditorCommand): Promise<void>;
   onClose(): void;
+  /** The DAW layout (Studio UI v2): one-row toolbar, scale shading, Chord Panel, real keys. */
+  variant?: "daw";
 }
 
 function noteName(pitch: number): string {
@@ -80,7 +83,8 @@ export function PianoRoll({
   trackId,
   clipId,
   onExecute,
-  onClose
+  onClose,
+  variant
 }: PianoRollProps) {
   const track = project.tracks.find((value) => value.id === trackId);
   const clip = track?.clips.find((value) => value.id === clipId);
@@ -94,6 +98,7 @@ export function PianoRoll({
         clip={clip}
         onExecute={onExecute}
         onClose={onClose}
+        variant={variant}
       />
     );
   }
@@ -105,6 +110,7 @@ export function PianoRoll({
       clip={clip}
       onExecute={onExecute}
       onClose={onClose}
+      variant={variant}
     />
   );
 }
@@ -119,7 +125,8 @@ function DrumEditor({
   track,
   clip,
   onExecute,
-  onClose
+  onClose,
+  variant
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -127,6 +134,7 @@ function DrumEditor({
   clip: MidiClip;
   onExecute(command: EditorCommand): Promise<void>;
   onClose(): void;
+  variant?: "daw";
 }) {
   const [view, setView] = useState<"steps" | "piano-roll">("steps");
   if (view === "steps") {
@@ -152,6 +160,7 @@ function DrumEditor({
       onClose={onClose}
       noteLabel={(pitch) => drumNoteName(track, pitch)}
       onOpenSteps={() => setView("steps")}
+      variant={variant}
     />
   );
 }
@@ -164,7 +173,8 @@ function PianoRollEditor({
   onExecute: executeCommand,
   onClose,
   noteLabel,
-  onOpenSteps
+  onOpenSteps,
+  variant
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -176,7 +186,13 @@ function PianoRollEditor({
   noteLabel?(pitch: number): string | null;
   /** Drum tracks: back to the step sequencer. */
   onOpenSteps?(): void;
+  variant?: "daw";
 }) {
+  const daw = variant === "daw";
+  // Scale shading and chords are for pitched clips; drum notes are drums, not a key.
+  const tonal = daw && !noteLabel;
+  const [scaleSetting, setScaleSetting] = useScaleSetting(project.projectId);
+  const [chordsShown, setChordsShown] = useState(true);
   // "Kick (C1)" on drum tracks, "C4" otherwise.
   const describe = (pitch: number) => {
     const drum = noteLabel?.(pitch);
@@ -242,6 +258,16 @@ function PianoRollEditor({
     () => clip.notes.filter((note) => selected.has(note.id)).map((note) => note.id),
     [selected, clip.notes]
   );
+
+  const detectedKey = useMemo(() => detectKey(clip.notes), [clip.notes]);
+  const musicalKey: MusicalKey | null = !tonal || scaleSetting === "off" ? null
+    : scaleSetting === "auto" ? detectedKey : parseKey(scaleSetting);
+  const chords = useMemo(
+    () => tonal && chordsShown ? chordTimeline(clip.notes, project.transport.ticksPerQuarterNote / 2, clip.range.durationTicks) : [],
+    [tonal, chordsShown, clip.notes, clip.range.durationTicks, project.transport.ticksPerQuarterNote]
+  );
+  const selectedChord = tonal && selectedIds.length >= 3
+    ? chordName(clip.notes.filter((note) => selected.has(note.id)).map((note) => note.pitch)) : null;
 
   async function addNote(event: React.MouseEvent<HTMLDivElement>): Promise<void> {
     if (event.target !== event.currentTarget) return;
@@ -483,9 +509,59 @@ function PianoRollEditor({
     ? rectangleFromPoints(marquee.start, marquee.current)
     : null;
 
+  const editActions = <>
+    <Button disabled={!selectedIds.length || pending} onClick={() => void duplicate(selectedIds)}>Duplicate</Button>
+    <Button aria-label="Transpose down" disabled={!selectedIds.length || pending} onClick={() => void moveNotes(selectedIds, 0, -1)}>−1</Button>
+    <Button aria-label="Transpose up" disabled={!selectedIds.length || pending} onClick={() => void moveNotes(selectedIds, 0, 1)}>+1</Button>
+    <Button disabled={!selectedIds.length} onClick={() => copySelection(selectedIds)}>Copy</Button>
+    <Button disabled={!selectedIds.length || pending} onClick={() => void cutSelection(selectedIds)}>Cut</Button>
+    <Button disabled={!clipboardReady || pending} onClick={() => void paste()}>Paste</Button>
+    <Button disabled={!selectedIds.length || pending} onClick={() => void removeSelected()}>Delete</Button>
+    <Button title="Silence every sounding note" onClick={() => engine.allNotesOff()}>Stop sound</Button>
+  </>;
+
   return (
-    <Panel aria-label="Piano roll editor">
-      <Toolbar>
+    <Panel aria-label="Piano roll editor" data-variant={daw ? "daw" : undefined}>
+      {daw && <Toolbar>
+        <strong>{clip.name}</strong>
+        {onOpenSteps && <Button onClick={onOpenSteps}>Steps</Button>}
+        <label title="Play notes as you add, select, move, or press piano keys">
+          <input type="checkbox" checked={preview.enabled} onChange={(event) => preview.setEnabled(event.target.checked)} /> Preview
+        </label>
+        <label>
+          Grid{" "}
+          <select value={gridRatio} onChange={(event) => setGridRatio(Number(event.target.value))}>
+            {PIANO_ROLL_GRIDS.map((item) => <option key={item.label} value={item.ticks / 960}>{item.label}</option>)}
+          </select>
+        </label>
+        <label><input type="checkbox" checked={snapEnabled} onChange={(event) => setSnapEnabled(event.target.checked)} /> Snap</label>
+        {tonal && <label title="Shades the rows in the scale. Auto reads the key from this clip's notes.">
+          Scale{" "}
+          <select value={scaleSetting} onChange={(event) => setScaleSetting(event.target.value)}>
+            <option value="auto">Auto{detectedKey ? ` (${keyLabel(detectedKey)})` : ""}</option>
+            <option value="off">Off</option>
+            {PITCH_NAMES.flatMap((name, tonic) => (Object.keys(SCALES) as ScaleMode[]).map((mode) => (
+              <option key={`${tonic}:${mode}`} value={`${tonic}:${mode}`}>{name} {mode}</option>
+            )))}
+          </select>
+        </label>}
+        {tonal && <Button aria-pressed={chordsShown} onClick={() => setChordsShown(!chordsShown)} title="Name the chords along the clip">Chords</Button>}
+        <Button disabled={!selectedIds.length || pending}
+          onClick={() => void onExecute(new QuantizeMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))}>Quantize</Button>
+        <DisclosureMenu label="Edit">{editActions}</DisclosureMenu>
+        <label className={styles.compactZoom}>H{" "}
+          <input type="range" aria-label="Horizontal zoom" min={0.5} max={4} step={0.25} value={horizontalZoom}
+            onChange={(event) => setHorizontalZoom(clampZoom(Number(event.target.value)))} />
+        </label>
+        <label className={styles.compactZoom}>V{" "}
+          <input type="range" aria-label="Vertical zoom" min={0.5} max={3} step={0.25} value={verticalZoom}
+            onChange={(event) => setVerticalZoom(clampZoom(Number(event.target.value), 0.5, 3))} />
+        </label>
+        <span role="status" aria-label="Note selection">
+          {selectedIds.length} selected{selectedChord ? ` · ${selectedChord}` : ""}
+        </span>
+      </Toolbar>}
+      {!daw && <Toolbar>
         <strong>{clip.name}</strong>
         <Button onClick={onClose}>Arrangement</Button>
         {onOpenSteps && <Button onClick={onOpenSteps}>Steps</Button>}
@@ -583,8 +659,8 @@ function PianoRollEditor({
         <span role="status" aria-label="Note selection">
           {selectedIds.length} selected
         </span>
-      </Toolbar>
-      <Toolbar aria-label="Insert MIDI note">
+      </Toolbar>}
+      {!daw && <Toolbar aria-label="Insert MIDI note">
         <label>
           New note pitch{" "}
           <input
@@ -635,8 +711,8 @@ function PianoRollEditor({
         >
           Add note
         </Button>
-      </Toolbar>
-      <p className={styles.hint} id="note-keyboard-help">
+      </Toolbar>}
+      <p className={daw ? "visually-hidden" : styles.hint} id="note-keyboard-help">
         Space selects · Shift-click adds to selection · Arrows move · Shift + left/right resizes ·
         Shift + up/down moves an octave · Alt + left/right focuses notes · Ctrl/Cmd+A selects all ·
         Ctrl/Cmd+D duplicates · Ctrl/Cmd+C, X, V copy, cut and paste · Delete removes · Escape clears
@@ -673,6 +749,17 @@ function PianoRollEditor({
               )
             )}
           </div>
+          {tonal && chordsShown && (
+            <div className={styles.chordLane} style={{ marginLeft: 64 }} role="list" aria-label="Chords">
+              {chords.length === 0 && <span className={styles.chordEmpty}>No chords: three or more notes at once are named here.</span>}
+              {chords.map((chord) => (
+                <span key={chord.startTick} role="listitem" className={styles.chord}
+                  style={{ left: `${(chord.startTick / clip.range.durationTicks) * 100}%`, width: `${((chord.endTick - chord.startTick) / clip.range.durationTicks) * 100}%` }}>
+                  {chord.name}
+                </span>
+              ))}
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: `64px ${editorWidth}px` }}>
             <div className={styles.pianoKeys} aria-hidden="true">
               {Array.from({ length: rows }, (_, index) => {
@@ -682,11 +769,12 @@ function PianoRollEditor({
                     key={pitch}
                     className={styles.pianoKey}
                     data-black={[1, 3, 6, 8, 10].includes(pitch % 12)}
+                    data-in-scale={musicalKey ? inScale(musicalKey, pitch) : undefined}
                     style={{ height: rowHeight }}
                     title={describe(pitch)}
                     onPointerDown={() => preview.audition(pitch, velocity)}
                   >
-                    {noteLabel?.(pitch) ?? noteName(pitch)}
+                    {noteLabel?.(pitch) ?? (daw && pitch % 12 !== 0 ? "" : noteName(pitch))}
                   </div>
                 );
               })}
@@ -715,6 +803,12 @@ function PianoRollEditor({
                 backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${rowHeight - 1}px, var(--sx-line-soft) ${rowHeight - 1}px, var(--sx-line-soft) ${rowHeight}px), repeating-linear-gradient(to right, transparent 0, transparent calc(${(gridTicks / clip.range.durationTicks) * 100}% - 1px), var(--sx-line-soft) calc(${(gridTicks / clip.range.durationTicks) * 100}% - 1px), var(--sx-line-soft) ${(gridTicks / clip.range.durationTicks) * 100}%)`
               }}
             >
+              {musicalKey && Array.from({ length: rows }, (_, index) => highest - index)
+                .filter((pitch) => inScale(musicalKey, pitch))
+                .map((pitch) => (
+                  <div key={pitch} aria-hidden="true" className={styles.scaleRow}
+                    style={{ top: (highest - pitch) * rowHeight, height: rowHeight }} />
+                ))}
               <Playhead
                 engine={engine}
                 project={project}
@@ -887,4 +981,29 @@ function PianoRollEditor({
       </footer>
     </Panel>
   );
+}
+
+const SCALE_KEY = (projectId: string) => `synaptix-music:piano-roll-scale:v1:${projectId}`;
+
+/** "auto", "off" or "tonic:mode"; remembered per project in this browser (a view setting, not project data). */
+function useScaleSetting(projectId: string): [string, (value: string) => void] {
+  const [value, setValue] = useState("auto");
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SCALE_KEY(projectId));
+      if (stored && (stored === "auto" || stored === "off" || parseKey(stored))) setValue(stored);
+    } catch {
+      /* Without storage the scale starts at Auto. */
+    }
+  }, [projectId]);
+  return [value, (next) => {
+    setValue(next);
+    try { localStorage.setItem(SCALE_KEY(projectId), next); } catch { /* The choice lasts until reload. */ }
+  }];
+}
+
+function parseKey(value: string): MusicalKey | null {
+  const [tonic, mode] = value.split(":");
+  const pitch = Number(tonic);
+  return Number.isInteger(pitch) && pitch >= 0 && pitch < 12 && mode && mode in SCALES ? { tonic: pitch, mode: mode as ScaleMode } : null;
 }

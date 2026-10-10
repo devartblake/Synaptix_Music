@@ -117,7 +117,16 @@ Each step is one PR with its own visual baselines and UI tests.
    - **3a, done:** family-coloured track headers and clips (the colour follows what the track plays as, resolved like the audio engine does), a level meter in each header, dimmed muted tracks, compact rows, bar.beat and time counters in the transport bar, and an empty-project prompt that adds the chosen instrument. All of it is only in the DAW layout (`variant="daw"`). Dropped from the original list: the header mini-fader (volume is one Alt+3 away in the dock's mixer) and the arm button (there is no recording to arm). The "first beat" walkthrough link is also dropped, since no walkthrough exists.
    - **3b, done:** the loop brace (drag to set it, L to loop the selection) and the section-marker lane. Both are commands with undo, using the schema's existing `transport.loopRange` and `markers`.
    - **Done when** loop and markers are commands with undo, and meters animate during playback.
-4. **Dock: Piano roll.** Real keys; a one-row toolbar (Draw, Select, Slice, grid, snap, scale, chords, quantize, humanize, zoom); scale shading from the project key; ghost notes from one chosen track. The step sequencer opens automatically for drum clips. The "New note pitch/tick" form fields go away, since drawing replaces them. From FL Studio 2026: a Chord Panel toggled from the toolbar that names the chord under the playhead or selection, and optional note labels. **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
+4. **Dock: Piano roll.** Delivered in two parts.
+   - **4a, done:**
+     - **Keyboard:** keys look like a keyboard (black keys shorter, C rows labelled).
+     - **Toolbar:** one row (Preview, Grid, Snap, Scale, Chords, Quantize, an Edit menu with the clipboard, transpose and delete actions, compact zoom). The "New note pitch/tick" fields are gone, since drawing on the grid replaces them.
+     - **Scale shading:** shades the rows in the key.
+     - **Chord Panel** (from FL Studio 2026): a lane naming the chords along the clip, and the chord of the selected notes.
+     - **Key setting:** the project model has no key, so the scale is a per-project view setting remembered in the browser. It defaults to **Auto**, which detects the key from the clip's notes (`lib/editor/music-theory.ts`). This avoids a schema change across TypeScript, JSON Schema and Python.
+     - Drum clips keep their drum names and get no scale or chords. All of this is in the DAW layout only.
+   - **4b:** ghost notes from one chosen track, Draw/Select tools, humanize, and optional note labels (FL Studio 2026).
+   - **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
 5. **Dock: Devices.** A left-to-right chain with knobs (arrow keys, double-click to reset) and foldable devices; Modulation folds as a device. The Devices workspace is removed. **Done when** every current parameter is reachable and the device-panel tests are ported.
 6. **Dock: Mixer.** Channel strips with vertical faders, live meters, insert slots (the existing chain shown as slots), pan and reverb-send knobs, mute/solo and routing. Master shows loudness and peak. The mixer drawer is removed. **Done when** mixer tests are ported, and meters show peak and RMS per strip.
 7. **Browser and inspector.** Search; family groups; drag to add or swap a track; Patterns (starter phrases and generator output); Project (clips, renders). The inspector follows the selection. **Done when** dragging has a keyboard equivalent (Enter adds a track, Shift+Enter swaps), and the instrument-picker tests are ported.
@@ -159,3 +168,4 @@ Each step is one PR with its own visual baselines and UI tests.
   - **Loop:** drag across bars to set it; L loops the selected clip; × clears it. A loop that is switched off still shows as a dashed brace.
   - **Undo:** new `SetLoopRegionEditorCommand` and `SetMarkersEditorCommand` make each change one undo step.
   - **Account:** the account control moved to the status bar so the transport bar stays on one row.
+- 2026-10-10: step 4a done (DAW piano roll: keyboard, one-row toolbar, scale shading, Chord Panel). The key is a view setting with auto-detect rather than project data.

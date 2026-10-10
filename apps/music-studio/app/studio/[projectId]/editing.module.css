@@ -503,3 +503,60 @@
   background: rgb(246 184 74 / 22%);
   color: var(--sx-text);
 }
+
+/* DAW layout piano roll (Studio UI v2, step 4): keys that look like a keyboard (black keys
+   shorter, C labelled), in-scale rows shaded, and the Chord Panel lane. */
+[data-variant="daw"] .pianoKey {
+  position: relative;
+  background: #e6e9f0;
+  border-bottom-color: #aab1c0;
+}
+[data-variant="daw"] .pianoKey[data-black="true"] {
+  margin-right: 22px;
+  background: #151a24;
+  border-bottom-color: #151a24;
+  border-radius: 0 3px 3px 0;
+}
+[data-variant="daw"] .pianoKey[data-in-scale="true"]:not([data-black="true"]) {
+  box-shadow: inset -4px 0 0 var(--sx-primary-strong);
+}
+[data-variant="daw"] .pianoKey[data-black="true"][data-in-scale="true"] {
+  box-shadow: inset -3px 0 0 var(--sx-primary-strong);
+}
+.scaleRow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgb(109 124 255 / 7%);
+  pointer-events: none;
+}
+.chordLane {
+  position: relative;
+  height: 24px;
+  border-bottom: 1px solid var(--sx-line);
+  background: var(--sx-surface);
+}
+.chord {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  overflow: hidden;
+  padding: 0 6px;
+  border-left: 2px solid var(--sx-active);
+  border-radius: 0 3px 3px 0;
+  background: rgb(39 215 196 / 12%);
+  color: var(--sx-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.chordEmpty {
+  display: block;
+  padding: 4px 8px;
+  color: var(--sx-text-muted);
+  font-size: 11px;
+}
+.compactZoom input {
+  width: 70px;
+}
