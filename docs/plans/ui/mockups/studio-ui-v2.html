@@ -1,0 +1,1400 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Studio UI v2 mockup</title>
+    <!--
+  Static mockup for docs/plans/ui/studio-ui-v2.md. Not app code.
+  Variants: ?dock=editor|mixer|devices (default editor) and ?view=arrange|states.
+  Colours are the studio's existing tokens (apps/music-studio/app/globals.css) and instrument-family
+  accents (InstrumentIcon.tsx); nothing new.
+-->
+    <style>
+      :root {
+        --sx-canvas: #090b11;
+        --sx-surface: #10141d;
+        --sx-surface-raised: #171d28;
+        --sx-surface-hover: #1d2533;
+        --sx-line: #293244;
+        --sx-line-soft: #202838;
+        --sx-text: #f4f7fc;
+        --sx-text-muted: #98a3b7;
+        --sx-primary: #6d7cff;
+        --sx-primary-strong: #8994ff;
+        --sx-secondary: #9b5cff;
+        --sx-active: #27d7c4;
+        --sx-warning: #f6b84a;
+        --sx-danger: #ff5263;
+        --drums: #ff7a59;
+        --sub-bass: #9b5cff;
+        --bass: #6379ff;
+        --lead: #27d7c4;
+        --pad: #8fb8ff;
+        --pluck: #f6b84a;
+        --keys: #ff6fae;
+        --bell: #7ee3ff;
+        --fx: #b0f06a;
+        --poly: #8994ff;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--sx-canvas);
+        color: var(--sx-text);
+        font-size: 12px;
+      }
+      .app {
+        display: grid;
+        grid-template-rows: 48px 1fr 24px;
+        height: 100vh;
+      }
+      button {
+        white-space: nowrap;
+        font: inherit;
+        color: var(--sx-text);
+        background: var(--sx-surface-raised);
+        border: 1px solid var(--sx-line);
+        border-radius: 6px;
+        height: 26px;
+        padding: 0 9px;
+      }
+      .muted {
+        color: var(--sx-text-muted);
+      }
+
+      /* Transport bar */
+      .transport {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 12px;
+        background: var(--sx-surface);
+        border-bottom: 1px solid var(--sx-line);
+      }
+      .logo {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: linear-gradient(135deg, var(--sx-primary), var(--sx-secondary));
+      }
+      .project {
+        display: grid;
+        line-height: 1.2;
+        margin-right: 6px;
+        white-space: nowrap;
+      }
+      .project b {
+        font-size: 13px;
+      }
+      .group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        border-left: 1px solid var(--sx-line-soft);
+      }
+      .tbtn {
+        width: 30px;
+        padding: 0;
+        display: grid;
+        place-items: center;
+      }
+      .tbtn.play {
+        color: var(--sx-active);
+        border-color: var(--sx-active);
+      }
+      .tbtn.rec {
+        color: var(--sx-danger);
+      }
+      .tbtn.on {
+        background: #1f2a4a;
+        border-color: var(--sx-primary);
+      }
+      .lcd {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        background: #06080d;
+        border: 1px solid var(--sx-line);
+        border-radius: 6px;
+        padding: 3px 9px;
+        display: grid;
+        line-height: 1.15;
+        min-width: 74px;
+      }
+      .lcd b {
+        color: var(--sx-active);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .lcd span {
+        font-size: 9px;
+        color: var(--sx-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+      }
+      .seg {
+        display: flex;
+        border: 1px solid var(--sx-line);
+        border-radius: 7px;
+        overflow: hidden;
+      }
+      .seg button {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        height: 26px;
+      }
+      .seg button.sel {
+        background: var(--sx-primary);
+        color: #fff;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .gen {
+        border-color: var(--sx-secondary);
+        color: #d9c6ff;
+      }
+      .meter-h {
+        width: 120px;
+        height: 8px;
+        border-radius: 4px;
+        background: #06080d;
+        overflow: hidden;
+        display: flex;
+      }
+      .meter-h i {
+        display: block;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--sx-active) 70%,
+          var(--sx-warning) 90%,
+          var(--sx-danger)
+        );
+      }
+      .sync {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--sx-active);
+      }
+
+      /* Body */
+      .body {
+        display: grid;
+        grid-template-columns: 232px 1fr 248px;
+        min-height: 0;
+      }
+      .panel {
+        background: var(--sx-surface);
+        border-right: 1px solid var(--sx-line);
+        min-height: 0;
+        overflow: hidden;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--sx-line-soft);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--sx-text-muted);
+      }
+
+      /* Browser */
+      .search {
+        margin: 8px 10px;
+        height: 28px;
+        border: 1px solid var(--sx-line);
+        border-radius: 6px;
+        background: #0b0e15;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        color: var(--sx-text-muted);
+      }
+      .tabs {
+        display: flex;
+        gap: 2px;
+        padding: 0 10px 6px;
+      }
+      .tabs span {
+        padding: 4px 8px;
+        border-radius: 5px;
+        color: var(--sx-text-muted);
+      }
+      .tabs span.sel {
+        background: var(--sx-surface-raised);
+        color: var(--sx-text);
+      }
+      .family {
+        padding: 6px 10px 2px;
+        color: var(--sx-text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .family::before {
+        content: "▾";
+      }
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 10px 4px 22px;
+      }
+      .item i {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+      }
+      .item.hot {
+        background: var(--sx-surface-hover);
+      }
+      .item small {
+        margin-left: auto;
+        color: var(--sx-text-muted);
+      }
+      .hint {
+        margin: 8px 10px;
+        padding: 8px;
+        border: 1px dashed var(--sx-line);
+        border-radius: 6px;
+        color: var(--sx-text-muted);
+      }
+
+      /* Centre */
+      .centre {
+        display: grid;
+        grid-template-rows: 1fr 6px var(--dock, 330px);
+        min-height: 0;
+        background: var(--sx-canvas);
+      }
+      .timeline {
+        display: grid;
+        grid-template-columns: 224px 1fr;
+        grid-template-rows: 22px 26px 1fr;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .corner {
+        grid-row: 1 / 3;
+        border-right: 1px solid var(--sx-line);
+        border-bottom: 1px solid var(--sx-line);
+        background: var(--sx-surface);
+        display: flex;
+        align-items: end;
+        gap: 6px;
+        padding: 6px 8px;
+      }
+      .markers,
+      .ruler {
+        position: relative;
+        border-bottom: 1px solid var(--sx-line-soft);
+        background: var(--sx-surface);
+      }
+      .marker {
+        position: absolute;
+        top: 3px;
+        height: 16px;
+        border-radius: 4px;
+        padding: 0 6px;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 16px;
+        background: #1a2133;
+        border-left: 3px solid var(--sx-secondary);
+      }
+      .ruler span {
+        position: absolute;
+        top: 6px;
+        font-size: 10px;
+        color: var(--sx-text-muted);
+        transform: translateX(4px);
+      }
+      .ruler .tick {
+        position: absolute;
+        bottom: 0;
+        width: 1px;
+        height: 7px;
+        background: var(--sx-line);
+      }
+      .loop {
+        position: absolute;
+        top: 0;
+        height: 8px;
+        background: rgb(246 184 74 / 35%);
+        border: 1px solid var(--sx-warning);
+        border-radius: 0 0 3px 3px;
+      }
+      .headers {
+        border-right: 1px solid var(--sx-line);
+        background: var(--sx-surface);
+      }
+      .lanes {
+        position: relative;
+      }
+      .row {
+        height: 58px;
+        border-bottom: 1px solid var(--sx-line-soft);
+      }
+      .th {
+        display: grid;
+        grid-template-columns: 4px 1fr auto;
+        gap: 0 8px;
+        align-items: center;
+        padding-right: 8px;
+      }
+      .th .color {
+        height: 100%;
+      }
+      .th .name {
+        display: grid;
+        gap: 4px;
+        padding: 6px 0;
+      }
+      .th .name b {
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .th .ctrls {
+        display: flex;
+        gap: 3px;
+        align-items: center;
+      }
+      .th .ctrls span {
+        width: 20px;
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid var(--sx-line);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        color: var(--sx-text-muted);
+      }
+      .th .ctrls span.arm {
+        color: var(--sx-danger);
+      }
+      .th .ctrls span.mute-on {
+        background: var(--sx-warning);
+        color: #111;
+        border-color: var(--sx-warning);
+      }
+      .minifader {
+        width: 90px;
+        height: 4px;
+        background: #06080d;
+        border-radius: 2px;
+        position: relative;
+      }
+      .minifader::after {
+        content: "";
+        position: absolute;
+        left: var(--v);
+        top: -4px;
+        width: 4px;
+        height: 12px;
+        border-radius: 2px;
+        background: var(--sx-text);
+      }
+      .meter-v {
+        width: 6px;
+        height: 40px;
+        background: #06080d;
+        border-radius: 2px;
+        position: relative;
+        overflow: hidden;
+      }
+      .meter-v i {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(
+          0deg,
+          var(--sx-active) 60%,
+          var(--sx-warning) 85%,
+          var(--sx-danger)
+        );
+      }
+      .th.sel {
+        background: #161c2b;
+      }
+      .lane {
+        position: relative;
+      }
+      .gridlines {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .clip {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        border-radius: 5px;
+        overflow: hidden;
+        border: 1px solid;
+        background: color-mix(in srgb, var(--c) 22%, #0d1018);
+        border-color: color-mix(in srgb, var(--c) 70%, transparent);
+      }
+      .clip header {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        background: color-mix(in srgb, var(--c) 55%, #0d1018);
+        color: #0a0c12;
+        white-space: nowrap;
+      }
+      .clip.sel {
+        outline: 2px solid #fff;
+        outline-offset: -1px;
+      }
+      .clip svg {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 16px;
+        bottom: 0;
+      }
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--sx-active);
+        box-shadow: 0 0 8px var(--sx-active);
+      }
+      .splitter {
+        background: var(--sx-line-soft);
+        cursor: row-resize;
+        border-top: 1px solid var(--sx-line);
+      }
+
+      /* Dock */
+      .dock {
+        display: grid;
+        grid-template-rows: 32px 1fr;
+        min-height: 0;
+        background: var(--sx-surface);
+      }
+      .dock-tabs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--sx-line);
+      }
+      .dock-tabs .t {
+        padding: 6px 12px;
+        border-radius: 6px 6px 0 0;
+        color: var(--sx-text-muted);
+      }
+      .dock-tabs .t.sel {
+        color: var(--sx-text);
+        background: var(--sx-canvas);
+        box-shadow: inset 0 2px 0 var(--sx-primary);
+      }
+      .dock-tabs .ctx {
+        margin-left: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dock-tabs kbd {
+        font-size: 9px;
+        color: var(--sx-text-muted);
+        border: 1px solid var(--sx-line);
+        border-radius: 3px;
+        padding: 0 3px;
+        margin-left: 4px;
+      }
+      .dock-body {
+        min-height: 0;
+        overflow: hidden;
+        background: var(--sx-canvas);
+      }
+
+      /* Piano roll */
+      .pr {
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        grid-template-rows: 30px 1fr 64px;
+        height: 100%;
+      }
+      .pr-tools {
+        grid-column: 1 / 3;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--sx-line-soft);
+        background: var(--sx-surface);
+      }
+      .pill {
+        border: 1px solid var(--sx-line);
+        border-radius: 5px;
+        padding: 3px 7px;
+        color: var(--sx-text-muted);
+      }
+      .pill.sel {
+        color: var(--sx-text);
+        border-color: var(--sx-primary);
+        background: #1b2240;
+      }
+      .keys {
+        position: relative;
+        border-right: 1px solid var(--sx-line);
+        background: #d9dde6;
+        overflow: hidden;
+      }
+      .key {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-bottom: 1px solid #aab0bd;
+        font-size: 8px;
+        color: #333;
+        padding-left: 36px;
+        display: flex;
+        align-items: center;
+      }
+      .key.black {
+        right: 26px;
+        background: #141821;
+        border: 0;
+        z-index: 2;
+      }
+      .notes {
+        position: relative;
+        overflow: hidden;
+      }
+      .row-bg {
+        position: absolute;
+        left: 0;
+        right: 0;
+      }
+      .note {
+        position: absolute;
+        height: 9px;
+        border-radius: 2px;
+        background: var(--lead);
+        border: 1px solid #0b5f56;
+      }
+      .note.ghost {
+        background: transparent;
+        border: 1px dashed rgb(39 215 196 / 45%);
+      }
+      .vel {
+        grid-column: 2;
+        position: relative;
+        border-top: 1px solid var(--sx-line);
+        background: var(--sx-surface);
+      }
+      .vel i {
+        position: absolute;
+        bottom: 4px;
+        width: 3px;
+        background: var(--lead);
+        border-radius: 1px;
+      }
+      .vel-label {
+        grid-column: 1;
+        grid-row: 3;
+        border-top: 1px solid var(--sx-line);
+        border-right: 1px solid var(--sx-line);
+        background: var(--sx-surface);
+        padding: 6px;
+        color: var(--sx-text-muted);
+        font-size: 10px;
+      }
+      .scale-row {
+        background: rgb(109 124 255 / 6%);
+      }
+
+      /* Mixer */
+      .mixer {
+        display: flex;
+        gap: 6px;
+        padding: 8px;
+        height: 100%;
+        overflow: hidden;
+      }
+      .strip {
+        width: 92px;
+        flex: none;
+        background: var(--sx-surface);
+        border: 1px solid var(--sx-line);
+        border-radius: 8px;
+        display: grid;
+        grid-template-rows: 22px 18px 18px auto 1fr 22px 22px;
+        gap: 6px;
+        padding: 6px;
+      }
+      .strip.sel {
+        border-color: var(--sx-primary);
+      }
+      .strip.master {
+        width: 110px;
+        border-color: var(--sx-line);
+      }
+      .strip .label {
+        font-weight: 700;
+        font-size: 11px;
+        border-top: 3px solid var(--c);
+        padding-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .slot {
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid var(--sx-line);
+        font-size: 10px;
+        padding: 0 5px;
+        line-height: 16px;
+        color: var(--sx-text-muted);
+        background: #0b0e15;
+      }
+      .slot.full {
+        color: var(--sx-text);
+        border-color: #36405a;
+      }
+      .knobs {
+        display: flex;
+        justify-content: space-around;
+      }
+      .knob {
+        display: grid;
+        justify-items: center;
+        gap: 2px;
+        font-size: 9px;
+        color: var(--sx-text-muted);
+      }
+      .fader {
+        display: grid;
+        grid-template-columns: 1fr 8px 8px;
+        gap: 4px;
+        align-items: stretch;
+      }
+      .fader .track {
+        position: relative;
+        justify-self: center;
+        width: 4px;
+        background: #06080d;
+        border-radius: 2px;
+      }
+      .fader .cap {
+        position: absolute;
+        left: -9px;
+        width: 22px;
+        height: 12px;
+        border-radius: 3px;
+        background: #c9cfdb;
+        border: 1px solid #fff;
+      }
+      .fader .mv {
+        position: relative;
+        background: #06080d;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .fader .mv i {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(
+          0deg,
+          var(--sx-active) 60%,
+          var(--sx-warning) 85%,
+          var(--sx-danger)
+        );
+      }
+      .ms {
+        display: flex;
+        gap: 3px;
+      }
+      .ms span {
+        flex: 1;
+        text-align: center;
+        border: 1px solid var(--sx-line);
+        border-radius: 4px;
+        line-height: 20px;
+        font-size: 10px;
+      }
+      .route {
+        font-size: 9px;
+        color: var(--sx-text-muted);
+        text-align: center;
+      }
+
+      /* Devices */
+      .chain {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        padding: 12px;
+        height: 100%;
+        overflow: hidden;
+      }
+      .device {
+        background: var(--sx-surface);
+        border: 1px solid var(--sx-line);
+        border-radius: 8px;
+        display: grid;
+        grid-template-rows: 26px 1fr;
+        min-width: 170px;
+      }
+      .device header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--sx-line-soft);
+        font-weight: 700;
+      }
+      .device header .pw {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--sx-active);
+        box-shadow: 0 0 6px var(--sx-active);
+      }
+      .device header .fold {
+        margin-left: auto;
+        color: var(--sx-text-muted);
+      }
+      .device .content {
+        padding: 10px;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .device.folded {
+        min-width: 34px;
+        width: 34px;
+        grid-template-rows: 1fr;
+      }
+      .device.folded header {
+        writing-mode: vertical-rl;
+        border: 0;
+        padding: 8px 0;
+        justify-content: start;
+      }
+      .arrow {
+        align-self: center;
+        color: var(--sx-text-muted);
+        padding: 0 6px;
+        font-size: 14px;
+      }
+      .adsr {
+        width: 200px;
+        height: 90px;
+        background: #0b0e15;
+        border-radius: 6px;
+        border: 1px solid var(--sx-line-soft);
+      }
+
+      /* Inspector */
+      .inspector {
+        border-left: 1px solid var(--sx-line);
+        border-right: 0;
+      }
+      .sect {
+        border-bottom: 1px solid var(--sx-line-soft);
+        padding: 8px 10px;
+        display: grid;
+        gap: 6px;
+      }
+      .sect h4 {
+        margin: 0;
+        font-size: 11px;
+        color: var(--sx-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: flex;
+        justify-content: space-between;
+      }
+      .kv {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .kv span:last-child {
+        font-family: ui-monospace, Menlo, monospace;
+        background: #0b0e15;
+        border: 1px solid var(--sx-line);
+        border-radius: 4px;
+        padding: 1px 6px;
+      }
+      .swatches {
+        display: flex;
+        gap: 4px;
+      }
+      .swatches i {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+      }
+      .swatches i.sel {
+        outline: 2px solid #fff;
+      }
+      .collapsed h4::after {
+        content: "▸";
+      }
+
+      /* Status bar */
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 12px;
+        background: var(--sx-surface);
+        border-top: 1px solid var(--sx-line);
+        font-size: 11px;
+        color: var(--sx-text-muted);
+      }
+      .status b {
+        color: var(--sx-text);
+        font-weight: 600;
+      }
+
+      /* States view */
+      .states {
+        display: grid;
+        grid-template-columns: 150px repeat(6, 1fr);
+        grid-auto-rows: 64px;
+        gap: 4px;
+        padding: 8px;
+        overflow: hidden;
+      }
+      .states .colhead {
+        height: 28px;
+        align-self: end;
+        border-top: 3px solid var(--c);
+        background: var(--sx-surface);
+        border-radius: 4px;
+        padding: 4px 6px;
+        font-weight: 700;
+      }
+      .scene {
+        background: var(--sx-surface);
+        border: 1px solid var(--sx-line);
+        border-radius: 6px;
+        padding: 6px 8px;
+        display: grid;
+        align-content: center;
+        gap: 4px;
+      }
+      .scene b {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .scene b::before {
+        content: "▶";
+        color: var(--sx-active);
+        font-size: 10px;
+      }
+      .scene.live {
+        border-color: var(--sx-active);
+        box-shadow: inset 0 0 0 1px var(--sx-active);
+      }
+      .intensity {
+        height: 4px;
+        border-radius: 2px;
+        background: #06080d;
+      }
+      .intensity i {
+        display: block;
+        height: 100%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, var(--sx-primary), var(--sx-danger));
+      }
+      .slotc {
+        border-radius: 6px;
+        border: 1px solid var(--sx-line-soft);
+        background: #0d1018;
+        display: grid;
+        align-content: center;
+        padding: 6px;
+        gap: 3px;
+      }
+      .slotc.filled {
+        background: color-mix(in srgb, var(--c) 22%, #0d1018);
+        border-color: color-mix(in srgb, var(--c) 65%, transparent);
+      }
+      .slotc.playing {
+        box-shadow: 0 0 0 2px var(--sx-active);
+      }
+      .slotc small {
+        color: var(--sx-text-muted);
+      }
+      .transitions {
+        grid-column: 1 / -1;
+        height: auto;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        background: var(--sx-surface);
+        border: 1px solid var(--sx-line);
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="transport">
+        <div class="logo"></div>
+        <div class="project">
+          <b>My First Track</b><span class="muted">Saved · revision 1088317</span>
+        </div>
+        <div class="group">
+          <button class="tbtn">⏮</button><button class="tbtn play">▶</button
+          ><button class="tbtn">■</button> <button class="tbtn rec">●</button
+          ><button class="tbtn on" title="Loop">⟲</button
+          ><button class="tbtn on" title="Metronome">♩</button>
+        </div>
+        <div class="group">
+          <div class="lcd"><b>9.1.1</b><span>Bar.beat</span></div>
+          <div class="lcd"><b>0:16.0</b><span>Time</span></div>
+          <div class="lcd"><b>120.00</b><span>BPM</span></div>
+          <div class="lcd"><b>4 / 4</b><span>Sig</span></div>
+          <div class="lcd"><b>C min</b><span>Key</span></div>
+        </div>
+        <div class="group"><button class="tbtn">↶</button><button class="tbtn">↷</button></div>
+        <div class="group seg" id="viewseg">
+          <button data-v="arrange">Arrange</button><button data-v="states">Adaptive states</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="gen">✦ Generate</button>
+        <button>Export</button>
+        <div class="group">
+          <span class="muted">Master</span>
+          <div class="meter-h"><i style="width: 62%"></i></div>
+        </div>
+        <div class="sync"><span class="dot"></span><span class="muted">Synced</span></div>
+      </header>
+
+      <div class="body">
+        <aside class="panel">
+          <div class="panel-head">Browser <span>⌕</span></div>
+          <div class="search">Search instruments, patterns…</div>
+          <div class="tabs">
+            <span class="sel">Instruments</span><span>Patterns</span><span>Project</span>
+          </div>
+          <div id="browser"></div>
+          <div class="hint">
+            Drag an instrument onto the timeline to add a track, or onto a track to swap it.
+          </div>
+        </aside>
+
+        <main class="centre" id="centre">
+          <section class="timeline" id="timeline"></section>
+          <div class="splitter"></div>
+          <section class="dock">
+            <nav class="dock-tabs" id="docktabs"></nav>
+            <div class="dock-body" id="dockbody"></div>
+          </section>
+        </main>
+
+        <aside class="panel inspector">
+          <div class="panel-head">Inspector <span>Clip</span></div>
+          <div class="sect">
+            <h4>Clip</h4>
+            <b>Supersaw Lead Starter</b>
+            <div class="kv"><span>Start</span><span>9.1.1</span></div>
+            <div class="kv"><span>Length</span><span>8 bars</span></div>
+            <div class="kv"><span>Loop</span><span>1 bar</span></div>
+            <div class="kv"><span>Transpose</span><span>+0 st</span></div>
+            <div class="kv"><span>Velocity</span><span>100</span></div>
+            <div class="swatches">
+              <i style="background: var(--drums)"></i><i style="background: var(--sub-bass)"></i
+              ><i style="background: var(--pad)"></i
+              ><i class="sel" style="background: var(--lead)"></i
+              ><i style="background: var(--pluck)"></i><i style="background: var(--keys)"></i
+              ><i style="background: var(--fx)"></i>
+            </div>
+          </div>
+          <div class="sect">
+            <h4>Track</h4>
+            <div class="kv"><span>Instrument</span><span>Supersaw Lead</span></div>
+            <div class="kv"><span>Output</span><span>Music bus</span></div>
+            <div class="kv"><span>Reverb send</span><span>0.25</span></div>
+            <div class="kv"><span>Role</span><span>Melody</span></div>
+          </div>
+          <div class="sect collapsed"><h4>Project</h4></div>
+          <div class="sect collapsed"><h4>Publication readiness</h4></div>
+          <div class="sect collapsed"><h4>Revision history</h4></div>
+        </aside>
+      </div>
+
+      <footer class="status">
+        <span id="hintbar"
+          ><b>Piano roll</b> · Drag to draw notes · Alt-drag to duplicate · Ctrl+scroll to
+          zoom</span
+        >
+        <span class="spacer"></span>
+        <span>Selected: <b>4 notes</b></span
+        ><span>Audio <b>48 kHz</b></span
+        ><span>Engine <b>1.2.0</b></span>
+      </footer>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const dock = params.get("dock") ?? "editor";
+      const view = params.get("view") ?? "arrange";
+      const BARS = 16,
+        PX = (window.innerWidth - 232 - 248 - 224) / BARS;
+      const tracks = [
+        {
+          name: "Drum Kit",
+          c: "--drums",
+          meter: 78,
+          vol: "70%",
+          clips: [[1, 16, "Drum Kit Starter", "drums"]]
+        },
+        {
+          name: "808 Bass",
+          c: "--sub-bass",
+          meter: 64,
+          vol: "62%",
+          clips: [[5, 12, "808 Starter", "bass"]]
+        },
+        {
+          name: "Unison Pad",
+          c: "--pad",
+          meter: 40,
+          vol: "55%",
+          clips: [
+            [1, 8, "Pad Intro", "pad"],
+            [9, 16, "Pad Drop", "pad"]
+          ]
+        },
+        {
+          name: "Supersaw Lead",
+          c: "--lead",
+          meter: 70,
+          vol: "66%",
+          sel: true,
+          clips: [[9, 16, "Supersaw Lead Starter", "lead"]]
+        },
+        { name: "Riser FX", c: "--fx", meter: 22, vol: "50%", clips: [[7, 8, "Riser", "fx"]] },
+        {
+          name: "FM Marimba",
+          c: "--bell",
+          meter: 0,
+          vol: "58%",
+          muted: true,
+          clips: [[5, 8, "Marimba Arp", "lead"]]
+        }
+      ];
+      const el = (html) => {
+        const t = document.createElement("template");
+        t.innerHTML = html.trim();
+        return t.content;
+      };
+      const x = (bar) => (bar - 1) * PX;
+
+      // Transport view switch
+      document
+        .querySelectorAll("#viewseg button")
+        .forEach((b) => b.classList.toggle("sel", b.dataset.v === view));
+
+      // Browser
+      const families = [
+        ["Drums", "--drums", ["Drum Kit", "Drum Synth"]],
+        ["Bass", "--bass", ["808 Bass", "Acid Bass", "Wobble Bass", "Reese Bass", "Chip Triangle"]],
+        ["Leads", "--lead", ["Supersaw Lead", "Chiptune Lead", "NES Pulse", "Lead Synth"]],
+        ["Pads & strings", "--pad", ["Unison Pad", "Motion Pad", "Ensemble Strings"]],
+        ["Mallets & keys", "--bell", ["FM Marimba", "FM Vibraphone", "FM Electric Piano"]],
+        ["FX", "--fx", ["Riser FX", "Downsweep FX"]]
+      ];
+      document
+        .getElementById("browser")
+        .append(
+          el(
+            families
+              .map(
+                ([f, c, items]) =>
+                  `<div class="family">${f}</div>` +
+                  items
+                    .map(
+                      (n, i) =>
+                        `<div class="item${n === "FM Vibraphone" ? " hot" : ""}"><i style="background:var(${c})"></i>${n}${i === 0 ? "<small>★</small>" : ""}</div>`
+                    )
+                    .join("")
+              )
+              .join("")
+          )
+        );
+
+      // Note-ish drawings inside clips
+      function clipArt(kind, w) {
+        let s = "";
+        const n = Math.floor(w / 6);
+        for (let i = 0; i < n; i++) {
+          const xx = i * 6 + 3;
+          if (kind === "drums")
+            s += `<rect x="${xx}" y="${i % 4 === 0 ? 6 : i % 2 ? 22 : 14}" width="3" height="3"/>`;
+          else if (kind === "pad")
+            s +=
+              i % 16 === 0
+                ? `<rect x="${xx}" y="8" width="${6 * 15}" height="3"/><rect x="${xx}" y="16" width="${6 * 15}" height="3"/><rect x="${xx}" y="24" width="${6 * 15}" height="3"/>`
+                : "";
+          else if (kind === "fx")
+            s += `<rect x="${xx}" y="${30 - i * 0.8}" width="3" height="${i * 0.8}" />`;
+          else s += i % 2 ? "" : `<rect x="${xx}" y="${8 + ((i * 7) % 20)}" width="8" height="3"/>`;
+        }
+        return `<svg viewBox="0 0 ${w} 36" preserveAspectRatio="none" fill="currentColor" style="color:rgb(255 255 255 / 75%)">${s}</svg>`;
+      }
+
+      // Timeline
+      const tl = document.getElementById("timeline");
+      let ruler = "",
+        grid = "";
+      for (let b = 1; b <= BARS; b++) {
+        ruler += `<span style="left:${x(b)}px">${b}</span><i class="tick" style="left:${x(b)}px"></i>`;
+      }
+      for (let b = 1; b <= BARS; b++)
+        grid += `<line x1="${x(b)}" x2="${x(b)}" y1="0" y2="100%" stroke="${b % 4 === 1 ? "#293244" : "#1a2030"}"/>`;
+      tl.append(
+        el(`
+  <div class="corner"><button>+ Track</button><span class="muted">6 tracks</span></div>
+  <div class="markers">
+    <span class="marker" style="left:${x(1)}px">Intro</span><span class="marker" style="left:${x(5)}px">Build</span>
+    <span class="marker" style="left:${x(9)}px;border-left-color:var(--sx-active)">Drop</span><span class="marker" style="left:${x(15)}px">Outro</span>
+  </div>
+  <div class="ruler">${ruler}<div class="loop" style="left:${x(9)}px;width:${PX * 4}px"></div></div>
+  <div class="headers">${tracks
+    .map(
+      (t) => `
+    <div class="row th${t.sel ? " sel" : ""}">
+      <div class="color" style="background:var(${t.c})"></div>
+      <div class="name"><b>${t.name}</b><div class="minifader" style="--v:${t.vol}"></div></div>
+      <div class="ctrls"><span class="${t.muted ? "mute-on" : ""}">M</span><span>S</span><span class="arm">●</span><div class="meter-v"><i style="height:${t.meter}%"></i></div></div>
+    </div>`
+    )
+    .join("")}</div>
+  <div class="lanes">
+    <svg class="gridlines" width="100%" height="100%">${grid}</svg>
+    ${tracks
+      .map(
+        (t) =>
+          `<div class="row lane">${t.clips
+            .map(([a, b, n, k]) => {
+              const w = (b - a + 1) * PX - 2;
+              return `<div class="clip${t.sel ? " sel" : ""}" style="--c:var(${t.c});left:${x(a) + 1}px;width:${w}px;${t.muted ? "opacity:.45" : ""}"><header>${n}</header>${clipArt(k, w)}</div>`;
+            })
+            .join("")}</div>`
+      )
+      .join("")}
+    <div class="playhead" style="left:${x(9) + PX * 0.0}px"></div>
+  </div>`)
+      );
+
+      // Dock tabs
+      const tabs = [
+        ["editor", "Piano roll", "1"],
+        ["devices", "Devices", "2"],
+        ["mixer", "Mixer", "3"]
+      ];
+      document
+        .getElementById("docktabs")
+        .append(
+          el(
+            tabs
+              .map(
+                ([id, label, k]) =>
+                  `<span class="t${id === dock ? " sel" : ""}">${label}<kbd>Alt+${k}</kbd></span>`
+              )
+              .join("") +
+              `<span class="ctx muted">${dock === "mixer" ? "All tracks" : `<i style="width:8px;height:8px;border-radius:2px;background:var(--lead);display:inline-block"></i> Supersaw Lead · Supersaw Lead Starter`}</span><span class="spacer"></span><span class="muted">▾ collapse</span>`
+          )
+        );
+      const body = document.getElementById("dockbody");
+
+      if (dock === "editor") {
+        const lo = 60,
+          hi = 84,
+          rows = hi - lo + 1,
+          rh = 11;
+        const black = (n) => [1, 3, 6, 8, 10].includes(n % 12);
+        const scale = [0, 2, 3, 5, 7, 8, 10]; // C minor
+        let keys = "",
+          bg = "",
+          notes = "",
+          vel = "";
+        for (let p = hi, i = 0; p >= lo; p--, i++) {
+          const name =
+            ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][p % 12] +
+            (Math.floor(p / 12) - 1);
+          keys += `<div class="key${black(p) ? " black" : ""}" style="top:${i * rh}px;height:${rh}px">${p % 12 === 0 ? name : ""}</div>`;
+          bg += `<div class="row-bg${scale.includes(p % 12) ? " scale-row" : ""}" style="top:${i * rh}px;height:${rh}px;border-bottom:1px solid ${p % 12 === 0 ? "#293244" : "#151a26"}"></div>`;
+        }
+        const cell = (window.innerWidth - 232 - 248 - 64) / 32; // two bars of 1/16
+        const seq = [
+          [0, 72, 2],
+          [2, 75, 2],
+          [4, 79, 2],
+          [6, 75, 2],
+          [8, 84, 4],
+          [12, 82, 2],
+          [14, 79, 2],
+          [16, 77, 2],
+          [18, 79, 2],
+          [20, 75, 4],
+          [24, 74, 2],
+          [26, 72, 2],
+          [28, 70, 4]
+        ];
+        seq.forEach(([s, p, l], i) => {
+          notes += `<div class="note${i > 9 ? " ghost" : ""}" style="left:${s * cell + 1}px;top:${(hi - p) * rh + 1}px;width:${l * cell - 2}px;${[8, 9].includes(i) ? "outline:2px solid #fff" : ""}"></div>`;
+          vel += `<i style="left:${s * cell + 2}px;height:${36 + ((i * 13) % 20)}px"></i>`;
+        });
+        let beat = "";
+        for (let s = 0; s <= 32; s++)
+          beat += `<div style="position:absolute;top:0;bottom:0;left:${s * cell}px;width:1px;background:${s % 16 === 0 ? "#3a4560" : s % 4 === 0 ? "#222a3b" : "#131824"}"></div>`;
+        body.append(
+          el(`<div class="pr">
+    <div class="pr-tools">
+      <span class="pill sel">✎ Draw</span><span class="pill">⬚ Select</span><span class="pill">✂ Slice</span>
+      <span class="muted">|</span><span class="pill">Grid 1/16</span><span class="pill sel">Snap</span>
+      <span class="pill sel">Scale: C minor</span><span class="pill">Chords ▾</span><span class="pill">Quantize</span><span class="pill">Humanize</span>
+      <span class="spacer" style="flex:1"></span><span class="muted">Ghost notes: 808 Bass</span><span class="pill">− zoom +</span>
+    </div>
+    <div class="keys">${keys}</div>
+    <div class="notes">${bg}${beat}${notes}</div>
+    <div class="vel-label">Velocity ▾</div>
+    <div class="vel">${vel}</div>
+  </div>`)
+        );
+      } else if (dock === "mixer") {
+        const strip = (name, c, meter, cap, inserts, extra = "", sel = false) => `
+    <div class="strip${sel ? " sel" : ""}${name === "Master" ? " master" : ""}" style="--c:var(${c})">
+      <div class="label">${name}</div>
+      ${inserts.map((s) => `<div class="slot${s ? " full" : ""}">${s || "+ insert"}</div>`).join("")}
+      <div class="knobs">${knob("Pan", 0.5)}${knob("Rev", 0.3)}</div>
+      <div class="fader"><div class="track"><div class="cap" style="top:${cap}%"></div></div><div class="mv"><i style="height:${meter}%"></i></div><div class="mv"><i style="height:${Math.max(0, meter - 6)}%"></i></div></div>
+      <div class="ms"><span>M</span><span>S</span></div>
+      <div class="route">${extra}</div>
+    </div>`;
+        body.append(
+          el(`<div class="mixer">${tracks.map((t) => strip(t.name, t.c, t.meter, 100 - parseInt(t.vol), ["Filter", ""], t.name === "Drum Kit" ? "→ Drums bus" : "→ Music bus", t.sel)).join("")}
+    ${strip("Drums bus", "--sx-warning", 74, 30, ["Compressor", ""], "→ Master")}
+    ${strip("Music bus", "--sx-primary", 68, 30, ["Compressor", ""], "→ Master")}
+    ${strip("Reverb", "--sx-secondary", 35, 35, ["Reverb", ""], "→ Master")}
+    ${strip("Master", "--sx-active", 72, 28, ["Compressor", "Limiter"], "−6.2 LUFS · peak −1.1")}
+  </div>`)
+        );
+      } else {
+        body.append(
+          el(`<div class="chain">
+    <div class="device"><header><span class="pw"></span>Supersaw Lead<span class="fold">◂</span></header>
+      <div class="content">${knob("Detune", 0.55)}${knob("Voices", 1)}${knob("Spread", 0.8)}</div></div>
+    <span class="arrow">→</span>
+    <div class="device"><header><span class="pw"></span>Filter<span class="fold">◂</span></header>
+      <div class="content">${knob("Cutoff", 0.7, "7.0k")}${knob("Reso", 0.15)}<svg width="120" height="70" viewBox="0 0 120 70"><path d="M0 30 H70 Q85 18 95 40 T120 70" fill="none" stroke="var(--lead)" stroke-width="2"/></svg></div></div>
+    <span class="arrow">→</span>
+    <div class="device"><header><span class="pw"></span>Envelope<span class="fold">◂</span></header>
+      <div class="content"><svg class="adsr" viewBox="0 0 200 90"><path d="M8 82 L20 10 L60 40 L140 40 L190 82" fill="rgb(39 215 196 / 12%)" stroke="var(--lead)" stroke-width="2"/></svg>
+      <div style="display:grid;gap:4px" class="muted"><span>A 0.008 s</span><span>D 0.100 s</span><span>S 0.30</span><span>R 0.160 s</span></div></div></div>
+    <span class="arrow">→</span>
+    <div class="device folded"><header><span class="pw" style="background:var(--sx-text-muted);box-shadow:none"></span>Modulation · off</header></div>
+    <span class="arrow">→</span>
+    <div class="device"><header><span class="pw"></span>Reverb send<span class="fold">◂</span></header>
+      <div class="content">${knob("Send", 0.25)}</div></div>
+    <span class="arrow" style="color:var(--sx-primary)">＋</span>
+  </div>`)
+        );
+      }
+
+      function knob(label, v, text) {
+        const a0 = -225,
+          a = a0 + 270 * v,
+          r = 15,
+          c = 20;
+        const pt = (deg) => [
+          c + r * Math.cos((deg * Math.PI) / 180),
+          c + r * Math.sin((deg * Math.PI) / 180)
+        ];
+        const [x0, y0] = pt(a0),
+          [x1, y1] = pt(a);
+        const large = 270 * v > 180 ? 1 : 0;
+        return `<div class="knob"><svg width="40" height="40" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="15" fill="#0b0e15" stroke="#293244" stroke-width="3"/>
+    <path d="M${x0} ${y0} A15 15 0 ${large} 1 ${x1} ${y1}" fill="none" stroke="var(--sx-primary-strong)" stroke-width="3"/>
+    <line x1="20" y1="20" x2="${x1}" y2="${y1}" stroke="#f4f7fc" stroke-width="2"/></svg>${label}${text ? ` <b style="color:var(--sx-text)">${text}</b>` : ""}</div>`;
+      }
+
+      // Adaptive states view replaces the timeline (dock stays: the mixer is most useful here)
+      if (view === "states") {
+        const states = [
+          ["Calm", 20],
+          ["Question", 45],
+          ["Countdown", 75],
+          ["Correct!", 60],
+          ["Victory", 95]
+        ];
+        tl.replaceChildren(
+          el(`<div class="states" style="grid-column:1/-1;grid-row:1/-1">
+    <div></div>${tracks.map((t) => `<div class="colhead" style="--c:var(${t.c})">${t.name}</div>`).join("")}
+    ${states
+      .map(
+        ([s, n], r) =>
+          `<div class="scene${r === 2 ? " live" : ""}"><b>${s}</b><div class="intensity"><i style="width:${n}%"></i></div><small class="muted">Intensity ${n}</small></div>` +
+          tracks
+            .map((t, c) => {
+              const on = (r + c) % 3 !== 2 || r === 4;
+              return `<div class="slotc${on ? " filled" : ""}${r === 2 && on ? " playing" : ""}" style="--c:var(${t.c})">${on ? `<b style="font-size:11px">${t.name.split(" ")[0]} ${s}</b><small>4 bars · loop</small>` : `<small>—</small>`}</div>`;
+            })
+            .join("")
+      )
+      .join("")}
+    <div class="transitions"><b>Transitions</b><span class="pill">Calm → Question · next bar · 1-bar crossfade</span><span class="pill">Question → Countdown · on cue</span><span class="pill sel">Countdown → Correct! · stinger: Riser FX</span><span class="muted" style="margin-left:auto">Runtime preview ▶</span></div>
+  </div>`)
+        );
+        document.getElementById("hintbar").innerHTML =
+          "<b>Adaptive states</b> · Click a state to audition · Drag a clip into a slot · Cmd-click to set a transition";
+      }
+      if (dock === "mixer")
+        document.getElementById("hintbar").innerHTML =
+          "<b>Mixer</b> · Drag faders · Double-click to reset · Alt+3 toggles the mixer";
+      if (dock === "devices")
+        document.getElementById("hintbar").innerHTML =
+          "<b>Devices</b> · Drag knobs or use arrow keys · Click a header to fold a device";
+      document
+        .getElementById("centre")
+        .style.setProperty("--dock", view === "states" ? "300px" : "330px");
+    </script>
+  </body>
+</html>

@@ -157,6 +157,7 @@ Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted ma
 - [Current roadmap and status](docs/roadmap.md)
 - [Current architecture](docs/architecture/system-architecture.md)
 - [Studio UI baseline (screenshots)](docs/plans/ui/studio-ui-baseline-2026-10.md)
+- [Studio UI v2 redesign plan and mockup](docs/plans/ui/studio-ui-v2.md)
 - [Architecture decisions](docs/architecture/decisions/README.md)
 - [Implementation-stage index](docs/plans/implementation/README.md)
 - [Stage 12 deployment certification](docs/operations/stage-12-deployment-certification.md)
