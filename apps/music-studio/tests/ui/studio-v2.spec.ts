@@ -436,6 +436,8 @@ test("the DAW layout matches its visual baseline", async ({ page }) => {
   await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
   await page.locator(".studio-hint").evaluate((element) => { element.textContent = ""; });
+  // The account control appears after the platform check and changes the status bar's height.
+  await expect(page.locator(".studio-status-account")).toContainText("Sign in to SynaptixPlay");
   await expect(page).toHaveScreenshot("v2-arrange-editor.png", {
     animations: "disabled",
     caret: "hide",
