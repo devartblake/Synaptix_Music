@@ -50,18 +50,33 @@ This index records completed Synaptix Music implementation slices and the curren
 | Instrument slice 2                                                    |                        #64–#66 | Drum Kit (General MIDI map), 808 Bass and Chiptune Lead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Drum names, resonance, stereo, modulation, icons                      |                        #67–#71 | Drum names in the step sequencer and piano roll; a resonant filter on every instrument; the stereo voice path; the modulation system with Acid Bass and Motion Pad; distinct icons for the new instruments                                                                                                                                                                                                                                                                                                                                                                                   |
 | Generation instrument list and changelog                              |                       #72, #73 | Added the new instruments to the generation API's list (fixing main CI) and consolidated the CHANGELOG                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-
-## In Review
-
-These pull requests are open, stacked in this order, and green in CI or running at the revision date.
-
-| Work                               | Pull request | Result                                                                                                                                                                                                                        |
-| ---------------------------------- | -----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Instrument slice 3                 |      #74–#77 | Wobble Bass, Reese Bass, Ensemble Strings, Trance Pluck; Riser and Downsweep FX (noise oscillator, Filter Envelope ±6 octaves); FM Marimba and FM Vibraphone; NES Pulse and Chip Triangle. The catalog reaches 32 instruments |
 | Generator uses the new instruments |          #78 | Every playable catalog instrument offered in the generation API's role lists; role defaults unchanged                                                                                                                         |
 | Device panel tidy                  |          #79 | Modulation controls in a collapsible section, open when the preset uses modulation                                                                                                                                            |
 | Studio screenshots and UI v2 plan  |     #80, #81 | README screenshots, the studio UI baseline, and the Studio UI v2 plan with an HTML mockup                                                                                                                                     |
 | Studio UI v2, steps 1–3            |      #82–#85 | Split `StudioClient`; the DAW layout preview shell with transport bar, browser, dock, inspector and status bar; the coloured timeline with header meters and clock; section markers and a loop brace as undoable commands     |
+| Roadmap, ledger and README refresh | #86 | Brought the roadmap, this index, READMEs and the changelog up to date with the instruments and Studio UI v2 work |
+| Studio UI v2, step 4 (piano roll in the dock) | #87, #88 | Real keys, a one-row toolbar, scale shading and a Chord Panel; Select/Draw tools, ghost notes, humanize and note-name labels |
+| Project key | #90 | An optional project key in every schema; `SetProjectKeyEditorCommand`; generated arrangements set it; the piano roll's Scale menu saves it |
+| Studio UI v2, steps 5–6 (device chain, mixer strips) | #89, #92 | The dock's Devices tab as a left-to-right chain of knobs, and its Mixer tab as channel strips with buses and master |
+| Rust/WASM DAW research | #91 | Research and an architecture gap analysis for a Rust/WASM audio engine |
+| Studio UI v2, step 7 (browser and inspector) | #93 | Searchable, family-grouped instrument browser with add/swap/drag, Patterns and Project views; the inspector follows the selection |
+| Renamable note labels | #94 | An optional per-note `label` in every schema; `SetMidiNoteLabelCommand`; a Rename menu in the piano roll |
+| Studio UI v2, step 8 (adaptive states, Generate, Export) | #95 | A states grid with a transitions strip; Generate as a drawer; Export as a dialog (Ctrl/Cmd+E); the generation, export and adaptive UI tests run in both layouts; CI uploads UI test results on failure |
+| Floating, movable piano roll menus | #96 | The Edit and Rename menus open in the top layer, stay open for repeated edits, and move by their grip (drag or arrow keys) |
+| Project origin badges | #97 | Home-page cards marked Generated, Edited or Hand-composed, from an arrangement fingerprint stored when a generation is applied |
+| Browser view drop-down; home tab bar on phones | #99 | The Browser's views in one drop-down; the home page's floating tab bar on phones only |
+
+## In Review
+
+These pull requests are open, or about to be, at the revision date.
+
+| Work | Pull request | Result |
+| ---- | -----------: | ------ |
+| SynaptixPlay status in the DAW inspector | #98 | The inspector says whether the project's adaptive music is live in SynaptixPlay games (live version, publishing, not live, not published, unavailable) |
+| Studio UI v2, step 9a (phone layout) | opening | The DAW layout at every width: one column on phones with a More menu, and the Browser and inspector opening over the timeline; an Inspector button on tablets |
+
+Next: Studio UI v2 step 9b makes the DAW layout the default and removes the classic layout, after porting its remaining UI tests.
 
 ## Active Stage
 

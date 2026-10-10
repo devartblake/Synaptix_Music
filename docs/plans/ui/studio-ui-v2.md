@@ -151,7 +151,7 @@ Each step is one PR with its own visual baselines and UI tests.
      - **Schema:** an optional per-note `label` (1–32 characters) in TypeScript/Zod, both JSON Schemas and both Pydantic models. It is absent when unset, so existing projects keep their checksums.
      - **Editing:** `SetMidiNoteLabelCommand` names or clears the selected notes as one undo step; v2 projects run it through `liftEditorCommandToV2`. Copy and paste keep a note's label.
      - **Piano roll (DAW only):** a **Rename** menu next to **Labels** names the selected notes (a blank name or **Clear label** removes it). With **Labels** on, a note shows its label, else its pitch.
-7. **Browser and inspector.** **Done.** The DAW layout's Browser (`StudioBrowser.tsx`) has three tabs:
+7. **Browser and inspector.** **Done.** The DAW layout's Browser (`StudioBrowser.tsx`) has three views, chosen from a "Browser view" drop-down (first built as tabs, which wrapped in a narrow panel; #99):
    - **Instruments:** search (name, description or family) over the whole catalog, grouped by family. Click chooses; **Enter** or double-click adds a track; **Shift+Enter** swaps the selected clip's track. Drag onto a track to swap it, or elsewhere on the timeline to add one. Add and Swap buttons do the same.
    - **Swap** is a new undoable command (`SwapInstrumentEditorCommand`): the sounding device becomes the new instrument with default settings and a new device id. A track still named after its instrument takes the new name.
    - **Patterns:** adds the chosen instrument's starter phrase to the selected clip's track as a new clip, then opens it; Generator output opens the generator.
