@@ -132,6 +132,7 @@ class GenerationMetadata(StrictModel):
     seed: int
     createdAt: datetime
     prompt: str | None = None
+    arrangementFingerprint: str | None = Field(default=None, pattern=r"^fnv1a64:[0-9a-f]{16}$")
 
 
 class MixerChannel(StrictModel):

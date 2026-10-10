@@ -657,6 +657,10 @@
         },
         "prompt": {
           "type": "string"
+        },
+        "arrangementFingerprint": {
+          "type": "string",
+          "pattern": "^fnv1a64:[0-9a-f]{16}$"
         }
       }
     },
