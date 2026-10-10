@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectRevision } from "@synaptix/command-system";
 import { SetDeviceParameterEditorCommand } from "@synaptix/command-system/device";
-import { AddTrackEditorCommand } from "@synaptix/command-system/track";
+import { AddClipEditorCommand, AddTrackEditorCommand, SwapInstrumentEditorCommand } from "@synaptix/command-system/track";
 import {
   EditorCommandHistory,
   RenameProjectEditorCommand,
@@ -30,6 +30,7 @@ import {
   instrumentDefinition,
   primaryDevice,
   resolveInstrumentDefinition,
+  resolveTrackOutput,
   type PluginRuntimeStatus
 } from "@synaptix/daw-engine";
 import type { GenerationProposal } from "@synaptix/generator-contracts";
@@ -63,11 +64,12 @@ import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
 import { MixerDrawer } from "./MixerDrawer";
 import { DockMixer } from "./DockMixer";
+import { StudioBrowser } from "./StudioBrowser";
 import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
 import { DeviceChain } from "./DeviceChain";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
-import { InstrumentAdder, LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
+import { LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
 import { hintFor, SaveSyncStatus, StatusAccount, StudioDock, StudioStatusBar, StudioTransportBar } from "./StudioV2";
 import { StudioTopbar } from "./StudioTopbar";
 import { RenderWorkspace } from "./RenderWorkspace";
@@ -81,7 +83,7 @@ import { ArrangementTimeline } from "./ArrangementTimeline";
 import { TransportCounters, TransportPosition } from "./TransportPosition";
 import { INSTRUMENT_ACCENTS } from "./InstrumentIcon";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
-import { arrangementBars } from "../../../lib/editor/timeline-model";
+import { arrangementBars, barTicks } from "../../../lib/editor/timeline-model";
 import { describeSaveError } from "../../../lib/editor/storage-health";
 import { useStorageHealth } from "../../../lib/editor/use-storage-health";
 import {
@@ -177,6 +179,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [sync, setSync] = useState(INITIAL_SYNC);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [activeClip, setActiveClip] = useState<ActiveClip | null>(null);
+  // The DAW layout's timeline selection; the inspector and Browser follow it.
+  const [selectedClip, setSelectedClip] = useState<ActiveClip | null>(null);
   const [workspace, setWorkspace] = useState<Workspace>("arrangement");
   // Per track, whether its device's Modulation section is open (unset: open when it is in use).
   const [modulationOpen, setModulationOpen] = useState<Record<string, boolean>>({});
@@ -325,7 +329,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   useEffect(() => {
     // Close the piano roll if its track was deleted (or undone/redone away).
     if (activeClip && !project.tracks.some((track) => track.id === activeClip.trackId)) setActiveClip(null);
-  }, [project, activeClip]);
+    if (selectedClip && !project.tracks.some((track) => track.clips.some((clip) => clip.id === selectedClip.clipId))) setSelectedClip(null);
+  }, [project, activeClip, selectedClip]);
   useEffect(() => () => engine.dispose(), [engine]);
 
   useEffect(() => {
@@ -491,6 +496,16 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       ticksPerQuarterNote: project.transport.ticksPerQuarterNote
     })));
     setWorkspace("arrangement");
+  }
+
+  /** Swaps a track's instrument (DAW Browser); a track still named after its instrument takes the new name. */
+  async function swapInstrument(trackId: string, deviceType: string): Promise<void> {
+    const track = builtinView.tracks.find((candidate) => candidate.id === trackId);
+    const next = instrumentDefinition(deviceType);
+    if (!track || !next) return;
+    const current = (primaryDevice(track) ?? track.devices[0])?.deviceType;
+    const named = current !== undefined && instrumentDefinition(current)?.label === track.name;
+    await executeV1(new SwapInstrumentEditorCommand(trackId, deviceType, named ? { name: next.label } : {}));
   }
 
   /** Renders a first-party plug-in's output on the render worker and attaches it as a freeze. */
@@ -682,7 +697,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
     </section>
   ));
-  const timeline = (onEdit: (clip: ActiveClip) => void, daw?: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState">) => (
+  const timeline = (onEdit: (clip: ActiveClip) => void, daw?: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState" | "onSelect" | "onDropInstrument">) => (
     <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={onEdit} {...daw}
       renderControls={(track) => {
         const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
@@ -722,8 +737,20 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={toArrangement} onSync={async () => coordinatorRef.current?.drain()} />}
     {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} />}
   </>;
+  // DAW layout: the inspector and Browser follow the timeline selection, else the clip being edited.
+  const inspectedClip = selectedClip ?? activeClip;
+  const inspectedTrack = (inspectedClip && builtinView.tracks.find((track) => track.id === inspectedClip.trackId)) ?? null;
+  const inspectedClipData = inspectedTrack?.clips.find((clip) => clip.id === inspectedClip?.clipId);
+  const selection = panelLayout.v2 && inspectedTrack && inspectedClipData ? {
+    clip: inspectedClipData,
+    track: inspectedTrack,
+    instrument: resolveInstrumentDefinition((primaryDevice(inspectedTrack) ?? inspectedTrack.devices[0])?.deviceType ?? "", inspectedTrack.name).label,
+    output: { music: "Music bus", drums: "Drums bus", master: "Master" }[resolveTrackOutput(inspectedTrack)],
+    bars: Math.round(inspectedClipData.range.durationTicks / barTicks(builtinView)),
+    startBar: inspectedClipData.range.start.bar + 1
+  } : null;
   const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
-    bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel}
+    bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel} selection={selection}
     onOpenGenerator={() => setWorkspace("generation")} />;
 
   // DAW layout: a track takes its own colour, else its instrument family's (as the engine resolves it).
@@ -753,8 +780,12 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />
             <div className="studio-sidebar-scroll">
               <h2 className="panel-label">Browser</h2>
-              <InstrumentAdder newInstrument={newInstrument} onNewInstrument={setNewInstrument}
-                onAddInstrument={(deviceType) => void addInstrument(deviceType)} addDisabled={!hydrated} />
+              <StudioBrowser project={builtinView} value={newInstrument} onChange={setNewInstrument}
+                selectedTrack={inspectedTrack} disabled={!hydrated}
+                onAdd={(deviceType) => void addInstrument(deviceType)}
+                onSwap={(trackId, deviceType) => void swapInstrument(trackId, deviceType)}
+                onAddClip={(trackId, clip) => void executeV1(new AddClipEditorCommand(trackId, clip)).then(() => openInDock({ trackId, clipId: clip.id }))}
+                onOpenClip={openInDock} onOpenGenerator={() => setWorkspace("generation")} onExport={() => setWorkspace("render")} />
             </div>
           </aside>
           <div className="studio-v2-centre">
@@ -762,6 +793,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               {workspace === "arrangement" || workspace === "devices"
                 ? <>{conflictBanners}{timeline(openInDock, {
                   trackColor: dawTrackColor,
+                  onSelect: setSelectedClip,
+                  onDropInstrument: (deviceType, trackId) => void (trackId ? swapInstrument(trackId, deviceType) : addInstrument(deviceType)),
                   emptyState: <div className="timeline-empty">
                     <strong>Start with an instrument</strong>
                     <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>

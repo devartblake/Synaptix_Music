@@ -20,3 +20,15 @@ export class AddClipEditorCommand implements EditorCommand {
  execute(project:MusicProject){const n=clone(project); const track=n.tracks.find(t=>t.id===this.trackId); if(!track) throw new Error(`Track '${this.trackId}' was not found.`); if(track.clips.some(c=>c.id===this.clip.id)) throw new Error(`Clip '${this.clip.id}' already exists.`); track.clips.push(structuredClone(this.clip)); return n;}
  undo(project:MusicProject){const n=clone(project); const track=n.tracks.find(t=>t.id===this.trackId); if(track) track.clips=track.clips.filter(c=>c.id!==this.clip.id); return n;}
 }
+/**
+ * Swaps a track's instrument: its first enabled device (else its first) becomes `deviceType`
+ * with default parameters. The device gets a new id so nothing tied to the old instrument
+ * (plug-in fields, automation) carries over; undo puts the old device and name back.
+ */
+export class SwapInstrumentEditorCommand implements EditorCommand {
+ readonly id:string; readonly kind="swap-instrument";
+ private previous:{index:number;device:Track["devices"][number];name:string}|null=null;
+ constructor(readonly trackId:string, readonly deviceType:string, readonly options:{id?:string;name?:string}={}){this.id=options.id??crypto.randomUUID();}
+ execute(project:MusicProject){const n=clone(project); const track=n.tracks.find(t=>t.id===this.trackId); if(!track) throw new Error(`Track '${this.trackId}' was not found.`); const found=track.devices.findIndex(d=>d.enabled); const index=found<0?0:found; const device=track.devices[index]; if(!device) throw new Error(`Track '${this.trackId}' has no instrument to swap.`); this.previous={index,device:structuredClone(device),name:track.name}; track.devices[index]={id:`device-${this.id}`,deviceType:this.deviceType,deviceVersion:device.deviceVersion,enabled:true,parameters:[]}; if(this.options.name) track.name=this.options.name; return n;}
+ undo(project:MusicProject){if(!this.previous) throw new Error("SwapInstrumentEditorCommand must execute before it can be undone."); const n=clone(project); const track=n.tracks.find(t=>t.id===this.trackId); if(!track) throw new Error(`Track '${this.trackId}' was not found.`); track.devices[this.previous.index]=structuredClone(this.previous.device); track.name=this.previous.name; return n;}
+}

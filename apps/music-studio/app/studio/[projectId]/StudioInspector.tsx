@@ -2,10 +2,11 @@
 
 import { Button } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
+import type { Clip, Track } from "@synaptix/project-model";
 import type { useStudioLayout } from "../../../lib/editor/use-studio-layout";
 
 /** Right panel: project facts, the generator entry point and publication readiness. */
-export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm, syncLabel, onOpenGenerator }: {
+export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm, syncLabel, onOpenGenerator, selection }: {
   panelLayout: ReturnType<typeof useStudioLayout>;
   projectId: string;
   trackCount: number;
@@ -13,6 +14,8 @@ export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm,
   bpm: number;
   syncLabel: string;
   onOpenGenerator: () => void;
+  /** The DAW layout: the selected clip and its track, shown above the project facts. */
+  selection?: { clip: Clip; track: Track; instrument: string; output: string; bars: number; startBar: number } | null;
 }) {
   return (
     <aside id="studio-inspector" className="studio-inspector" aria-label="Project inspector" hidden={!panelLayout.inspectorVisible}>
@@ -20,6 +23,18 @@ export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm,
         value={panelLayout.layout.inspectorWidth} min={220} max={400} direction={-1}
         onChange={(inspectorWidth) => panelLayout.update({ inspectorWidth })} /></div>
       <div className="inspector-heading"><h2>Project inspector</h2><span className="inspector-chip">Live</span></div>
+      {selection && <section className="inspector-card inspector-selection" aria-label="Selection">
+        <strong>{selection.clip.name}</strong>
+        <dl className="property-list">
+          <div className="property-row"><dt>Track</dt><dd>{selection.track.name}</dd></div>
+          <div className="property-row"><dt>Instrument</dt><dd>{selection.instrument}</dd></div>
+          <div className="property-row"><dt>Starts</dt><dd>Bar {selection.startBar}</dd></div>
+          <div className="property-row"><dt>Length</dt><dd>{selection.bars} bars</dd></div>
+          <div className="property-row"><dt>Notes</dt><dd>{selection.clip.kind === "midi" ? selection.clip.notes.length : "Audio"}</dd></div>
+          <div className="property-row"><dt>Volume</dt><dd>{selection.track.volumeDb} dB</dd></div>
+          <div className="property-row"><dt>Output</dt><dd>{selection.output}</dd></div>
+        </dl>
+      </section>}
       <dl className="property-list">
         <div className="property-row"><dt>Project</dt><dd>{projectId}</dd></div>
         <div className="property-row"><dt>Tracks</dt><dd>{trackCount}</dd></div>
