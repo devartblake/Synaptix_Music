@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { z } from "zod";
 import type { AdaptiveGameAudioManifest, RenderJob } from "@synaptix/render-contracts";
 import {
   AdaptivePackagePublishResponseSchema,
   AdaptivePackageRevokeResponseSchema,
   AdaptivePackageVersionListSchema,
-  AdaptivePackageVersionSchema
+  AdaptivePackageVersionSchema,
+  type AdaptivePackageSharing
 } from "@synaptix/platform-contracts/adaptive-packages";
 import {
   createAdaptivePublication,
@@ -14,6 +15,7 @@ import {
   verifyAdaptiveEvidence,
   type VerifiedEvidence
 } from "../../../lib/platform/adaptive-evidence";
+import { loadSharing, reviewOf, shareableVersion, shareVersion, sharingDetail } from "../../../lib/platform/community-sharing";
 import { platformRequest } from "../../../lib/platform/platform-request";
 import { Button } from "../../../components/ui/StudioControls";
 
@@ -40,6 +42,10 @@ export function AdaptivePublication({
   const [versionMessage, setVersionMessage] = useState("Loading version history…");
   const [refresh, setRefresh] = useState(0);
   const [revokeReason, setRevokeReason] = useState("");
+  const [sharing, setSharing] = useState<AdaptivePackageSharing | null>(null);
+  const [sharingMessage, setSharingMessage] = useState<string | null>(null);
+  const [confirmingShare, setConfirmingShare] = useState(false);
+  const shareSwitchId = useId();
   let payload: ReturnType<typeof createAdaptivePublication> | null = null;
   let gate = "A valid draft is required.";
   try {
@@ -71,8 +77,29 @@ export function AdaptivePublication({
             `Version history unavailable: ${cause instanceof Error ? cause.message : "Try again."}`
           );
       });
+    // A package that was never published has no sharing yet: it's private.
+    setSharingMessage(null);
+    void loadSharing(packageId, platformRequest, controller.signal).then(
+      (value) => { if (!controller.signal.aborted) setSharing(value); },
+      (cause) => {
+        if (controller.signal.aborted) return;
+        setSharing(null);
+        setSharingMessage(`Sharing status unavailable: ${cause instanceof Error ? cause.message : "Try again."}`);
+      }
+    );
     return () => controller.abort();
   }, [packageId, refresh]);
+  const shared = sharing?.sharing === "shared";
+  const activeVersion = shareableVersion(versions);
+  const activeReview = sharing && activeVersion !== null ? reviewOf(sharing, activeVersion)?.review ?? "none" : null;
+  const canShare = !busy && activeVersion !== null && sharing !== null && sharing.kind === "community" && !sharing.takenDownAt;
+  const share = () =>
+    void run(async () => {
+      if (activeVersion === null) return;
+      setSharing(await shareVersion(packageId, activeVersion, platformRequest));
+      setConfirmingShare(false);
+      setMessage(`Sent version ${activeVersion} for review. Players can use it once SynaptixPlay approves it.`);
+    });
   async function run(work: () => Promise<void>) {
     setBusy(true);
     try {
@@ -202,6 +229,34 @@ export function AdaptivePublication({
       >
         Publish immutable version
       </Button>
+      <h3>Other players</h3>
+      <div className="studio-settings-row">
+        <input id={shareSwitchId} type="checkbox" role="switch" className="studio-switch"
+          checked={shared || confirmingShare} disabled={shared || !canShare}
+          aria-describedby={`${shareSwitchId}-description`}
+          onChange={(event) => setConfirmingShare(event.currentTarget.checked)} />
+        <label htmlFor={shareSwitchId}>Let other players use the music</label>
+        <p id={`${shareSwitchId}-description`}>
+          {sharing ? `${shared ? "Shared" : "Private"}. ${sharingDetail(sharing)}`
+            : !versions.length ? "Private. Only you can use this music."
+            : sharingMessage ?? "Checking sharing…"}
+          {!shared && activeVersion === null && " Publish a version and wait for it to finish first."}
+        </p>
+      </div>
+      {confirmingShare && !shared && activeVersion !== null && (
+        <div role="group" aria-label="Confirm sharing">
+          <p>
+            <strong>Sharing is final.</strong> Once shared, you can&apos;t unshare or remove this music, so
+            players keep what they&apos;ve added. SynaptixPlay reviews each version before players see it,
+            and your username is shown as the creator.
+          </p>
+          <Button disabled={busy} onClick={share}>Share version {activeVersion}</Button>{" "}
+          <Button disabled={busy} onClick={() => setConfirmingShare(false)}>Keep private</Button>
+        </div>
+      )}
+      {shared && canShare && (activeReview === "none" || activeReview === "rejected") && (
+        <Button disabled={busy} onClick={share}>Send version {activeVersion} for review</Button>
+      )}
       <h3>Immutable version history</h3>
       <Button disabled={busy} onClick={() => setRefresh((value) => value + 1)}>
         Refresh versions
@@ -211,6 +266,7 @@ export function AdaptivePublication({
         Revocation reason{" "}
         <input value={revokeReason} maxLength={500} onChange={(event) => setRevokeReason(event.target.value)} />
       </label>
+      {shared && <p>Shared music can&apos;t be revoked; only SynaptixPlay can take it down.</p>}
       {!versions.length && <p>No versions loaded.</p>}
       {versions.map((item) => (
         <p key={item.version}>
@@ -233,7 +289,7 @@ export function AdaptivePublication({
           </Button>{" "}
           {item.revisionId} · {item.createdAt} · <strong>{item.retentionStatus}</strong>
           {item.expiresAt && <> · expires {item.expiresAt}</>}{" "}
-          {item.retentionStatus !== "revoked" && (
+          {item.retentionStatus !== "revoked" && !shared && (
             <Button
               disabled={busy || !revokeReason.trim()}
               title="Players stop receiving this version; revoking the active version restores the previous one."

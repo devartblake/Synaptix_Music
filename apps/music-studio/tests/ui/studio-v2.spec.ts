@@ -629,11 +629,23 @@ test("the inspector's SynaptixPlay card says whether the music is live in games"
       { version: 2, revisionId: "earlier", projectChecksumSha256: "b".repeat(64), createdAt: "2026-10-05T12:00:00.000Z", retentionStatus: "active", expiresAt: null }
     ] })
     : route.fulfill({ status: 503, json: { message: "Platform unavailable" } }));
+  let shared = false;
+  await page.route(`**/api/platform/adaptive-packages/${packageId}/sharing`, (route) => route.fulfill({ json: {
+    packageId, kind: "community", sharing: shared ? "shared" : "private", sharedAt: shared ? "2026-10-05T12:00:00.000Z" : null,
+    takenDownAt: null, takedownReason: null,
+    versions: [{ version: 2, review: shared ? "approved" : "none", requestedAt: null, reviewedAt: null, reason: null }]
+  } }));
   await page.getByRole("button", { name: "Adaptive states", exact: true }).click();
   await page.getByRole("button", { name: "Arrange", exact: true }).click();
   await expect(card.getByRole("status")).toHaveText("Live in SynaptixPlay · version 2");
   await expect(card).toContainText("Games play version 2, published");
   await expect(card).toContainText("The project has changed since.");
+  // Whether other players can use it: private until shared.
+  await expect(card.locator(".publication-sharing")).toHaveText("Private · Only you can use this music.");
+  shared = true;
+  await page.getByRole("button", { name: "Adaptive states", exact: true }).click();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
+  await expect(card.locator(".publication-sharing")).toHaveText("Shared · Players can use version 2.");
 
   // When the platform can't answer, it says so and can check again.
   available = false;

@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-import type { AdaptivePackageVersionSummary } from "@synaptix/platform-contracts/adaptive-packages";
+import type { AdaptivePackageSharing, AdaptivePackageVersionSummary } from "@synaptix/platform-contracts/adaptive-packages";
 import { Button } from "../../../components/ui/StudioControls";
 import { platformRequest } from "../../../lib/platform/platform-request";
 import { isPlatformProjectId } from "@synaptix/project-storage/platform-sync";
+import { loadSharing, sharingDetail } from "../../../lib/platform/community-sharing";
 import { draftPackageId, findProjectPackageIds, loadPackageVersions, publicationStatus } from "../../../lib/platform/publication-status";
 
 type Versions =
   | { kind: "loading" }
   | { kind: "none" }
-  | { kind: "loaded"; versions: AdaptivePackageVersionSummary[] }
+  | { kind: "loaded"; versions: AdaptivePackageVersionSummary[]; sharing: AdaptivePackageSharing | null }
   | { kind: "unavailable"; message: string };
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -42,8 +43,15 @@ export function PublicationCard({ projectId, revisionId, refreshKey, onOpenAdapt
     const packageId = draft
       ? Promise.resolve(draft)
       : findProjectPackageIds(projectId, platformRequest, controller.signal).then((ids) => ids[0] ?? null);
-    packageId.then((id) => id === null ? null : loadPackageVersions(id, platformRequest, controller.signal)).then(
-      (loaded) => { if (!controller.signal.aborted) setVersions(loaded === null ? { kind: "none" } : { kind: "loaded", versions: loaded }); },
+    packageId.then((id) => id === null ? null : Promise.all([
+      loadPackageVersions(id, platformRequest, controller.signal),
+      // Whether other players can use it is a detail: the card still shows if this fails.
+      loadSharing(id, platformRequest, controller.signal).catch(() => null)
+    ])).then(
+      (loaded) => {
+        if (!controller.signal.aborted)
+          setVersions(loaded === null ? { kind: "none" } : { kind: "loaded", versions: loaded[0], sharing: loaded[1] });
+      },
       (error: unknown) => {
         if (!controller.signal.aborted)
           setVersions({ kind: "unavailable", message: error instanceof Error ? error.message : "The platform didn't answer." });
@@ -85,6 +93,7 @@ export function PublicationCard({ projectId, revisionId, refreshKey, onOpenAdapt
     detail = <><p>Render a master mix, build adaptive states from it, then publish them to SynaptixPlay games.</p>{openAdaptive}</>;
   }
 
+  const sharing = versions.kind === "loaded" && versions.versions.length ? versions.sharing : null;
   return (
     <section className="inspector-card publication-card" aria-labelledby="publication-card-title">
       <strong id="publication-card-title">SynaptixPlay</strong>
@@ -93,6 +102,11 @@ export function PublicationCard({ projectId, revisionId, refreshKey, onOpenAdapt
         {headline}
       </div>
       {detail}
+      {sharing && sharing.kind === "community" && (
+        <p className="publication-sharing">
+          <strong>{sharing.sharing === "shared" ? "Shared" : "Private"}</strong> · {sharingDetail(sharing)}
+        </p>
+      )}
     </section>
   );
 }
