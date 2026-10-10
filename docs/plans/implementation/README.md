@@ -75,7 +75,7 @@ These pull requests are open, or about to be, at the revision date.
 
 | Work | Pull request | Result |
 | ---- | -----------: | ------ |
-| Notebook, sticky notes and Settings | opening | Project notebook pages and sticky notes on tracks and the project, as optional schema fields with undoable commands; a Settings dialog (features, layout, editing) in the DAW layout |
+| Notebook, sticky notes and Settings | #102 | Project notebook pages and sticky notes on tracks and the project, as optional schema fields with undoable commands; a Settings dialog (features, layout, editing) in the DAW layout |
 
 Next: Studio UI v2 step 9b makes the DAW layout the default and removes the classic layout, after porting its remaining UI tests.
 
