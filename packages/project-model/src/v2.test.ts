@@ -156,3 +156,26 @@ test("a note label is optional, 1 to 32 characters, survives migration, and is i
     assert.deepEqual(schema.$defs.midiNote.properties.label, { type: "string", minLength: 1, maxLength: 32 }, version);
   }
 });
+
+test("notebook pages and sticky notes are optional, bounded, survive migration, and are in both JSON schemas", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const project = createEmptyProject("noted", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  const track = { id: "bass", name: "Bass", kind: "instrument" as const, muted: false, solo: false, volumeDb: 0, pan: 0, devices: [], clips: [] };
+  const plain = MusicProjectSchema.parse({ ...project, tracks: [track] });
+  assert.equal("notebook" in plain || "stickyNotes" in plain || "stickyNotes" in plain.tracks[0]!, false);
+  const note = { id: "n1", text: "Check the low end" };
+  const noted = MusicProjectSchema.parse({ ...project, notebook: [{ id: "p1", title: "Ideas", body: "" }], stickyNotes: [note], tracks: [{ ...track, stickyNotes: [note] }] });
+  const v2 = migrateProjectV1ToV2(noted);
+  assert.deepEqual([v2.notebook, v2.stickyNotes, v2.tracks[0]!.stickyNotes], [noted.notebook, [note], [note]]);
+  for (const bad of [{ stickyNotes: [] }, { stickyNotes: [{ id: "n", text: "x".repeat(501) }] }, { notebook: [{ id: "p", title: "", body: "" }] }]) {
+    assert.equal(MusicProjectSchema.safeParse({ ...project, ...bad }).success, false);
+  }
+  for (const version of ["v1", "v2"]) {
+    const schema = JSON.parse(await readFile(new URL(`../../../schemas/project/${version}.json`, import.meta.url), "utf8"));
+    assert.deepEqual(schema.properties.notebook.items, { $ref: "#/$defs/notebookPage" }, version);
+    assert.deepEqual(schema.properties.stickyNotes.items, { $ref: "#/$defs/stickyNote" }, version);
+    assert.deepEqual(schema.$defs.track.properties.stickyNotes.items, { $ref: "#/$defs/stickyNote" }, version);
+    assert.deepEqual(schema.$defs.stickyNote.properties.text, { type: "string", minLength: 1, maxLength: 500 }, version);
+    assert.deepEqual(schema.$defs.notebookPage.required, ["id", "title", "body"], version);
+  }
+});

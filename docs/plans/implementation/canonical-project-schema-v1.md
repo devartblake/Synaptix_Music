@@ -1,6 +1,6 @@
 # Canonical Project Schema v1
 
-**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. A project key (`key: { tonic: 0–11, mode }`, optional and absent when unset so existing checksums don't change) was added to v1 and v2 on 2026-10-10; applying a generated arrangement sets it. MIDI notes got an optional `label` (1–32 characters, absent when unset, so checksums don't change) the same day, for renamable note labels in the piano roll. `generationMetadata.arrangementFingerprint` (optional, `fnv1a64:` plus 16 hex digits) records the music as generated, so project lists can tell generated, generated-then-edited and hand-composed projects apart (`projectOrigin`). Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
+**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. A project key (`key: { tonic: 0–11, mode }`, optional and absent when unset so existing checksums don't change) was added to v1 and v2 on 2026-10-10; applying a generated arrangement sets it. MIDI notes got an optional `label` (1–32 characters, absent when unset, so checksums don't change) the same day, for renamable note labels in the piano roll. `generationMetadata.arrangementFingerprint` (optional, `fnv1a64:` plus 16 hex digits) records the music as generated, so project lists can tell generated, generated-then-edited and hand-composed projects apart (`projectOrigin`). Projects can also carry notes: an optional `notebook` (pages with an id, a 1–80 character title and a body of up to 20,000 characters) and optional `stickyNotes` (an id and 1–500 characters of text) on the project and on each track; each list has at least one entry when present and is absent otherwise, so checksums don't change, and notes are left out of the arrangement fingerprint. Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
 
 ## Goal
 
@@ -21,6 +21,7 @@ Schema v1 defines:
 - Versioned devices and numeric parameters
 - External asset references with SHA-256 integrity metadata
 - Section and cue markers
+- Optional notebook pages and sticky notes, on the project and on tracks
 - Optional generation provenance
 
 ## Design decisions

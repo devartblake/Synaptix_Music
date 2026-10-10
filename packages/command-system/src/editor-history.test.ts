@@ -157,3 +157,42 @@ test("the project key is set and cleared as undo steps, and clearing restores th
   assert.deepEqual(v2.key, { tonic: 3, mode: "dorian" });
   assert.throws(() => new SetProjectKeyEditorCommand(undefined, { tonic: 12, mode: "major" }), /pitch class/);
 });
+
+test("notebook pages and sticky notes are undoable, and deleting the last one restores the original checksum", async () => {
+  const { SetNotebookEditorCommand, SetStickyNotesEditorCommand } = await import("./editor.ts");
+  const { computeProjectChecksum } = await import("./index.ts");
+  const { migrateProjectV1ToV2, MusicProjectV2Schema } = await import("@synaptix/project-model/v2");
+  const { MusicProjectSchema, arrangementFingerprint } = await import("@synaptix/project-model");
+  const project = createEmptyProject("project-notes", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  project.tracks.push({ id: "bass", name: "Bass", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, devices: [], clips: [] });
+  const original = await computeProjectChecksum(project);
+  const fingerprint = arrangementFingerprint(project);
+  const history = new EditorCommandHistory();
+
+  const page = { id: "p1", title: "Ideas", body: "[ ] Add a bridge" };
+  const paged = await history.execute(project, new SetNotebookEditorCommand([], [page]));
+  assert.deepEqual(paged.project.notebook, [page]);
+  const note = { id: "n1", text: "Brighter hats in the drop" };
+  const noted = await history.execute(paged.project, new SetStickyNotesEditorCommand("bass", [], [note]));
+  assert.deepEqual(noted.project.tracks[0]!.stickyNotes, [note]);
+  MusicProjectSchema.parse(noted.project);
+  // Notes aren't music: a generated project stays "generated" when it's annotated.
+  assert.equal(arrangementFingerprint(noted.project), fingerprint);
+
+  const undone = (await history.undo(noted.project))!.project;
+  assert.equal("stickyNotes" in undone.tracks[0]!, false);
+  assert.deepEqual(undone.notebook, [page]);
+
+  for (const command of [new SetNotebookEditorCommand([], [page]), new SetStickyNotesEditorCommand(null, [], [note]), new SetStickyNotesEditorCommand("bass", [], [note])]) {
+    assert.equal(await computeProjectChecksum(command.undo(command.execute(project))), original);
+  }
+  // v2 projects carry notes on the project and on tracks.
+  const v2 = new SetStickyNotesEditorCommand("bass", [], [note]).execute(new SetStickyNotesEditorCommand(null, [], [note]).execute(migrateProjectV1ToV2(project)));
+  assert.deepEqual(MusicProjectV2Schema.parse(v2).tracks[0]!.stickyNotes, [note]);
+  assert.deepEqual(v2.stickyNotes, [note]);
+
+  assert.throws(() => new SetNotebookEditorCommand([], [page, { ...page }]), /unique/);
+  assert.throws(() => new SetNotebookEditorCommand([], [{ ...page, title: " " }]), /title/);
+  assert.throws(() => new SetStickyNotesEditorCommand(null, [], [{ id: "n", text: "  " }]), /empty/);
+  assert.throws(() => new SetStickyNotesEditorCommand("missing", [], [note]).execute(project), /not found/);
+});

@@ -13,7 +13,7 @@ Current estimated completion:
 - Stage 13: approximately 90% implementation-complete (2026-10-09). Slice 13.1 (verified publication) has met its exit; the Flutter loader, scheduler, stem/intensity mixer and stingers are implemented and await on-device listening tests; the platform now ingests runtime telemetry with a dashboard and alerts (13.6; thresholds need staging data); the device matrix and soak (13.7) need staging and physical devices.
 - Project Schema v2 plug-in cutover: steps A-F done (plug-in projects sync as v2; first-party plug-ins can be frozen, and freezes play in renders and in the browser); retiring v1 writes (G) remains
 - Studio instruments: 32 in the catalog, all synthesized by the Rust kernel in both the render worker and the studio preview. Instrument slices 1–3 are done (slice 1 and 2 merged; slice 3 is in review).
-- Studio UI v2 (DAW layout): steps 1–8 of 9 merged behind a preview switch (#82–#99). Step 9 remains: a phone layout for the DAW shell (9a, ready for review), then making it the default and removing the classic layout (9b).
+- Studio UI v2 (DAW layout): steps 1–8 and 9a merged behind a preview switch (#82–#101), including a phone layout. Notebook, sticky notes and a Settings dialog are in review. Remaining: making the DAW layout the default and removing the classic layout (9b).
 - Full planned DAW roadmap: 52-56% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
@@ -48,7 +48,7 @@ The percentages represent planned functional scope. They do not represent produc
 - Piano roll with snapping, marquee selection, zoom, velocity, move, resize, and duplication; Drum Kit tracks show drum names
 - Device-aware drum step sequencer
 - Per-device controls: filter with resonance, ADSR, reverb send, and a collapsible Modulation section (LFO to pitch, cutoff and level; filter envelope)
-- DAW layout preview (Studio UI v2): transport bar, searchable instrument browser, bottom dock (piano roll with scale shading, chords, tools and floating menus; device chain with knobs; mixer channel strips), family-coloured timeline with header meters, section markers and a loop brace, an inspector that follows the selection, an adaptive states grid, Generate as a drawer and Export as a dialog
+- DAW layout preview (Studio UI v2): transport bar, searchable instrument browser, bottom dock (piano roll with scale shading, chords, tools and floating menus; device chain with knobs; mixer channel strips), family-coloured timeline with header meters, section markers and a loop brace, an inspector that follows the selection, an adaptive states grid, Generate as a drawer and Export as a dialog, a phone layout, and a Settings dialog
 - MIDI scheduling, audition, panic, and authoritative transport position
 - Local autosave, persistence recovery, and multi-tab leases
 
@@ -113,7 +113,7 @@ Implementation is complete. The control plane, deterministic renderer/master eff
 
 ### Studio UI v2 — DAW layout (active)
 
-A DAW-style studio drawing on FL Studio 2026 and Ableton Live 12.4. Plan, mockup and status are in `docs/plans/ui/studio-ui-v2.md`, and the "before" screenshots are in `docs/plans/ui/studio-ui-baseline-2026-10.md`. Steps 1–8 are merged behind Layout → "DAW layout (preview)": the shell, timeline, piano roll, device chain, mixer, browser and inspector, the adaptive states grid, and Generate and Export as a drawer and a dialog. Follow-ups delivered alongside: the project key and renamable note labels as project data, project origin badges on the home page, and floating, movable piano roll menus. Next is step 9: a phone layout for the DAW shell (9a), then switching over and removing the classic layout (9b).
+A DAW-style studio drawing on FL Studio 2026 and Ableton Live 12.4. Plan, mockup and status are in `docs/plans/ui/studio-ui-v2.md`, and the "before" screenshots are in `docs/plans/ui/studio-ui-baseline-2026-10.md`. Steps 1–8 are merged behind Layout → "DAW layout (preview)": the shell, timeline, piano roll, device chain, mixer, browser and inspector, the adaptive states grid, and Generate and Export as a drawer and a dialog. Follow-ups delivered alongside: the project key and renamable note labels as project data, project origin badges on the home page, and floating, movable piano roll menus. Step 9a, a phone layout for the DAW shell, is merged (#101). In review: a project notebook and sticky notes on tracks and the project, with a Settings dialog that turns them on or off. Next is 9b: switching over and removing the classic layout.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (active)
 

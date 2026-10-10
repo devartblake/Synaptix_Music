@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Button } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import type { Clip, Track } from "@synaptix/project-model";
@@ -7,7 +9,7 @@ import type { useStudioLayout } from "../../../lib/editor/use-studio-layout";
 import { PublicationCard } from "./PublicationCard";
 
 /** Right panel: project facts, the generator entry point and publication readiness. */
-export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm, syncLabel, onOpenGenerator, selection, publication, overlay }: {
+export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm, syncLabel, onOpenGenerator, selection, publication, overlay, notes }: {
   panelLayout: ReturnType<typeof useStudioLayout>;
   projectId: string;
   trackCount: number;
@@ -21,6 +23,8 @@ export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm,
   publication?: { revisionId: string; refreshKey: string; onOpenAdaptive: () => void };
   /** The DAW layout on narrow screens: shown over the timeline when opened from the transport bar. */
   overlay?: { open: boolean; onClose: () => void };
+  /** The DAW layout with sticky notes on: the selected track's and the project's notes. */
+  notes?: ReactNode;
 }) {
   const asOverlay = Boolean(overlay?.open) && !panelLayout.inspectorVisible;
   return (
@@ -45,6 +49,7 @@ export function StudioInspector({ panelLayout, projectId, trackCount, bars, bpm,
           <div className="property-row"><dt>Output</dt><dd>{selection.output}</dd></div>
         </dl>
       </section>}
+      {notes}
       <dl className="property-list">
         <div className="property-row"><dt>Project</dt><dd>{projectId}</dd></div>
         <div className="property-row"><dt>Tracks</dt><dd>{trackCount}</dd></div>

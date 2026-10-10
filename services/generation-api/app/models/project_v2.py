@@ -12,7 +12,9 @@ from app.models.project import (
     Mixer,
     MusicalKey,
     MusicProject,
+    NotebookPage,
     ProjectMetadata,
+    StickyNote,
     StrictModel,
     TempoEvent,
     TimeSignatureEvent,
@@ -89,6 +91,7 @@ class TrackV2(StrictModel):
     reverbSend: float | None = Field(default=None, ge=0, le=1)
     devices: list[DeviceV2]
     clips: list[Clip]
+    stickyNotes: list[StickyNote] | None = Field(default=None, min_length=1)
 
 
 class MusicProjectV2(StrictModel):
@@ -105,6 +108,8 @@ class MusicProjectV2(StrictModel):
     markers: list[Marker]
     mixer: Mixer | None = None
     key: MusicalKey | None = None
+    notebook: list[NotebookPage] | None = Field(default=None, min_length=1)
+    stickyNotes: list[StickyNote] | None = Field(default=None, min_length=1)
     generationMetadata: GenerationMetadata | None = None
 
 

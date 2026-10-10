@@ -97,3 +97,34 @@ def test_generation_fingerprint_is_optional_and_strictly_shaped() -> None:
     schema = json.loads((FIXTURE_PATH.parents[1] / "v1.json").read_text(encoding="utf-8"))
     fingerprint = schema["$defs"]["generationMetadata"]["properties"]["arrangementFingerprint"]
     assert fingerprint == {"type": "string", "pattern": "^fnv1a64:[0-9a-f]{16}$"}
+
+
+def test_notebook_and_sticky_notes_are_optional_and_bounded() -> None:
+    # Notes travel with the project: notebook pages and sticky notes on the project or a track.
+    fixture = load_fixture()
+    project = MusicProject.model_validate(fixture)
+    assert project.notebook is None and project.stickyNotes is None
+    assert project.tracks[0].stickyNotes is None
+    dumped = project.model_dump(mode="json", exclude_unset=True)
+    assert "notebook" not in dumped and "stickyNotes" not in dumped["tracks"][0]
+    note = {"id": "n1", "text": "Brighter hats here"}
+    page = {"id": "p1", "title": "Ideas", "body": "[ ] Add a bridge"}
+    payload = {**load_fixture(), "notebook": [page], "stickyNotes": [note]}
+    payload["tracks"][0]["stickyNotes"] = [note]  # type: ignore[index]
+    noted = MusicProject.model_validate(payload)
+    assert noted.notebook[0].title == "Ideas"  # type: ignore[index]
+    assert noted.tracks[0].stickyNotes[0].text == "Brighter hats here"  # type: ignore[index]
+    for bad in (
+        {"stickyNotes": []},
+        {"stickyNotes": [{"id": "n1", "text": ""}]},
+        {"stickyNotes": [{"id": "n1", "text": "x" * 501}]},
+        {"notebook": [{"id": "p1", "title": "", "body": ""}]},
+        {"notebook": [{"id": "p1", "title": "Ideas"}]},
+        {"notebook": [{**page, "colour": "yellow"}]},
+    ):
+        with pytest.raises(ValidationError):
+            MusicProject.model_validate({**load_fixture(), **bad})
+    schema = json.loads((FIXTURE_PATH.parents[1] / "v1.json").read_text(encoding="utf-8"))
+    assert schema["$defs"]["stickyNote"]["properties"]["text"]["maxLength"] == 500
+    assert schema["$defs"]["notebookPage"]["properties"]["body"]["maxLength"] == 20000
+    assert schema["$defs"]["track"]["properties"]["stickyNotes"]["minItems"] == 1

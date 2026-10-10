@@ -167,7 +167,13 @@ function floatingPosition(trigger: DOMRect, panel: { width: number; height: numb
  * panel in the browser's top layer, positioned from the trigger, so a short or scrolling container
  * (like the DAW dock) can't clip or cover it, and what's behind it stays in view.
  */
-export function DisclosureMenu({ label, children, floating = false }: { label: string; children: ReactNode; floating?: boolean }) {
+export function DisclosureMenu({ label, children, floating = false, trigger: custom }: {
+  label: string;
+  children: ReactNode;
+  floating?: boolean;
+  /** A button showing something other than the label (e.g. a note's text), with its own accessible name. */
+  trigger?: { content: ReactNode; label: string; className?: string };
+}) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -203,7 +209,7 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
   useEffect(() => {
     if (!open) return;
     content.current
-      ?.querySelector<HTMLElement>(":is(button, input, select):not(:disabled):not([data-move-handle])")
+      ?.querySelector<HTMLElement>(":is(button, input, select, textarea):not(:disabled):not([data-move-handle])")
       ?.focus();
     const dismiss = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
@@ -240,8 +246,9 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
         if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <Button ref={trigger} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-        {label}
+      <Button ref={trigger} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}
+        aria-label={custom?.label} title={custom?.label} className={custom?.className}>
+        {custom ? custom.content : label}
       </Button>
       {open && (
         <div
