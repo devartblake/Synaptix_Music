@@ -71,3 +71,22 @@ test("versioned parsing dispatches on schemaVersion", () => {
   assert.equal(parseVersionedMusicProject(pluginProject()).schemaVersion, 2);
   assert.throws(() => parseVersionedMusicProject({ ...v1, schemaVersion: 3 }), ProjectStorageCorruptionError);
 });
+
+test("project summaries say whether the music was generated, generated then edited, or made by hand", async () => {
+  const { createStoredProjectRecord } = await import("./index.ts");
+  const { arrangementFingerprint } = await import("@synaptix/project-model");
+  const storage = new InMemoryProjectStorage();
+  const hand = createEmptyProject("hand", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  const generated = createEmptyProject("generated", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  generated.generationMetadata = { generatorId: "composer", generatorVersion: "1.0.0", seed: 1, createdAt: "2026-10-10T00:00:00.000Z" };
+  generated.generationMetadata.arrangementFingerprint = arrangementFingerprint(generated);
+  const edited = structuredClone(generated);
+  edited.projectId = "edited";
+  edited.tempoMap[0]!.bpm = 140;
+  for (const project of [hand, generated, edited]) await storage.putProject(await createStoredProjectRecord(project));
+  const origins = Object.fromEntries((await storage.listProjects()).map((summary) => [summary.projectId, summary.origin]));
+  assert.deepEqual(origins, { hand: "hand", generated: "generated", edited: "edited" });
+  // v2 snapshots list the same way.
+  await storage.putProject(await createStoredProjectRecord({ ...migrateProjectV1ToV2(generated), projectId: "v2" }, parseMusicProjectV2));
+  assert.equal((await storage.listProjects()).find((summary) => summary.projectId === "v2")?.origin, "generated");
+});

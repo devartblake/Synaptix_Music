@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Project cards show where the music came from.** Each local project on the home page is marked with its own colour, icon and label:
+  - **Generated** (purple, ✦): made with the generator and not changed since.
+  - **Edited** (teal, ✦+): generated, then changed by hand.
+  - **Hand-composed** (blue, ♫): no generated arrangement was ever applied.
+  - **How it's worked out:** from the music itself (notes, tracks, tempo, markers and key) compared with a fingerprint taken when a generation is applied, so renaming a project doesn't count as editing it, and undoing back to the generated music shows Generated again. The fingerprint is a new optional `generationMetadata.arrangementFingerprint` field in all the schemas.
+  - **Older projects:** projects generated before this change show Generated. Cloud-only projects show no badge until the platform's project list carries the origin.
 - **Adaptive states, Generate and Export in the DAW layout (Studio UI v2, step 8).**
   - **Adaptive states (Alt+S):** a grid with a row per state, showing its intensity, render, loop, cues and the states it leads to, then a strip of transitions and cue points. Choose a row to edit that state. The row lights up while the runtime preview plays it.
   - **Generate and Export:** Generate opens as a drawer beside the arrangement. Export, or Ctrl/Cmd+E, opens as a dialog. Escape closes either and returns focus to the button that opened it.

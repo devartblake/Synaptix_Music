@@ -61,3 +61,40 @@ test("generated mix hints and supporting layers become the project's tracks", ()
   assert.equal(drums.volumeDb, 0, "older proposals without mix hints keep the defaults");
   assert.equal(drums.reverbSend, undefined);
 });
+
+test("a generated project reads as Generated until its music changes, then Edited; hand-made projects read as Hand", async () => {
+  const { projectOrigin, arrangementFingerprint, MusicProjectSchema } = await import("@synaptix/project-model");
+  const { migrateProjectV1ToV2 } = await import("@synaptix/project-model/v2");
+  const { SetMidiVelocityCommand } = await import("@synaptix/command-system/midi");
+  const project = createEmptyProject("project-1");
+  assert.equal(projectOrigin(project), "hand");
+  const proposal = {
+    operation: "create-arrangement" as const, projectId: "project-1", genre: "electronic-trivia" as const, mood: "upbeat" as const,
+    tempo: 120, key: "D minor", ticksPerQuarterNote: 960 as const,
+    sections: [{ id: "s1", kind: "main" as const, name: "Main", startBar: 0, bars: 4 }],
+    tracks: [{
+      id: "lead", role: "melody" as const, name: "Lead", instrumentId: "synth",
+      clips: [{ id: "c1", name: "Riff", range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: 3840 }, loop: false,
+        notes: [{ id: "n1", pitch: 64, velocity: 90, startTick: 0, durationTicks: 480 }] }]
+    }],
+    provenance: { generatorId: "synaptix-procedural-composer" as const, generatorVersion: "0.1.0" as const, seed: 9 }, warnings: []
+  };
+  const generated = new ApplyGeneratedArrangementEditorCommand(proposal, "job-1").execute(project);
+  assert.match(generated.generationMetadata?.arrangementFingerprint ?? "", /^fnv1a64:[0-9a-f]{16}$/);
+  assert.equal(projectOrigin(generated), "generated");
+  // A save/load round trip and the v2 schema don't change the music, so it stays Generated.
+  assert.equal(projectOrigin(MusicProjectSchema.parse(JSON.parse(JSON.stringify(generated)))), "generated");
+  assert.equal(projectOrigin(migrateProjectV1ToV2(generated)), "generated");
+  // Renaming isn't editing the music.
+  const renamed = { ...generated, metadata: { ...generated.metadata, name: "Renamed" } };
+  assert.equal(projectOrigin(renamed), "generated");
+  // Changing a note makes it Edited; changing it back makes it Generated again.
+  const edit = new SetMidiVelocityCommand("lead", "c1", ["n1"], 60);
+  const edited = edit.execute(generated);
+  assert.equal(projectOrigin(edited), "edited");
+  assert.equal(projectOrigin(edit.undo(edited)), "generated");
+  assert.notEqual(arrangementFingerprint(edited), arrangementFingerprint(generated));
+  // Projects generated before the fingerprint existed can't show edits, so they read as Generated.
+  const { arrangementFingerprint: _old, ...legacy } = generated.generationMetadata!;
+  assert.equal(projectOrigin({ ...edited, generationMetadata: legacy }), "generated");
+});
