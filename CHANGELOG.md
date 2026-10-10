@@ -4,6 +4,9 @@
 
 ### Added
 
+- **The DAW layout works on phones and tablets (Studio UI v2, step 9a).**
+  - **Phones:** it's one column. Generate stays in the transport bar, and a **More** menu holds Export and the Browser and Inspector panels, which open over the timeline. Phones no longer fall back to the classic layout when the DAW layout is chosen.
+  - **Tablets:** an **Inspector** button opens the inspector over the timeline, which couldn't be reached before.
 - **Adaptive states, Generate and Export in the DAW layout (Studio UI v2, step 8).**
   - **Adaptive states (Alt+S):** a grid with a row per state, showing its intensity, render, loop, cues and the states it leads to, then a strip of transitions and cue points. Choose a row to edit that state. The row lights up while the runtime preview plays it.
   - **Generate and Export:** Generate opens as a drawer beside the arrangement. Export, or Ctrl/Cmd+E, opens as a dialog. Escape closes either and returns focus to the button that opened it.

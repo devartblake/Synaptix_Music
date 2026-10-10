@@ -433,3 +433,22 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .generation-drawer .frequency-drone h3 { margin: 4px 0; font-size: 15px; }
 .adaptive-daw-panes h3 { margin: 0 0 8px; font-size: 14px; }
 .adaptive-daw-panes .adaptive-state-editor > p { margin: 0 0 10px; color: var(--sx-text-muted); font-size: 12px; }
+/* Studio UI v2 step 9a: panels that don't fit beside the timeline open over it; phones get one column. */
+.studio-overlay { position: absolute; z-index: 30; top: 0; bottom: 0; width: min(320px, 92vw); overflow-y: auto; box-shadow: var(--sx-shadow); }
+.studio-overlay-left { left: 0; }
+.studio-v2-body .studio-inspector.studio-overlay { display: block; right: 0; grid-column: auto; }
+.studio-overlay-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.studio-overlay-close { min-height: 28px; font-size: 12px; }
+.studio-v2-phone .studio-v2-body { grid-template-columns: minmax(0, 1fr); }
+.studio-v2-phone .studio-v2-centre { grid-column: 1; }
+.studio-v2-phone .studio-v2-main { padding: 8px; }
+.studio-v2-phone .studio-transportbar { gap: 6px; padding: 6px 8px; }
+.studio-v2-phone .studio-transportbar .studio-status,
+.studio-v2-phone .studio-transportbar .transport-spacer { display: none; }
+.studio-v2-phone .studio-dock-tabs kbd,
+.studio-v2-phone .studio-dock-context { display: none; }
+.studio-v2-phone .studio-dock-tabs { flex-wrap: wrap; }
+.studio-v2-phone .studio-statusbar { flex-wrap: wrap; gap: 6px 10px; padding: 4px 8px; }
+.studio-v2-phone .studio-statusbar .studio-hint,
+.studio-v2-phone .studio-statusbar .transport-spacer,
+.studio-v2-phone .studio-statusbar > span:not(.status-pill):not(.studio-status-account) { display: none; }

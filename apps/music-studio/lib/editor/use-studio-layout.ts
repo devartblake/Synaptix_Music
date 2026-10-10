@@ -9,7 +9,7 @@ const DEFAULT = {
   navigationWidth: null as number | null,
   inspectorWidth: 272,
   mixerHeight: 320,
-  /** "v2" is the DAW layout preview (docs/plans/ui/studio-ui-v2.md); phones always use v1. */
+  /** "v2" is the DAW layout preview (docs/plans/ui/studio-ui-v2.md), with its own phone layout. */
   shell: "v1" as "v1" | "v2",
   dockHeight: 320,
   dockTab: "editor" as DockTab,
@@ -80,7 +80,7 @@ export function useStudioLayout() {
     inspectorVisible: layout.inspectorOpen && !narrow,
     mixerHeight: Math.min(layout.mixerHeight, mixerMax),
     mixerMax,
-    v2: layout.shell === "v2" && !mobile,
+    v2: layout.shell === "v2",
     dockHeight: Math.min(layout.dockHeight, dockMax),
     dockMax,
     mobile,

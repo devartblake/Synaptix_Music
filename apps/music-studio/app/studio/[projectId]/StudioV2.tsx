@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { Button } from "../../../components/ui/StudioControls";
+import { Button, DisclosureMenu } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import { PlatformAccount } from "../../../components/PlatformAccount";
 import type { DockTab } from "../../../lib/editor/use-studio-layout";
@@ -26,8 +26,17 @@ export function StudioTransportBar(props: StudioTopbarProps & {
   onGenerate: () => void;
   onExport: () => void;
   layoutMenu: ReactNode;
+  /** Panels the screen is too narrow to show beside the timeline, opened as overlays. */
+  panels?: { id: "browser" | "inspector"; label: string; open: boolean; onToggle: () => void }[];
+  /** Phones: Export and the panel toggles move into a More menu so the bar stays short. */
+  compact?: boolean;
 }) {
   const { engine, playing, bpm } = props;
+  const panelToggles = props.panels?.map((panel) => (
+    <Button key={panel.id} data-opens={panel.id} aria-expanded={panel.open} aria-controls={`studio-${panel.id}`} onClick={panel.onToggle}>
+      {panel.label}
+    </Button>
+  ));
   return (
     <header className="studio-transportbar">
       <a className="studio-home" href="/" aria-label="Back to projects"><span className="studio-mark" aria-hidden="true">S</span></a>
@@ -66,7 +75,15 @@ export function StudioTransportBar(props: StudioTopbarProps & {
       </div>
       <span className="transport-spacer" />
       <Button className="generation-cta" data-opens="generate" onClick={props.onGenerate}>Generate</Button>
-      <Button data-opens="export" onClick={props.onExport}>Export</Button>
+      {props.compact
+        ? <DisclosureMenu label="More" floating>
+          <Button data-opens="export" onClick={props.onExport}>Export</Button>
+          {panelToggles}
+        </DisclosureMenu>
+        : <>
+          <Button data-opens="export" onClick={props.onExport}>Export</Button>
+          {panelToggles}
+        </>}
       {props.layoutMenu}
       <div className="studio-status">
         <MasterMeter engine={engine} />

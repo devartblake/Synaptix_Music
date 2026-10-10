@@ -105,7 +105,7 @@ New for v2:
 - No new colours. Track and clip colours come from the instrument-family accents; everything else uses the existing `--sx-*` tokens.
 - v2 ships behind a layout switch (`studio-layout:v2` in the existing layout preferences) until it reaches parity. Then v1 is removed in one PR.
 - No engine changes. The dock, mixer and meters reuse `PianoRoll`, `DrumStepSequencer`, `renderDeviceControls`, `MixerDrawer` and `ChannelMeters` logic. The work is layout and presentation.
-- Tablet (1024 px): browser and inspector collapse to toggles, and the dock becomes a bottom sheet. Phone (≤760 px) keeps today's single-column fallback.
+- Tablet (1024 px): the inspector opens over the timeline from an Inspector button in the transport bar. Phone (≤760 px): one column, with the Browser and inspector opening over the timeline from a More menu (decided 2026-10-10: the DAW layout gets its own phone mode rather than keeping the classic shell for phones).
 
 ## Ordered work
 
@@ -163,7 +163,13 @@ Each step is one PR with its own visual baselines and UI tests.
    - **Not like the mockup:** the mockup had a column per track with a clip slot in each. A state is a whole-mix master render, and the adaptive manifest has no per-track content, so those cells would always be empty. The grid's columns are the state's own data instead.
    - **Generate** opens a right-hand drawer over the inspector, so the arrangement stays in view. **Export** (or Ctrl/Cmd+E) opens a modal dialog. Escape or Close shuts either one and returns focus to the button that opened it.
    - **Tests:** the adaptive authoring, generation (including prototype audio) and export UI tests now run in both layouts (`tests/ui/layouts.ts`), and step 9 drops the classic runs. A new baseline covers the states grid on desktop and tablet; the graph editor is the same component in both layouts and keeps its classic baseline.
-9. **Switch over.** v2 becomes the default, v1 code and baselines are removed, and the README screenshots, baseline doc and changelog are updated.
+9. **Switch over.** Delivered in two parts.
+   - **9a, done: a phone layout for v2.** Until now phones always fell back to the classic shell, so removing it would have left phones with nothing. The DAW layout now works at every width:
+     - **Phones (≤760 px):** one column. The transport bar keeps playback, position, tempo, undo/redo, the view switch and Generate. A floating **More** menu holds Export, Browser and Inspector. The Browser and inspector open over the timeline and close with Escape or Close, and focus returns to what opened them. The dock is full width, without key hints, and the status bar keeps save and sync.
+     - **Tablets (≤1120 px):** an **Inspector** button in the transport bar opens the inspector over the timeline; before this it couldn't be reached.
+     - **Choosing the layout:** the Layout menu's DAW switch works on phones too.
+     - **Tests:** a phone test reaches every view (dock tabs, Generate, Export, Adaptive states, both panels) with no horizontal scroll and axe clean. A tablet test covers the inspector toggle. The ported export and adaptive tests' 390 px checks now exercise the DAW phone layout.
+   - **9b:** v2 becomes the default, v1 code and baselines are removed, the remaining classic-only UI tests are ported, and the README screenshots, baseline doc and changelog are updated.
 
 ## Risks
 
@@ -207,5 +213,6 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
 - 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).
+- 2026-10-10: step 9 split into 9a (a phone layout for v2) and 9b (switch over). 9a done.
 - 2026-10-10: step 8 done (states grid with transitions strip, Generate drawer, Export dialog). The grid's columns are the state's own data rather than the mockup's per-track clip slots, which have no data behind them.
 - 2026-10-10: the piano roll's Edit and Rename menus float (`DisclosureMenu floating`, a top-layer popover placed from its button), so the dock can't clip them; chosen over a modal so the notes stay in view.
