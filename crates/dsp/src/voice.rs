@@ -33,6 +33,8 @@ pub enum Oscillator {
     Bass808,
     /// Band-limited 25% pulse, centred on zero: the classic retro game lead.
     Pulse25,
+    /// White noise (xorshift32 seeded from the note), independent on each side so it is wide.
+    Noise,
 }
 
 /// How hard the 808 drives its soft clipper (higher is grittier).
@@ -92,6 +94,7 @@ impl Oscillator {
             8 => Some(Self::DrumKit),
             9 => Some(Self::Bass808),
             10 => Some(Self::Pulse25),
+            11 => Some(Self::Noise),
             _ => None,
         }
     }
@@ -147,7 +150,7 @@ impl Modulation {
     }
     fn moves_cutoff(&self) -> bool {
         (self.lfo_cutoff_octaves > 0.0 && self.lfo_rate > 0.0)
-            || (self.filter_env_octaves > 0.0 && self.filter_env_decay > 0.0)
+            || (self.filter_env_octaves != 0.0 && self.filter_env_decay > 0.0)
     }
     fn tremolo(&self) -> bool {
         self.tremolo > 0.0 && self.lfo_rate > 0.0
@@ -275,6 +278,9 @@ pub struct VoiceState {
     svf_right_2: f64,
     /// Phase of an oscillator whose pitch moves (808), integrated sample by sample.
     sweep_phase: f64,
+    /// The noise oscillator's generators, one per side.
+    noise_left: u32,
+    noise_right: u32,
     string: Option<PluckedString>,
     drum: Option<Drum>,
 }
@@ -293,6 +299,15 @@ impl VoiceState {
             svf_right_1: 0.0,
             svf_right_2: 0.0,
             sweep_phase: 0.0,
+            noise_left: if voice.seed == 0 {
+                0x9E37_79B9
+            } else {
+                voice.seed
+            },
+            noise_right: match voice.seed ^ 0x5BD1_E995 {
+                0 => 0x9E37_79B9,
+                seed => seed,
+            },
             string: (voice.oscillator == Oscillator::PluckedString)
                 .then(|| PluckedString::new(voice.frequency, voice.sample_rate, voice.seed)),
             drum: (voice.oscillator == Oscillator::DrumKit)
@@ -334,7 +349,7 @@ impl VoiceState {
         } = *voice;
         let supersaw_frequencies = SUPERSAW_RATIOS.map(|ratio| voice.frequency * ratio);
         let supersaw_dts = supersaw_frequencies.map(|frequency| frequency / voice.sample_rate);
-        let stereo = voice.oscillator == Oscillator::Supersaw;
+        let stereo = matches!(voice.oscillator, Oscillator::Supersaw | Oscillator::Noise);
         // Equal-power pan per saw, scaled by √2 so a centred saw is at full level on both sides.
         let pan_gain =
             |pan: f64, side: f64| core::f64::consts::SQRT_2 * sine_cycle((pan + 1.0) / 8.0 + side);
@@ -365,6 +380,7 @@ impl VoiceState {
         let mut string = self.string.take();
         let mut drum = self.drum.take();
         let mut sweep_phase = self.sweep_phase;
+        let (mut noise_left, mut noise_right) = (self.noise_left, self.noise_right);
         for sample_index in first..end {
             let time = sample_index as f64 / voice.sample_rate;
             let lfo_cycle = time * modulation.lfo_rate;
@@ -387,7 +403,8 @@ impl VoiceState {
                     octaves += modulation.lfo_cutoff_octaves
                         * sine_cycle(control_lfo - control_lfo.floor());
                 }
-                if modulation.filter_env_octaves > 0.0 && modulation.filter_env_decay > 0.0 {
+                // A negative amount starts the cutoff below its setting and rises onto it (a riser).
+                if modulation.filter_env_octaves != 0.0 && modulation.filter_env_decay > 0.0 {
                     let fall = 1.0 / (1.0 + control_time / modulation.filter_env_decay);
                     octaves += modulation.filter_env_octaves * fall * fall;
                 }
@@ -443,6 +460,10 @@ impl VoiceState {
                     naive + poly_blep(cycle, dt) - poly_blep(shifted, dt)
                 }
                 Oscillator::Sawtooth => 2.0 * cycle - 1.0 - poly_blep(cycle, dt),
+                Oscillator::Noise => {
+                    raw_right = white_noise(&mut noise_right);
+                    white_noise(&mut noise_left)
+                }
                 Oscillator::Pulse25 => {
                     // High for the first quarter of each cycle; edges at 0 and 0.25 are
                     // band-limited, and the mean (2·0.25 − 1 = −0.5) is removed.
@@ -519,6 +540,8 @@ impl VoiceState {
         self.drum = drum;
         if end > first {
             self.sweep_phase = sweep_phase;
+            self.noise_left = noise_left;
+            self.noise_right = noise_right;
             self.filtered = filtered;
             self.svf_1 = svf_1;
             self.svf_2 = svf_2;
@@ -627,6 +650,14 @@ impl ResonantLowPass {
         *ic2 = 2.0 * v2 - *ic2;
         v2
     }
+}
+
+/// One xorshift32 step, as a sample in [-1, 1).
+fn white_noise(state: &mut u32) -> f64 {
+    *state ^= *state << 13;
+    *state ^= *state >> 17;
+    *state ^= *state << 5;
+    *state as f64 / 2_147_483_648.0 - 1.0
 }
 
 /// Saturation by division, `x / (1 + |x|)`: smooth, odd, and the same on every platform.
@@ -1147,6 +1178,7 @@ mod tests {
             Oscillator::DrumKit,
             Oscillator::Bass808,
             Oscillator::Pulse25,
+            Oscillator::Noise,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -1291,6 +1323,38 @@ mod tests {
         );
         let mean = out.iter().sum::<f64>() / out.len() as f64;
         assert!(mean.abs() < 1e-3, "mean {mean}");
+    }
+
+    #[test]
+    fn noise_is_wide_and_a_negative_filter_envelope_rises() {
+        let (mut left, mut right) = (vec![0.0; 48_000], vec![0.0; 48_000]);
+        let params = Voice {
+            alpha: 1.0,
+            ..voice(Oscillator::Noise)
+        };
+        render_voice(&mut left, &mut right, &params, 0, 48_000);
+        let dot = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f64>();
+        let correlation = dot(&left, &right) / (dot(&left, &left) * dot(&right, &right)).sqrt();
+        assert!(
+            correlation.abs() < 0.05,
+            "sides should be independent: {correlation}"
+        );
+
+        // Cutoff starts 5 octaves below 800 Hz and rises onto it: dark first, bright later.
+        let riser = modulated(
+            Oscillator::Noise,
+            Modulation {
+                filter_env_octaves: -5.0,
+                filter_env_decay: 0.2,
+                ..Modulation::default()
+            },
+        );
+        let brightness = |s: &[f64]| {
+            let change: f64 = s.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum();
+            change / s.iter().map(|x| x * x).sum::<f64>()
+        };
+        let (early, late) = (brightness(&riser[..4_800]), brightness(&riser[40_000..]));
+        assert!(late > 3.0 * early, "early {early}, late {late}");
     }
 
     #[test]

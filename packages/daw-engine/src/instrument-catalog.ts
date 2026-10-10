@@ -2,9 +2,9 @@ import type { Clip, Track } from "@synaptix/project-model";
 
 export type InstrumentProfileKind =
   | "drums" | "bass" | "poly" | "lead"
-  | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell";
+  | "sub-bass" | "pad" | "pluck" | "keys" | "organ" | "strings" | "brass" | "bell" | "fx";
 
-export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25";
+export type InstrumentOscillator = "sine" | "square" | "triangle" | "sawtooth" | "supersaw" | "plucked-string" | "fm-bell" | "fm-piano" | "drum-kit" | "808-bass" | "pulse-25" | "noise";
 
 export interface InstrumentProfile {
   kind: InstrumentProfileKind;
@@ -247,6 +247,23 @@ export const INSTRUMENT_CATALOG: readonly InstrumentDefinition[] = [
       filterFrequency: 700, resonance: 0.3, filterEnvOctaves: 4, filterEnvDecay: 0.12,
       reverbSend: 0.25, destinationBus: "music" },
     starterPattern: [[0, 69, 0.25], [0.5, 72, 0.25], [1, 76, 0.25], [1.5, 72, 0.25], [2, 69, 0.25], [2.5, 76, 0.25], [3, 74, 0.5]]
+  },
+  {
+    // Wide noise whose filter opens over the note (a negative filter envelope) as it swells in.
+    deviceType: "synaptix-riser", label: "Riser FX", description: "Wide noise that swells and opens up: a build into the next section.",
+    keywords: ["riser", "uplifter"],
+    profile: { kind: "fx", oscillator: "noise", attack: 1.6, decay: 0.01, sustain: 1, release: 0.25,
+      filterFrequency: 9000, resonance: 0.4, filterEnvOctaves: -5, filterEnvDecay: 0.5,
+      reverbSend: 0.3, destinationBus: "music" },
+    starterPattern: [[0, 60, 4]]
+  },
+  {
+    deviceType: "synaptix-downsweep", label: "Downsweep FX", description: "Bright noise burst that falls away: an impact or a release after a build.",
+    keywords: ["downsweep", "downlifter"],
+    profile: { kind: "fx", oscillator: "noise", attack: 0.003, decay: 1.6, sustain: 0, release: 0.4,
+      filterFrequency: 250, resonance: 0.3, filterEnvOctaves: 5.5, filterEnvDecay: 0.25,
+      reverbSend: 0.3, destinationBus: "music" },
+    starterPattern: [[0, 60, 2]]
   }
 ];
 

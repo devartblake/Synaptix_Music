@@ -34,7 +34,8 @@ export const DRONE_STEREO_OFFSET_PARAMETER = "droneStereoOffsetHz";
 export const DEVICE_PARAMETER_DEFINITIONS: readonly DeviceParameterDefinition[] = [
   { id: FILTER_FREQUENCY_PARAMETER, label: "Filter Frequency", unit: "hz", minimum: 80, maximum: 16000 },
   { id: FILTER_RESONANCE_PARAMETER, label: "Resonance", unit: "ratio", minimum: 0, maximum: 1 },
-  { id: FILTER_ENV_AMOUNT_PARAMETER, label: "Filter Envelope", unit: "octaves", minimum: 0, maximum: 6 },
+  // Positive starts the cutoff above its setting and falls; negative starts below and rises.
+  { id: FILTER_ENV_AMOUNT_PARAMETER, label: "Filter Envelope", unit: "octaves", minimum: -6, maximum: 6 },
   { id: FILTER_ENV_DECAY_PARAMETER, label: "Filter Env Decay", unit: "seconds", minimum: 0.005, maximum: 2 },
   { id: LFO_RATE_PARAMETER, label: "LFO Rate", unit: "hz", minimum: 0.05, maximum: 20 },
   { id: VIBRATO_PARAMETER, label: "Vibrato", unit: "cents", minimum: 0, maximum: 100 },
