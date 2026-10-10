@@ -159,6 +159,10 @@ device panel.
 - Step 4, NES pack: **done.** Kernel oscillators `pulse-12` (band-limited 12.5% pulse) and
   `chip-triangle` (4-bit, 32-step staircase), as **NES Pulse** (`synaptix-nes-pulse`) and **Chip
   Triangle** (`synaptix-nes-triangle`).
+- Generator: **done.** The generation API's role lists (`ROLE_INSTRUMENTS`) offer every catalog
+  instrument added since the original twelve, so composed plans can ask for them. Each role's default
+  (first) instrument is unchanged, as are the procedural ensemble choices. Riser and Downsweep FX
+  stay out because no role plays one-shot transitions.
 
 ## Quick wins (days each)
 
