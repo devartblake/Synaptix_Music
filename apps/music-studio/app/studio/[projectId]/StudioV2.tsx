@@ -70,7 +70,6 @@ export function StudioTransportBar(props: StudioTopbarProps & {
       {props.layoutMenu}
       <div className="studio-status">
         <MasterMeter engine={engine} />
-        <PlatformAccount compact />
       </div>
     </header>
   );
@@ -86,6 +85,11 @@ export function SaveSyncStatus({ saveState: session, syncLabel, syncTone, onSync
     <span className="status-pill"><span className={`status-dot ${syncTone}`} />{syncLabel}</span>
     <Button className="studio-sync-now" onClick={onSyncNow}>Sync now</Button>
   </>;
+}
+
+/** The SynaptixPlay account control, at the status bar's right end in v2. */
+export function StatusAccount() {
+  return <span className="studio-status-account"><PlatformAccount compact /></span>;
 }
 
 /** The bottom dock: one tab at a time, about the selected clip or track (Alt+1/2/3). */

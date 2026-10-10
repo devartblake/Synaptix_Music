@@ -66,7 +66,7 @@ import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
 import { InstrumentAdder, LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
-import { hintFor, SaveSyncStatus, StudioDock, StudioStatusBar, StudioTransportBar } from "./StudioV2";
+import { hintFor, SaveSyncStatus, StatusAccount, StudioDock, StudioStatusBar, StudioTransportBar } from "./StudioV2";
 import { StudioTopbar } from "./StudioTopbar";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
@@ -777,7 +777,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           {inspector}
         </div>
         <StudioStatusBar hint={hint}
-          facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span></>} />
+          facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span><StatusAccount /></>} />
       </main>
     );
   }

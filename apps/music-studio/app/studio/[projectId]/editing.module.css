@@ -420,3 +420,86 @@
 [data-variant="daw"] .trackRow[data-muted] .clip {
   opacity: 0.45;
 }
+
+/* DAW layout: section markers and the loop brace above the ruler. */
+.laneRow {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 26px;
+  border-bottom: 1px solid var(--sx-line-soft);
+  background: var(--sx-surface);
+}
+.laneTitle {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 10px 2px 14px;
+  background: var(--sx-surface);
+  color: var(--sx-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.laneAction {
+  min-height: 20px;
+  padding: 0 7px;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.markerLane,
+.loopLane {
+  position: relative;
+}
+.loopLane {
+  cursor: ew-resize;
+  touch-action: none;
+}
+.marker {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  max-width: 180px;
+}
+.marker button,
+.marker input {
+  min-height: 0;
+  padding: 0 8px;
+  border: 0;
+  border-left: 3px solid var(--sx-secondary);
+  border-radius: 0 4px 4px 0;
+  background: var(--sx-surface-raised);
+  color: var(--sx-text);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.marker input {
+  width: 120px;
+  border-left-color: var(--sx-primary-strong);
+}
+.loopBrace {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px dashed rgb(246 184 74 / 55%);
+  border-radius: 4px;
+  background: var(--sx-surface-raised);
+  color: var(--sx-text-muted);
+  font-size: 10px;
+  pointer-events: none;
+}
+.loopBrace[data-enabled="true"] {
+  border-color: var(--sx-warning);
+  background: rgb(246 184 74 / 22%);
+  color: var(--sx-text);
+}

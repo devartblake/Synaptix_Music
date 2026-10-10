@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Section markers and a loop brace in the DAW layout (Studio UI v2, step 3b).** Two lanes above the ruler:
+  - **Markers:** "+ Marker" adds a section marker at the playhead's bar and opens it for naming. Click a marker to jump to it, double-click or press F2 to rename it, and press Delete to remove it.
+  - **Loop:** drag across bars to set the loop and turn it on, or press L to loop the bars the selected clip covers. × clears the loop. A saved loop that is switched off shows as a dashed brace.
+  - **Undo:** each marker or loop change is one undo step (new `SetMarkersEditorCommand` and `SetLoopRegionEditorCommand`).
+  - **Account:** the account control moved to the status bar so the transport bar stays on one row.
 - **Coloured timeline in the DAW layout (Studio UI v2, step 3a).** Each track and its clips take their instrument family's colour, matching how the audio engine resolves the instrument. Each track header has a live level meter, and muted tracks are dimmed. The transport bar shows bar.beat and clock time. A new, empty project shows a "Start with an instrument" prompt that adds the instrument chosen in the Browser. The classic layout is unchanged.
 - **DAW layout preview (Studio UI v2, step 2).** Turn it on from Layout → "DAW layout (preview)"; the classic layout stays the default. Its parts:
   - **Transport bar:** playback, position, tempo, undo/redo, an Arrange / Adaptive states switch (Alt+S), Generate, Export, the master meter and your account.

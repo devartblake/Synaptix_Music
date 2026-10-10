@@ -101,3 +101,37 @@ test("project rename is one undoable history entry on v1 and v2 projects", async
   assert.throws(() => normalizeProjectName("   "), RangeError);
   assert.equal(normalizeProjectName("x".repeat(500)).length, PROJECT_NAME_MAX_LENGTH);
 });
+
+test("the loop brace sets range and on/off as one undo step, and refuses an empty loop", async () => {
+  const { SetLoopRegionEditorCommand } = await import("./editor.ts");
+  const project = createEmptyProject("loop-region", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  const range = { start: { bar: 8, beat: 0, tick: 0 }, durationTicks: 4 * 3840 };
+  const history = new EditorCommandHistory();
+  const looped = await history.execute(project, new SetLoopRegionEditorCommand(
+    { enabled: false, range: null }, { enabled: true, range }
+  ));
+  assert.equal(looped.project.transport.loopEnabled, true);
+  assert.deepEqual(looped.project.transport.loopRange, range);
+  // The command keeps its own copy: later changes to the caller's object can't leak into history.
+  range.durationTicks = 1;
+  assert.equal(looped.project.transport.loopRange!.durationTicks, 4 * 3840);
+  const undone = (await history.undo(looped.project))!.project;
+  assert.equal(undone.transport.loopEnabled, false);
+  assert.equal(undone.transport.loopRange, null);
+  assert.throws(() => new SetLoopRegionEditorCommand(
+    { enabled: false, range: null }, { enabled: true, range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: 0 } }
+  ), /longer than zero/);
+});
+
+test("marker edits are one undo step each and refuse duplicate ids or blank names", async () => {
+  const { SetMarkersEditorCommand } = await import("./editor.ts");
+  const project = createEmptyProject("markers", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  const drop = { id: "m-drop", name: "Drop", kind: "section" as const, position: { bar: 8, beat: 0, tick: 0 } };
+  const history = new EditorCommandHistory();
+  const added = await history.execute(project, new SetMarkersEditorCommand([], [drop]));
+  const renamed = await history.execute(added.project, new SetMarkersEditorCommand(added.project.markers, [{ ...drop, name: "Big drop" }]));
+  assert.equal(renamed.project.markers[0]!.name, "Big drop");
+  assert.equal((await history.undo(renamed.project))!.project.markers[0]!.name, "Drop");
+  assert.throws(() => new SetMarkersEditorCommand([], [drop, { ...drop }]), /unique/);
+  assert.throws(() => new SetMarkersEditorCommand([], [{ ...drop, name: "  " }]), /name/);
+});
