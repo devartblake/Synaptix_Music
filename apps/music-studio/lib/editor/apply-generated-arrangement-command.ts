@@ -1,5 +1,5 @@
 import { KEY_TONICS, type GenerationProposal } from "@synaptix/generator-contracts";
-import { MUSICAL_KEY_MODES, MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import { MUSICAL_KEY_MODES, MusicProjectSchema, arrangementFingerprint, type MusicProject } from "@synaptix/project-model";
 import type { EditorCommand } from "@synaptix/command-system/editor";
 
 type ArrangementSnapshot = Pick<MusicProject, "tracks" | "tempoMap" | "markers" | "key" | "generationMetadata">;
@@ -56,7 +56,7 @@ export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
       devices: [{ id: `device-${track.id}`, deviceType: track.instrumentId, deviceVersion: "1.0.0", enabled: true, parameters: [] }],
       clips: track.clips.map((clip) => ({ ...structuredClone(clip), kind: "midi" as const }))
     }));
-    return restore(project, {
+    const applied = restore(project, {
       tracks,
       tempoMap: [{ id: "tempo-generated-1", position: { bar: 0, beat: 0, tick: 0 }, bpm: this.proposal.tempo }],
       // The generator picked a key: the project now carries it (undo restores the previous one).
@@ -70,6 +70,9 @@ export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
         prompt: `${this.proposal.genre}:${this.proposal.mood}:${this.proposal.key}`
       }
     });
+    // Remember the music as generated (after schema defaults), so later edits show as "Edited".
+    applied.generationMetadata!.arrangementFingerprint = arrangementFingerprint(applied);
+    return applied;
   }
 
   undo(project: MusicProject): MusicProject {
