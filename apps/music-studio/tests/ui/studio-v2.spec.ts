@@ -355,6 +355,43 @@ test("the piano roll's Edit menu floats above the dock, fully visible, and stays
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
   await expect(roll.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
+
+  // The panel is movable: drag its grip, or use the arrow keys on it. It reopens where it was left,
+  // stays on screen, and Home puts it back beside its button.
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const grip = panel.getByRole("button", { name: "Move Edit panel" });
+  const start = (await panel.boundingBox())!;
+  const handle = (await grip.boundingBox())!;
+  await page.mouse.move(handle.x + 20, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 20 + 300, handle.y + handle.height / 2 - 120, { steps: 6 });
+  await page.mouse.up();
+  const dragged = (await panel.boundingBox())!;
+  expect(Math.round(dragged.x - start.x)).toBe(300);
+  expect(Math.round(dragged.y - start.y)).toBe(-120);
+  await grip.press("ArrowLeft");
+  await grip.press("Shift+ArrowDown");
+  const nudged = (await panel.boundingBox())!;
+  expect(Math.round(nudged.x - dragged.x)).toBe(-10);
+  expect(Math.round(nudged.y - dragged.y)).toBe(40);
+  // Dragging far off screen keeps it wholly visible.
+  const gripNow = (await grip.boundingBox())!;
+  await page.mouse.move(gripNow.x + 10, gripNow.y + gripNow.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(viewport.width + 500, -500, { steps: 4 });
+  await page.mouse.up();
+  const clamped = (await panel.boundingBox())!;
+  expect(clamped.x + clamped.width).toBeLessThanOrEqual(viewport.width);
+  expect(clamped.y).toBeGreaterThanOrEqual(0);
+  await page.keyboard.press("Escape");
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const reopened = (await panel.boundingBox())!;
+  expect(Math.round(reopened.x)).toBe(Math.round(clamped.x));
+  expect(Math.round(reopened.y)).toBe(Math.round(clamped.y));
+  await grip.press("Home");
+  const home = (await panel.boundingBox())!;
+  expect(Math.round(home.x)).toBe(Math.round(start.x));
+  expect(Math.round(home.y)).toBe(Math.round(start.y));
 });
 
 test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
@@ -574,6 +611,48 @@ test("Generate opens a drawer beside the timeline and Export a dialog; Escape cl
   await dialog.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(exportButton).toBeFocused();
+});
+
+test("the inspector's SynaptixPlay card says whether the music is live in games", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "tablet", "The inspector is hidden on tablet layouts.");
+  const card = page.getByRole("complementary", { name: "Project inspector" }).getByRole("region", { name: "SynaptixPlay" });
+
+  // Never published: it says so and opens Adaptive states, where publishing happens.
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  await expect(card.getByRole("status")).toHaveText("Not in SynaptixPlay yet");
+  await card.getByRole("button", { name: "Open Adaptive states" }).click();
+  await expect(page.getByRole("heading", { name: "Author adaptive states" })).toBeVisible();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
+
+  // A package with an active version from an earlier revision: live, with a nudge to publish again.
+  const packageId = "10000000-0000-4000-8000-0000000000aa";
+  await page.evaluate((id) => localStorage.setItem("synaptix-music:adaptive:v1:visual-baseline", JSON.stringify({ packageId: id })), packageId);
+  let available = true;
+  await page.route(`**/api/platform/adaptive-packages/${packageId}/versions`, (route) => available
+    ? route.fulfill({ json: [
+      { version: 1, revisionId: "earlier", projectChecksumSha256: "a".repeat(64), createdAt: "2026-10-01T12:00:00.000Z", retentionStatus: "superseded", expiresAt: null },
+      { version: 2, revisionId: "earlier", projectChecksumSha256: "b".repeat(64), createdAt: "2026-10-05T12:00:00.000Z", retentionStatus: "active", expiresAt: null }
+    ] })
+    : route.fulfill({ status: 503, json: { message: "Platform unavailable" } }));
+  await page.getByRole("button", { name: "Adaptive states", exact: true }).click();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
+  await expect(card.getByRole("status")).toHaveText("Live in SynaptixPlay · version 2");
+  await expect(card).toContainText("Games play version 2, published");
+  await expect(card).toContainText("The project has changed since.");
+
+  // When the platform can't answer, it says so and can check again.
+  available = false;
+  await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await expect(card.getByRole("status")).toHaveText("Status unavailable");
+  available = true;
+  await card.getByRole("button", { name: "Check again" }).click();
+  await expect(card.getByRole("status")).toHaveText("Live in SynaptixPlay · version 2");
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
 });
 
 test("on a phone the DAW layout is one column: every view is reachable and the side panels open over it", async ({ page }) => {

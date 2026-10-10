@@ -151,7 +151,7 @@ Each step is one PR with its own visual baselines and UI tests.
      - **Schema:** an optional per-note `label` (1–32 characters) in TypeScript/Zod, both JSON Schemas and both Pydantic models. It is absent when unset, so existing projects keep their checksums.
      - **Editing:** `SetMidiNoteLabelCommand` names or clears the selected notes as one undo step; v2 projects run it through `liftEditorCommandToV2`. Copy and paste keep a note's label.
      - **Piano roll (DAW only):** a **Rename** menu next to **Labels** names the selected notes (a blank name or **Clear label** removes it). With **Labels** on, a note shows its label, else its pitch.
-7. **Browser and inspector.** **Done.** The DAW layout's Browser (`StudioBrowser.tsx`) has three tabs:
+7. **Browser and inspector.** **Done.** The DAW layout's Browser (`StudioBrowser.tsx`) has three views, chosen from a "Browser view" drop-down (first built as tabs, which wrapped in a narrow panel; #99):
    - **Instruments:** search (name, description or family) over the whole catalog, grouped by family. Click chooses; **Enter** or double-click adds a track; **Shift+Enter** swaps the selected clip's track. Drag onto a track to swap it, or elsewhere on the timeline to add one. Add and Swap buttons do the same.
    - **Swap** is a new undoable command (`SwapInstrumentEditorCommand`): the sounding device becomes the new instrument with default settings and a new device id. A track still named after its instrument takes the new name.
    - **Patterns:** adds the chosen instrument's starter phrase to the selected clip's track as a new clip, then opens it; Generator output opens the generator.
@@ -212,6 +212,7 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
 - 2026-10-10: the Browser's Instruments / Patterns / Project tabs became one drop-down ("Browser view"), so they never wrap.
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
+- 2026-10-10: the DAW inspector's publication card shows real SynaptixPlay status (live version, finalizing, not live, not published, unavailable) from the platform's package versions, instead of fixed "Stage 12" text.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
 - 2026-10-10: step 8 done (states grid with transitions strip, Generate drawer, Export dialog). The grid's columns are the state's own data rather than the mockup's per-track clip slots, which have no data behind them.
 - 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).

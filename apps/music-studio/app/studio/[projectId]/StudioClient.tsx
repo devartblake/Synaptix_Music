@@ -780,6 +780,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   } : null;
   const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
     bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel} selection={selection}
+    publication={panelLayout.v2 ? { revisionId: project.revisionId, refreshKey: workspace, onOpenAdaptive: () => setWorkspace("adaptive") } : undefined}
     onOpenGenerator={() => setWorkspace("generation")}
     overlay={panelLayout.v2 ? { open: panelOverlay === "inspector", onClose: closePanelOverlay } : undefined} />;
 

@@ -10,7 +10,7 @@ They contain presentation and interaction behavior; project mutations belong in 
 | `Toolbar` | Wrapping editor header for labeled controls. Retains normal Tab navigation. |
 | `Badge` | Compact metadata/status text; live announcements remain the caller's responsibility. |
 | `ViewTabs` | Linked tab/panel IDs, selected state, disabled tabs, and Arrow/Home/End keyboard selection. Render matching `tabpanel` elements. |
-| `DisclosureMenu` | Expandable group for settings controls; outside click, focus departure, and Escape dismiss it. Escape restores trigger focus. `floating` opens it in the top layer, placed from its button, so a short or scrolling container can't clip it. |
+| `DisclosureMenu` | Expandable group for settings controls; outside click, focus departure, and Escape dismiss it. Escape restores trigger focus. `floating` opens it in the top layer, placed from its button, so a short or scrolling container can't clip it; its grip moves it (drag, or arrow keys; Home resets). |
 | `CommitSlider` | Local fader draft with one async commit per pointer or keyboard gesture, cancellation, pending state, and error display. |
 | `MeterBar` | Bounded dBFS meter with accessible numeric and silence/clipping text. |
 | `ResizeHandle` | Bounded pointer and keyboard separator. Arrow keys change 16px (Shift: 32px); Home/End select limits. Pointer cancellation restores the starting size. |

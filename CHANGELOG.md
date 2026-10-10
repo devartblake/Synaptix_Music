@@ -7,6 +7,7 @@
 - **The DAW layout works on phones and tablets (Studio UI v2, step 9a).**
   - **Phones:** it's one column. Generate stays in the transport bar, and a **More** menu holds Export and the Browser and Inspector panels, which open over the timeline. Phones no longer fall back to the classic layout when the DAW layout is chosen.
   - **Tablets:** an **Inspector** button opens the inspector over the timeline, which couldn't be reached before.
+- **The DAW piano roll's Edit and Rename menus float.** They open above everything else, below their button or above it when there's more room there, so the dock's height no longer cuts them off or hides them under the Browser. They stay open while you edit, so you can press +1 repeatedly and watch the notes move. The Edit actions are laid out three across. Drag a menu's grip to move it anywhere on screen, or focus the grip and use the arrow keys (Shift for bigger steps). It reopens where you left it, and Home on the grip puts it back beside its button.
 - **Project cards show where the music came from.** Each local project on the home page is marked with its own colour, icon and label:
   - **Generated** (purple, ✦): made with the generator and not changed since.
   - **Edited** (teal, ✦+): generated, then changed by hand.
@@ -21,6 +22,13 @@
 - **Renamable note labels (from FL Studio 2026).** Notes can carry a name, such as "Hook" or "Kick", that the DAW piano roll shows in place of the pitch.
   - **Editing:** select notes, open **Rename** next to **Labels**, type a name and press Enter. A blank name or **Clear label** removes it. Each rename is one undo step, and copy and paste keep the labels.
   - **Schema:** an optional `label` (1–32 characters) on MIDI notes in TypeScript/Zod, both JSON Schemas and both Python models. Projects without labels are unchanged, including their checksums.
+- **The DAW inspector says whether the music is live in SynaptixPlay.** The "Publication readiness" card, which showed the same fixed text for every project, is now a **SynaptixPlay** card with the project's real status:
+  - **Live in SynaptixPlay · version N**, with the date it was published. It adds a nudge to publish again if the project has changed since, and notes a newer version that is still being finalized.
+  - **Publishing version N** while the platform finalizes it.
+  - **Not live**, when the last version was revoked, expired or replaced.
+  - **Not in SynaptixPlay yet**, with a button to Adaptive states, where publishing happens.
+  - **Status unavailable**, with **Check again**, when the platform can't be reached or you're signed out.
+  - The classic layout keeps its old card until it is removed.
 - **The project key travels with the project.** Projects now store an optional key: a tonic pitch class and one of the generator's seven modes.
   - **Schema:** the field is in TypeScript/Zod, both JSON Schemas and both Python models. Projects without a key are unchanged, including their checksums.
   - **Editing:** choosing a key in the piano roll's **Scale** menu saves it to the project as an undoable edit, and **Auto** clears it and detects the key from the clip's notes. Hiding the shading (**Off**) stays a per-browser choice.

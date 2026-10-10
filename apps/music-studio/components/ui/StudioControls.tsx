@@ -83,6 +83,67 @@ export function ViewTabs({
 }
 
 const FLOATING_GAP = 6;
+const MOVE_STEP = 10;
+const MOVE_STEP_LARGE = 40;
+
+/** Puts a floating panel at left/top, kept wholly on screen, and returns where it ended up. */
+function placeAt(panel: HTMLElement, left: number, top: number): { left: number; top: number } {
+  const height = Math.min(panel.scrollHeight + panel.offsetHeight - panel.clientHeight, innerHeight - 2 * FLOATING_MARGIN);
+  const x = Math.max(FLOATING_MARGIN, Math.min(left, innerWidth - panel.offsetWidth - FLOATING_MARGIN));
+  const y = Math.max(FLOATING_MARGIN, Math.min(top, innerHeight - height - FLOATING_MARGIN));
+  Object.assign(panel.style, { left: `${x}px`, top: `${y}px`, maxHeight: `${innerHeight - y - FLOATING_MARGIN}px` });
+  return { left: x, top: y };
+}
+
+/**
+ * The floating panel's grip: drag it to move the panel, or focus it and use the arrow keys
+ * (Shift for bigger steps); Home puts the panel back beside its button.
+ */
+function MoveHandle({ label, panel, moved, onReset }: {
+  label: string;
+  panel: React.RefObject<HTMLDivElement | null>;
+  moved: React.MutableRefObject<{ left: number; top: number } | null>;
+  onReset: () => void;
+}) {
+  const moveTo = (left: number, top: number) => {
+    if (panel.current) moved.current = placeAt(panel.current, left, top);
+  };
+  return (
+    <button type="button" className={styles.moveHandle} data-move-handle=""
+      aria-label={`Move ${label} panel`} title="Drag to move. Arrow keys move it; Home puts it back."
+      onPointerDown={(event) => {
+        if (!panel.current || event.button !== 0) return;
+        event.preventDefault();
+        const rect = panel.current.getBoundingClientRect();
+        const origin = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+        // Window listeners rather than pointer capture, so the drag follows the pointer anywhere.
+        const move = (moveEvent: PointerEvent) => moveTo(origin.left + moveEvent.clientX - origin.x, origin.top + moveEvent.clientY - origin.y);
+        const end = () => {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", end);
+          window.removeEventListener("pointercancel", end);
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", end);
+        window.addEventListener("pointercancel", end);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Home") {
+          event.preventDefault();
+          onReset();
+          return;
+        }
+        const step = event.shiftKey ? MOVE_STEP_LARGE : MOVE_STEP;
+        const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+        if (!delta || !panel.current) return;
+        event.preventDefault();
+        const rect = panel.current.getBoundingClientRect();
+        moveTo(rect.left + delta[0]!, rect.top + delta[1]!);
+      }}>
+      <span aria-hidden="true">⠿</span>{label}
+    </button>
+  );
+}
 const FLOATING_MARGIN = 8;
 
 /** Where a floating panel goes: under the trigger, or above it when there is more room there. */
@@ -112,6 +173,8 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  // Where the person dragged the floating panel; it reopens there (kept on screen) until reset.
+  const moved = useRef<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {
     const panel = content.current;
     if (!floating || !open || !panel || !trigger.current) return;
@@ -120,6 +183,10 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
     // which would stop the first control taking focus). Natural height = content plus borders.
     const place = () => {
       if (!trigger.current) return;
+      if (moved.current) {
+        placeAt(panel, moved.current.left, moved.current.top);
+        return;
+      }
       const height = panel.scrollHeight + panel.offsetHeight - panel.clientHeight;
       const { left, top, maxHeight } = floatingPosition(trigger.current.getBoundingClientRect(),
         { width: panel.offsetWidth, height }, { width: innerWidth, height: innerHeight });
@@ -136,7 +203,7 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
   useEffect(() => {
     if (!open) return;
     content.current
-      ?.querySelector<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled)")
+      ?.querySelector<HTMLElement>(":is(button, input, select):not(:disabled):not([data-move-handle])")
       ?.focus();
     const dismiss = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
@@ -185,6 +252,10 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
           aria-label={`${label} controls`}
           popover={floating ? "manual" : undefined}
         >
+          {floating && <MoveHandle label={label} panel={content} moved={moved} onReset={() => {
+            moved.current = null;
+            window.dispatchEvent(new Event("resize"));
+          }} />}
           {children}
         </div>
       )}
