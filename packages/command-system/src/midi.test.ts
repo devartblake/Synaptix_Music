@@ -158,3 +158,32 @@ test("adding several notes is one reversible step and fails closed as a whole", 
   assert.equal(notes(original).length, 2, "a failed batch leaves the clip untouched");
   assert.throws(() => new AddMidiNotesCommand("track-1", "clip-1", []), /At least one/);
 });
+
+test("humanize nudges timing and velocity within bounds, the same way every time from a seed", async () => {
+  const { HumanizeMidiNotesCommand } = await import("./midi.ts");
+  const { createEmptyProject } = await import("@synaptix/project-model");
+  const project = createEmptyProject("humanize");
+  const notes = Array.from({ length: 16 }, (_, i) => ({ id: `n${i}`, pitch: 60, velocity: i === 0 ? 127 : 100, startTick: i * 240, durationTicks: 120 }));
+  project.tracks = [{ id: "t", name: "T", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, devices: [],
+    clips: [{ id: "c", kind: "midi", name: "C", loop: false, range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: 3840 }, notes }] }];
+  const ids = notes.map((note) => note.id);
+  const run = (seed: number) => {
+    const out = new HumanizeMidiNotesCommand("t", "c", ids, { timingTicks: 20, velocity: 10, seed }).execute(project);
+    return (out.tracks[0]!.clips[0] as { notes: typeof notes }).notes;
+  };
+  const once = run(7);
+  assert.deepEqual(run(7), once);
+  assert.notDeepEqual(run(8), once);
+  // Something actually moved, and nothing left its bounds.
+  assert.ok(once.some((note, i) => note.startTick !== i * 240) && once.some((note) => note.velocity !== 100 && note.velocity !== 127));
+  for (const note of once) {
+    assert.ok(note.startTick >= 0 && note.startTick + note.durationTicks <= 3840);
+    assert.ok(note.velocity >= 1 && note.velocity <= 127);
+  }
+  const original = notes.map((note) => note.startTick);
+  for (const note of once) {
+    const before = original[Number(note.id.slice(1))]!;
+    assert.ok(Math.abs(note.startTick - before) <= 20, `${note.id} moved ${note.startTick - before}`);
+  }
+  assert.throws(() => new HumanizeMidiNotesCommand("t", "c", [], { timingTicks: 1, velocity: 1, seed: 1 }), /At least one/);
+});

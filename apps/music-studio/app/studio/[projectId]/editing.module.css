@@ -560,3 +560,33 @@
 .compactZoom input {
   width: 70px;
 }
+.toolGroup {
+  display: inline-flex;
+  gap: 2px;
+}
+.toolGroup button[aria-pressed="true"] {
+  border-color: var(--sx-primary);
+  background: rgb(109 124 255 / 22%);
+}
+.pianoGrid[data-tool="draw"] {
+  cursor: crosshair;
+}
+.ghostNote {
+  position: absolute;
+  border: 1px dashed rgb(244 247 252 / 35%);
+  border-radius: 3px;
+  background: rgb(244 247 252 / 8%);
+  pointer-events: none;
+}
+.noteLabel {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}

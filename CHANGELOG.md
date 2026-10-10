@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Piano roll tools in the DAW dock (Studio UI v2, step 4b).**
+  - **Select / Draw:** in Draw, one click adds a note; **B** switches tools.
+  - **Ghost:** shows another track's notes faintly behind the clip.
+  - **Humanize:** nudges the selected notes' timing and velocity a little, as one undo step. It's seeded, so redo gives the same result (new `HumanizeMidiNotesCommand`).
+  - **Labels:** writes each note's name on it.
 - **Piano roll in the DAW dock (Studio UI v2, step 4a).**
   - **Keyboard and toolbar:** the keys look like a keyboard (black keys shorter, C rows labelled). The toolbar fits on one row: Preview, Grid, Snap, Scale, Chords, Quantize, an **Edit** menu (duplicate, transpose, copy, cut, paste, delete, stop sound) and compact zoom. The insert-note fields are gone, since drawing on the grid replaces them.
   - **Scale:** **Scale** shades the rows in the key. **Auto** detects the key from the clip's notes, and a chosen key is remembered per project in this browser.
