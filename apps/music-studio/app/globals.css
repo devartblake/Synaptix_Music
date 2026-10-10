@@ -271,15 +271,15 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .studio-transportbar .transport-icon { width: 34px; padding: 0; font-size: 16px; }
 .studio-transportbar .generation-cta { width: auto; margin-top: 0; }
 .studio-transportbar .studio-mark { width: 30px; height: 30px; border-radius: 8px; }
-.studio-transportbar .studio-title { flex: 0 1 110px; min-width: 80px; }
+.studio-transportbar .studio-title { flex: 0 1 96px; min-width: 72px; }
 /* MasterMeter sets an inline min-width for the v1 top bar's roomier status area. */
 .studio-transportbar section[aria-label="Master output meter"] { min-width: 110px !important; }
 .studio-transportbar .studio-title h1 { font-size: 13px; }
-.transport-group { display: flex; align-items: center; gap: 4px; padding-left: 8px; border-left: 1px solid var(--sx-line-soft); }
+.transport-group { display: flex; align-items: center; gap: 4px; padding-left: 6px; border-left: 1px solid var(--sx-line-soft); }
 .transport-group button[aria-pressed="true"], .view-switch button[aria-pressed="true"] { border-color: var(--sx-primary); background: rgb(109 124 255 / 18%); color: var(--sx-text); }
-.transport-lcd { display: grid; justify-items: start; padding: 2px 8px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-canvas); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-.transport-lcd input { width: 58px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--sx-active); font: inherit; font-size: 14px; font-weight: 600; }
-.transport-lcd span { color: var(--sx-text-muted); font-size: 9px; letter-spacing: .06em; }
+.transport-lcd { display: grid; justify-items: start; padding: 2px 6px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-canvas); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.transport-lcd input { width: 40px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--sx-active); font: inherit; font-size: 14px; font-weight: 600; }
+.transport-lcd span { color: var(--sx-text-muted); font-size: 8px; letter-spacing: .04em; }
 .view-switch { display: flex; border: 1px solid var(--sx-line); border-radius: 8px; overflow: hidden; }
 .view-switch button { border: 0; border-radius: 0; background: transparent; color: var(--sx-text-muted); white-space: nowrap; }
 .studio-transportbar .transport-spacer, .studio-statusbar .transport-spacer { flex: 1 1 0; min-width: 0; }
@@ -308,6 +308,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .studio-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-statusbar .status-pill { padding: 1px 8px; }
 .studio-sync-now { min-height: 20px; padding: 0 8px; font-size: 11px; }
+.studio-status-account button { min-height: 20px; padding: 0 8px; font-size: 11px; }
 @media (max-width: 1120px) {
   .studio-v2-body { grid-template-columns: var(--studio-nav-width, 184px) minmax(0, 1fr); }
 }

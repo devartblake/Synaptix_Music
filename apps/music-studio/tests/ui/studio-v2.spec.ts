@@ -114,6 +114,59 @@ test("an empty project asks for a first instrument and adds it in one step", asy
   await expect(page.getByText("Start with an instrument")).toHaveCount(0);
 });
 
+test("section markers are added, renamed and removed as undoable edits", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  const markers = page.getByRole("list", { name: "Section markers" });
+  await page.getByRole("button", { name: "+ Marker" }).click();
+  // A new marker opens for naming straight away, at the playhead's bar.
+  await page.getByRole("textbox", { name: "Rename Section 1" }).fill("Drop");
+  await page.keyboard.press("Enter");
+  await expect(markers.getByRole("button", { name: "Drop, bar 1" })).toBeVisible();
+
+  // Undo takes back the rename, then the marker itself: each is one step.
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(markers.getByRole("button", { name: "Section 1, bar 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(markers.getByRole("listitem")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await markers.getByRole("button", { name: "Section 1, bar 1" }).press("F2");
+  await page.getByRole("textbox", { name: "Rename Section 1" }).fill("Intro");
+  await page.keyboard.press("Enter");
+  await markers.getByRole("button", { name: "Intro, bar 1" }).press("Delete");
+  await expect(markers.getByRole("listitem")).toHaveCount(0);
+});
+
+test("the loop is set by dragging the brace or pressing L on a clip, and undoes in one step", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  // The demo keeps a 16-bar loop range with looping off: the brace shows it, dimmed.
+  await expect(page.getByRole("img", { name: "Loop: bars 1 to 16 (off)" })).toBeVisible();
+  const lane = page.locator("[title='Drag across bars to set the loop']");
+  const box = (await lane.boundingBox())!;
+  const barX = (bar: number) => box.x + ((bar - 0.5) / 16) * box.width;
+  await page.mouse.move(barX(6), box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(barX(3), box.y + box.height / 2, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByRole("img", { name: "Loop: bars 3 to 6" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Loop", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  // One undo restores both the old range and looping off.
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.getByRole("img", { name: "Loop: bars 1 to 16 (off)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Loop", exact: true })).toHaveAttribute("aria-pressed", "false");
+
+  // L loops the bars the selected clip covers (the demo's clips run all 16 bars) and turns looping on.
+  await page.getByRole("button", { name: "Select Bass Generated Loop" }).click();
+  await page.keyboard.press("l");
+  await expect(page.getByRole("img", { name: "Loop: bars 1 to 16" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Loop", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Clear loop" }).click();
+  await expect(page.getByRole("img", { name: /^Loop: bars/ })).toHaveCount(0);
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);

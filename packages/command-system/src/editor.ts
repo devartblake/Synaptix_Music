@@ -194,6 +194,71 @@ export class SetLoopEnabledEditorCommand implements EditorCommand {
   }
 }
 
+export interface LoopRegion {
+  enabled: boolean;
+  range: MusicProject["transport"]["loopRange"];
+}
+
+/** Sets the loop on/off state and its range together, as one undo step (the timeline's loop brace). */
+export class SetLoopRegionEditorCommand implements EditorCommand {
+  readonly id: string;
+  readonly kind = "set-loop-region";
+
+  constructor(
+    readonly previous: LoopRegion,
+    readonly next: LoopRegion,
+    options: CommandOptions = {}
+  ) {
+    if (next.range && next.range.durationTicks <= 0) throw new Error("A loop must be longer than zero.");
+    this.id = commandId(options);
+  }
+
+  execute(project: MusicProject): MusicProject {
+    return this.apply(project, this.next);
+  }
+
+  undo(project: MusicProject): MusicProject {
+    return this.apply(project, this.previous);
+  }
+
+  private apply(project: MusicProject, region: LoopRegion): MusicProject {
+    const next = clone(project);
+    next.transport.loopEnabled = region.enabled;
+    next.transport.loopRange = region.range ? structuredClone(region.range) : null;
+    return next;
+  }
+}
+
+export type ProjectMarkers = MusicProject["markers"];
+
+/** Replaces the project's markers (add, rename, move or remove), as one undo step. */
+export class SetMarkersEditorCommand implements EditorCommand {
+  readonly id: string;
+  readonly kind = "set-markers";
+
+  constructor(
+    readonly previous: ProjectMarkers,
+    readonly next: ProjectMarkers,
+    options: CommandOptions = {}
+  ) {
+    if (new Set(next.map((marker) => marker.id)).size !== next.length) throw new Error("Marker ids must be unique.");
+    if (next.some((marker) => !marker.name.trim())) throw new Error("A marker needs a name.");
+    this.id = commandId(options);
+  }
+
+  execute(project: MusicProject): MusicProject {
+    const next = clone(project);
+    next.markers = structuredClone(this.next);
+    return next;
+  }
+
+  undo(project: MusicProject): MusicProject {
+    const next = clone(project);
+    next.markers = structuredClone(this.previous);
+    return next;
+  }
+}
+
 export class SetTempoEditorCommand implements EditorCommand {
   readonly id: string;
   readonly kind = "set-tempo";

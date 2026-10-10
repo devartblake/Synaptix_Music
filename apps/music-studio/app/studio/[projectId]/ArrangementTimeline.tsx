@@ -5,15 +5,17 @@ import type { AudioTransport } from "@synaptix/daw-engine";
 import type { Clip, MusicProject, Track } from "@synaptix/project-model";
 import {
   SetTrackMutedEditorCommand,
+  SetLoopRegionEditorCommand,
   SetTrackSoloEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
 import { AddClipEditorCommand, RemoveTrackEditorCommand } from "@synaptix/command-system/track";
 import { Badge, Button } from "../../../components/ui/StudioControls";
-import { arrangementBars, barTicks, positionTicks } from "../../../lib/editor/timeline-model";
+import { arrangementBars, barRange, barTicks, positionTicks } from "../../../lib/editor/timeline-model";
 import { canAddMidiClip, createEmptyMidiClip } from "../../../lib/editor/new-clip";
 import { Playhead } from "./TransportPosition";
 import { ChannelMeters, TrackLevel } from "./ChannelMeters";
+import { LoopLane, MarkerLane } from "./TimelineLanes";
 import styles from "./editing.module.css";
 
 export function ArrangementTimeline({
@@ -40,11 +42,29 @@ export function ArrangementTimeline({
   const duration = bars * barTicks(project);
   const daw = Boolean(trackColor);
   const timeline = (
-    <section aria-label="Arrangement timeline" className="canvas-panel" data-variant={daw ? "daw" : undefined}>
+    <section aria-label="Arrangement timeline" className="canvas-panel" data-variant={daw ? "daw" : undefined}
+      onKeyDown={daw ? (event) => {
+        // L loops the selected clip (whole bars it covers), as one undo step.
+        if (event.key.toLowerCase() !== "l" || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+        const clip = project.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === selected);
+        if (!clip) return;
+        event.preventDefault();
+        const first = clip.range.start.bar;
+        const last = Math.ceil((positionTicks(project, clip.range.start) + clip.range.durationTicks) / barTicks(project)) - 1;
+        void onExecute(new SetLoopRegionEditorCommand(
+          { enabled: project.transport.loopEnabled, range: project.transport.loopRange },
+          { enabled: true, range: barRange(project, first, Math.max(first, last)) }
+        ));
+      } : undefined}>
       <div
         className={styles.arrangement}
         style={{ "--bars": bars, minWidth: 240 + bars * 52 } as CSSProperties}
       >
+        {daw && <>
+          <MarkerLane project={project} engine={engine} bars={bars} duration={duration} onExecute={onExecute} />
+          <LoopLane project={project} engine={engine} bars={bars} duration={duration} onExecute={onExecute} />
+        </>}
         <div className={styles.rulerRow}>
           <div className={styles.trackTitle}>
             TRACKS <Badge>{project.tracks.length}</Badge>
@@ -192,7 +212,7 @@ export function ArrangementTimeline({
         </div>
       </div>
       <p className={styles.hint}>
-        Select a clip · Enter or double-click to edit · Select a bar number to seek
+        Select a clip · Enter or double-click to edit · Select a bar number to seek{daw ? " · L loops the selected clip" : ""}
       </p>
     </section>
   );

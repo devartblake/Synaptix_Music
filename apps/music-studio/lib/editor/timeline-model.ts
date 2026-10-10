@@ -40,3 +40,18 @@ export function transportTime(project: MusicProject, ticks: number): string {
   const tenths = Math.floor((Math.max(0, ticks) / project.transport.ticksPerQuarterNote) * (60 / bpm) * 10);
   return `${Math.floor(tenths / 600)}:${String(Math.floor((tenths % 600) / 10)).padStart(2, "0")}.${tenths % 10}`;
 }
+
+/** The musical position of a tick (the inverse of positionTicks). */
+export function tickPosition(project: MusicProject, ticks: number): MusicalPosition {
+  const ppq = project.transport.ticksPerQuarterNote;
+  const perBar = barTicks(project);
+  const tick = Math.max(0, Math.floor(ticks));
+  return { bar: Math.floor(tick / perBar), beat: Math.floor((tick % perBar) / ppq), tick: tick % ppq };
+}
+
+/** Whole bars from `from` to `to` inclusive, in either order, as a loop range. */
+export function barRange(project: MusicProject, from: number, to: number) {
+  const first = Math.max(0, Math.min(from, to));
+  const last = Math.max(0, Math.max(from, to));
+  return { start: { bar: first, beat: 0, tick: 0 }, durationTicks: (last - first + 1) * barTicks(project) };
+}

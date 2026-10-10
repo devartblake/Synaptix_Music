@@ -3,9 +3,11 @@ import test from "node:test";
 import { createEmptyProject } from "@synaptix/project-model";
 import {
   arrangementBars,
+  barRange,
   barTicks,
   clipPlaybackTick,
   positionTicks,
+  tickPosition,
   transportLabel,
   transportTime
 } from "./timeline-model.ts";
@@ -53,4 +55,15 @@ test("the time counter follows the tempo, so a bar at 120 BPM is two seconds and
   project.tempoMap[0]!.bpm = 90;
   assert.equal(transportTime(project, bar), "0:02.6");
   assert.equal(transportTime(project, -5), "0:00.0");
+});
+
+test("tick positions round-trip, and a dragged loop covers whole bars whichever way it was dragged", () => {
+  const project = createEmptyProject("positions");
+  project.timeSignatureMap[0]!.numerator = 3;
+  for (const position of [{ bar: 0, beat: 0, tick: 0 }, { bar: 7, beat: 2, tick: 959 }, { bar: 12, beat: 1, tick: 5 }]) {
+    assert.deepEqual(tickPosition(project, positionTicks(project, position)), position);
+  }
+  assert.deepEqual(barRange(project, 11, 8), barRange(project, 8, 11));
+  assert.deepEqual(barRange(project, 8, 11), { start: { bar: 8, beat: 0, tick: 0 }, durationTicks: 4 * barTicks(project) });
+  assert.equal(barRange(project, 3, 3).durationTicks, barTicks(project));
 });
