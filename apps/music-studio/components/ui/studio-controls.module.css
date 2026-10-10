@@ -104,6 +104,15 @@
   background: var(--sx-surface);
   box-shadow: var(--sx-shadow);
 }
+/* Floating: a top-layer popover placed by script; overrides the user-agent popover box. */
+.menuFloating {
+  position: fixed;
+  inset: auto;
+  right: auto;
+  margin: 0;
+  overflow-y: auto;
+  color: var(--sx-text);
+}
 .menuContent p {
   margin: 3px 0;
   color: var(--sx-text-muted);

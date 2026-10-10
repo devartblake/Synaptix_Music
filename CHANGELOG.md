@@ -8,6 +8,7 @@
   - **Adaptive states (Alt+S):** a grid with a row per state, showing its intensity, render, loop, cues and the states it leads to, then a strip of transitions and cue points. Choose a row to edit that state. The row lights up while the runtime preview plays it.
   - **Generate and Export:** Generate opens as a drawer beside the arrangement. Export, or Ctrl/Cmd+E, opens as a dialog. Escape closes either and returns focus to the button that opened it.
   - The classic layout is unchanged.
+- **The DAW piano roll's Edit and Rename menus float.** They open above everything else, below their button or above it when there's more room there, so the dock's height no longer cuts them off or hides them under the Browser. They stay open while you edit, so you can press +1 repeatedly and watch the notes move. The Edit actions are laid out three across.
 - **Renamable note labels (from FL Studio 2026).** Notes can carry a name, such as "Hook" or "Kick", that the DAW piano roll shows in place of the pitch.
   - **Editing:** select notes, open **Rename** next to **Labels**, type a name and press Enter. A blank name or **Clear label** removes it. Each rename is one undo step, and copy and paste keep the labels.
   - **Schema:** an optional `label` (1–32 characters) on MIDI notes in TypeScript/Zod, both JSON Schemas and both Python models. Projects without labels are unchanged, including their checksums.
