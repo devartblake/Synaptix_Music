@@ -28,6 +28,7 @@
   - **Not live**, when the last version was revoked, expired or replaced.
   - **Not in SynaptixPlay yet**, with a button to Adaptive states, where publishing happens.
   - **Status unavailable**, with **Check again**, when the platform can't be reached or you're signed out.
+  - **On any device:** for cloud projects the card asks the platform for the project's packages (`?projectId=` on the package list), so the status no longer depends on the browser that published. A package being authored in this browser still comes first.
   - The classic layout keeps its old card until it is removed.
 - **The project key travels with the project.** Projects now store an optional key: a tonic pitch class and one of the generator's seven modes.
   - **Schema:** the field is in TypeScript/Zod, both JSON Schemas and both Python models. Projects without a key are unchanged, including their checksums.

@@ -6,8 +6,19 @@ import { platformJson } from "./_proxy";
 
 export const runtime = "nodejs";
 
-export function GET(request: NextRequest): Promise<NextResponse> {
-  return platformJson(request, "/api/v1/music/adaptive-packages");
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The caller's packages; `?projectId=` narrows them to one project's (the platform filters). */
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const projectId = request.nextUrl.searchParams.get("projectId");
+  if (projectId === null) return platformJson(request, "/api/v1/music/adaptive-packages");
+  if (!UUID.test(projectId)) {
+    return NextResponse.json(
+      { code: "invalid_project_id", message: "projectId must be a UUID." },
+      { status: 400 }
+    );
+  }
+  return platformJson(request, `/api/v1/music/adaptive-packages?projectId=${encodeURIComponent(projectId)}`);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
