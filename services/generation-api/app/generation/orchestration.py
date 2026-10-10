@@ -40,6 +40,10 @@ INSTRUMENTS: dict[str, str] = {
     "synaptix-chiptune": "Chiptune Lead",
     "synaptix-squelch": "Acid Bass",
     "synaptix-motion": "Motion Pad",
+    "synaptix-wobble": "Wobble Bass",
+    "synaptix-reese": "Reese Bass",
+    "synaptix-ensemble": "Ensemble Strings",
+    "synaptix-uplift": "Trance Pluck",
 }
 
 ROLES: tuple[TrackRole, ...] = get_args(TrackRole)

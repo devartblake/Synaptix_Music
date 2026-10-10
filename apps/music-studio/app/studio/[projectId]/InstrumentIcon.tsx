@@ -191,6 +191,39 @@ const DEVICE_ARTWORK: Record<string, React.ReactNode> = {
   </>
 };
 
+// Slice 3 instruments.
+const SLICE_3_ARTWORK: Record<string, React.ReactNode> = {
+  // A wave whose height wobbles.
+  "synaptix-wobble": <>
+    <path d="M4 24c2-10 4-10 6 0s4 10 6 0 3-4 4 0 3 4 4 0 4-10 6 0 4 10 6 0 4-10 6 0"
+      stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M4 10c6 0 8 8 20 8s14-8 20-8M4 38c6 0 8-8 20-8s14 8 20 8" strokeOpacity="0.45" strokeDasharray="2 3" />
+  </>,
+  // Two saws drifting against each other, low and dark.
+  "synaptix-reese": <>
+    <path d="M4 34L14 20v14l10-14v14l10-14v14l10-14" strokeOpacity="0.5" />
+    <path d="M6 36L16 22v14l10-14v14l10-14v14l8-11" stroke="var(--instrument-accent)" strokeWidth="2.5" />
+    <path d="M4 10h40" strokeOpacity="0.3" />
+    <path d="M10 14q4-6 8 0t8 0 8 0 8 0" strokeOpacity="0.6" />
+  </>,
+  // Three violin necks side by side, with a vibrato line.
+  "synaptix-ensemble": <>
+    <path d="M12 6v30M24 4v32M36 6v30" />
+    <ellipse cx="12" cy="38" rx="5" ry="6" fill="var(--instrument-accent)" fillOpacity="0.25" />
+    <ellipse cx="24" cy="38" rx="5" ry="6" fill="var(--instrument-accent)" fillOpacity="0.35" />
+    <ellipse cx="36" cy="38" rx="5" ry="6" fill="var(--instrument-accent)" fillOpacity="0.25" />
+    <path d="M4 20q3-4 6 0t6 0 6 0 6 0 6 0 6 0 6 0" stroke="var(--instrument-accent)" strokeWidth="1.8" />
+  </>,
+  // A sharp stab: instant attack, fast decay, with sparks.
+  "synaptix-uplift": <>
+    <path d="M4 40h40" strokeOpacity="0.35" />
+    <path d="M8 40V10c3 14 8 24 30 30" stroke="var(--instrument-accent)" strokeWidth="2.5"
+      fill="var(--instrument-accent)" fillOpacity="0.15" />
+    <path d="M30 8l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="currentColor" stroke="none" />
+    <path d="M40 18l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="currentColor" stroke="none" />
+  </>
+};
+
 interface InstrumentIconProps {
   kind: InstrumentProfileKind;
   /** Picks a dedicated drawing when the instrument has one; otherwise the family's. */
@@ -203,7 +236,7 @@ export function InstrumentIcon({ kind, deviceType, size = 36 }: InstrumentIconPr
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" focusable="false"
       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
       style={{ "--instrument-accent": INSTRUMENT_ACCENTS[kind], flexShrink: 0 } as React.CSSProperties}>
-      {(deviceType && DEVICE_ARTWORK[deviceType]) ?? ARTWORK[kind]}
+      {(deviceType && (DEVICE_ARTWORK[deviceType] ?? SLICE_3_ARTWORK[deviceType])) ?? ARTWORK[kind]}
     </svg>
   );
 }
