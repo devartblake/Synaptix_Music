@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 
-import { Button, DisclosureMenu } from "../../../components/ui/StudioControls";
+import { Button } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import { PlatformAccount } from "../../../components/PlatformAccount";
 import type { DockTab } from "../../../lib/editor/use-studio-layout";
@@ -18,6 +18,43 @@ export type StudioView = "arrange" | "adaptive";
 export const DOCK_TAB_LABELS: Record<DockTab, string> = { editor: "Editor", devices: "Devices", mixer: "Mixer" };
 const DOCK_TAB_ORDER: readonly DockTab[] = ["editor", "devices", "mixer"];
 
+/** 16-px line icons for the transport bar's actions (stroke follows the text colour). */
+const ACTION_ICONS = {
+  generate: "M8 1.8 9.4 6.6 14.2 8 9.4 9.4 8 14.2 6.6 9.4 1.8 8 6.6 6.6Z",
+  export: "M8 10.5V2.2M5 5.2l3-3 3 3M2.8 9.5v4h10.4v-4",
+  notebook: "M4 2h7.8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4ZM4 2v12M6.8 5.2h4M6.8 7.8h4",
+  browser: "M2 3h12v10H2ZM6 3v10",
+  inspector: "M2 3h12v10H2ZM10 3v10",
+  settings: "M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7 3.4 3.4"
+} as const;
+
+function ActionIcon({ name }: { name: keyof typeof ACTION_ICONS }) {
+  return (
+    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="none"
+      stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      {name === "settings" && <circle cx="8" cy="8" r="2.2" />}
+      <path d={ACTION_ICONS[name]} />
+    </svg>
+  );
+}
+
+/**
+ * A transport-bar action. On phones it is an icon with its name kept for screen readers and as a
+ * tooltip, so every action fits in the bar without a More menu; wider screens show the label.
+ */
+function ActionButton({ icon, label, iconOnly, className = "", ...props }: Omit<ComponentProps<typeof Button>, "children"> & {
+  icon: keyof typeof ACTION_ICONS;
+  label: string;
+  iconOnly: boolean;
+}) {
+  if (!iconOnly) return <Button className={className} {...props}>{label}</Button>;
+  return (
+    <Button className={`${className} transport-icon`} title={label} {...props}>
+      <ActionIcon name={icon} /><span className="visually-hidden">{label}</span>
+    </Button>
+  );
+}
+
 /** One bar for playback, position, tempo, view, project actions, save and sync state. */
 export function StudioTransportBar(props: StudioTopbarProps & {
   position: ReactNode;
@@ -31,18 +68,11 @@ export function StudioTransportBar(props: StudioTopbarProps & {
   notebook?: { open: boolean; onToggle: () => void };
   /** Panels the screen is too narrow to show beside the timeline, opened as overlays. */
   panels?: { id: "browser" | "inspector"; label: string; open: boolean; onToggle: () => void }[];
-  /** Phones: Export and the panel toggles move into a More menu so the bar stays short. */
+  /** Phones: the actions after the view switch become icons so the bar stays short. */
   compact?: boolean;
 }) {
   const { engine, playing, bpm } = props;
-  const notebook = props.notebook && (
-    <Button data-opens="notebook" aria-expanded={props.notebook.open} onClick={props.notebook.onToggle}>Notebook</Button>
-  );
-  const panelToggles = props.panels?.map((panel) => (
-    <Button key={panel.id} data-opens={panel.id} aria-expanded={panel.open} aria-controls={`studio-${panel.id}`} onClick={panel.onToggle}>
-      {panel.label}
-    </Button>
-  ));
+  const iconOnly = Boolean(props.compact);
   return (
     <header className="studio-transportbar">
       <a className="studio-home" href="/" aria-label="Back to projects"><span className="studio-mark" aria-hidden="true">S</span></a>
@@ -80,24 +110,19 @@ export function StudioTransportBar(props: StudioTopbarProps & {
         ))}
       </div>
       <span className="transport-spacer" />
-      <Button className="generation-cta" data-opens="generate" onClick={props.onGenerate}>Generate</Button>
-      {props.compact
-        ? <DisclosureMenu label="More" floating>
-          <Button data-opens="export" onClick={props.onExport}>Export</Button>
-          {notebook}
-          {panelToggles}
-        </DisclosureMenu>
-        : <>
-          <Button data-opens="export" onClick={props.onExport}>Export</Button>
-          {notebook}
-          {panelToggles}
-        </>}
-      <Button className="transport-icon" data-opens="settings" aria-label="Settings" title="Settings" onClick={props.onSettings}>
-        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="8" cy="8" r="2.2" />
-          <path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7 3.4 3.4" />
-        </svg>
-      </Button>
+      <div className="transport-actions" role="group" aria-label="Project actions">
+        <ActionButton icon="generate" label="Generate" iconOnly={iconOnly} className="generation-cta" data-opens="generate" onClick={props.onGenerate} />
+        <ActionButton icon="export" label="Export" iconOnly={iconOnly} data-opens="export" onClick={props.onExport} />
+        {props.notebook && <ActionButton icon="notebook" label="Notebook" iconOnly={iconOnly} data-opens="notebook"
+          aria-expanded={props.notebook.open} onClick={props.notebook.onToggle} />}
+        {props.panels?.map((panel) => (
+          <ActionButton key={panel.id} icon={panel.id} label={panel.label} iconOnly={iconOnly} data-opens={panel.id}
+            aria-expanded={panel.open} aria-controls={`studio-${panel.id}`} onClick={panel.onToggle} />
+        ))}
+        <Button className="transport-icon" data-opens="settings" aria-label="Settings" title="Settings" onClick={props.onSettings}>
+          <ActionIcon name="settings" />
+        </Button>
+      </div>
       <div className="studio-status">
         <MasterMeter engine={engine} />
       </div>
