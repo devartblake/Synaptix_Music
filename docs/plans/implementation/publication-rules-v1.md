@@ -29,7 +29,7 @@ The rules are enforced by code at publish time. Policy written in a document alo
 | --- | --- | --- |
 | 1 | Provenance record on every asset | **Agreed.** Stored in **both** the project and the published package, so the two always agree. |
 | 2 | Commercial-licence gate | **Agreed.** A **hard block**, with an **admin override**. MusicGen is for demos only and is removed entirely before the full release. |
-| 3 | AI marking on exported audio | **Agreed.** C2PA plus a metadata tag on every export, by 2 December 2026. Audio that is **100% AI-made also gets a watermark now**, not later. |
+| 3 | AI marking on exported audio | **Agreed.** C2PA plus a metadata tag on every export, by 2 December 2026. **Every export with any AI involvement also gets a watermark, now** (agreed 2026-10-10: not only 100% AI-made audio, so part-generated music is never left unmarked). |
 | 4 | Prompt and output checks | **Agreed:** no lyrics, ever. A melody match is a **complete block**: the music isn't published or played, and the user sees a warning. **To discuss:** which reference set (research below). |
 | 5 | Disclosure text for game makers | **To discuss.** What it means for this platform is explained below. |
 | 6 | Credits that travel with the asset | **Agreed in principle.** Carried in the provenance record. The actual credit text is decided when an AI audio model is adopted. |
@@ -59,10 +59,11 @@ The rules are enforced by code at publish time. Policy written in a document alo
   - `credits`: required credit lines, for example "Powered by Stability AI". Empty for Claude and the procedural composer.
 - **Hand-composed projects** carry no generator. Their record says "hand-composed", which is itself useful evidence of authorship.
 
-**To discuss: how to measure `editShare`.** Today we keep only a fingerprint of the generated music. That tells us whether anything changed, but not how much. Two options:
+**How `editShare` is measured (Agreed 2026-10-10).** The fingerprint we keep today tells us *whether* the music changed, not how much. So `generationMetadata` also keeps, per clip, the IDs of the generated notes and a short hash of each note's pitch, timing and velocity.
 
-- **(a) Note IDs (recommended).** Keep the generated note IDs per clip in `generationMetadata`. The share is (notes added, removed or changed) ÷ (generated notes + notes added). It's cheap and exact, and it adds a few KB per project.
-- **(b) A copy of the arrangement.** Keep the whole generated arrangement and diff against it. It's richer (it would show *what* changed), but it doubles the project's size.
+- `editShare` = (generated notes removed or changed + notes added) ÷ (generated notes + notes added).
+- This was chosen over keeping a copy of the whole generated arrangement: it's cheaper (a few KB per project) and exact.
+- Applying a generated arrangement records it. Undoing the apply removes it.
 
 ### Licence gate (decision 2)
 
@@ -86,13 +87,11 @@ The rules are enforced by code at publish time. Policy written in a document alo
   - The renderer already writes WAV, MP3 and OGG files. The manifest is embedded where the format supports it and written as a sidecar `.c2pa` file otherwise.
   - Signing needs a certificate; the KMS work in the backend (`Synaptix.Security.Kms`) is the natural home for the key.
 - **Metadata tag on every export.** For example an ID3 `TXXX:AI_GENERATED` frame in MP3, a Vorbis comment in OGG, and an INFO chunk in WAV. Players and tools that don't read C2PA still see it.
-- **Watermark on 100% AI-made audio, now.** This means anything whose origin is Generated (`editShare` = 0).
+- **Watermark on audio with any AI involvement, now.** This means anything whose origin is Generated or Edited.
   - It is an inaudible watermark that survives re-encoding.
   - The candidate is **AudioSeal** (Meta, published under the MIT licence; verify the licence before use).
   - The EU's July 2026 Code of Practice expects at least two techniques. Signed metadata plus a watermark satisfies that.
-- **To discuss:**
-  - Should edited music (`editShare` > 0) also get a watermark? The EU rule covers AI-generated output whatever the editing, so marking everything is the safer reading. Your decision was "100% AI now". Extending the watermark to everything is a small change once it exists.
-  - **Recommendation:** watermark everything with any AI involvement. Let the C2PA manifest carry the nuance (how much was edited).
+- **Watermark scope (Agreed 2026-10-10):** every export with any AI involvement gets the watermark, edited or not. The C2PA manifest carries the nuance (how much was edited). Hand-composed projects get the C2PA manifest saying so, and no watermark.
 - **Tests:** round-trip each format (embed, re-read, verify the signature), check the watermark is still detected after MP3 and OGG re-encoding, and check that a tampered file fails verification.
 
 ## Phase 3: melody check and disclosure text
@@ -212,8 +211,8 @@ Each phase is one or two PRs per repo, with tests, docs and changelog.
 
 ## Open questions
 
-1. How to measure `editShare`: note IDs (a, recommended) or a copy of the arrangement (b).
-2. Watermark only 100% AI-made audio, or everything with AI involvement (recommended)?
+1. ~~How to measure `editShare`~~: generated note IDs (agreed 2026-10-10).
+2. ~~Watermark scope~~: everything with AI involvement (agreed 2026-10-10).
 3. Is Lakh MIDI acceptable for internal screening? (For the lawyer.)
 4. Budget and timing for an audio-matching service (ACRCloud or Pex).
 5. Should SynaptixPlay's store show AI disclosures for its games?
@@ -238,3 +237,4 @@ Each phase is one or two PRs per repo, with tests, docs and changelog.
 ## Revision
 
 - 2026-10-10: first draft, from the owner's decisions and research on reference sets and store disclosure rules.
+- 2026-10-10: agreed: `editShare` from generated note IDs; a watermark on every export with AI involvement.
