@@ -148,7 +148,13 @@ Each step is one PR with its own visual baselines and UI tests.
    - **Edits:** each gesture is one command, the same ones the classic drawer sends.
    - The drawer's in-dock mode is removed; the drawer itself stays for the classic layout until step 9. The step-6 UI test covers what `mixer.spec` covers for the drawer (fader undo, pan, mute/solo, routing, master, axe).
    - **Next follow-up, after step 7 (requested 2026-10-10):** FL Studio 2026's renamable note labels. This needs an optional per-note `label` in the schema (TypeScript/Zod, both JSON Schemas, both Pydantic models; absent when unset), a rename command with undo, and a way to rename notes in the piano roll.
-7. **Browser and inspector.** Search; family groups; drag to add or swap a track; Patterns (starter phrases and generator output); Project (clips, renders). The inspector follows the selection. **Done when** dragging has a keyboard equivalent (Enter adds a track, Shift+Enter swaps), and the instrument-picker tests are ported.
+7. **Browser and inspector.** **Done.** The DAW layout's Browser (`StudioBrowser.tsx`) has three tabs:
+   - **Instruments:** search (name, description or family) over the whole catalog, grouped by family. Click chooses; **Enter** or double-click adds a track; **Shift+Enter** swaps the selected clip's track. Drag onto a track to swap it, or elsewhere on the timeline to add one. Add and Swap buttons do the same.
+   - **Swap** is a new undoable command (`SwapInstrumentEditorCommand`): the sounding device becomes the new instrument with default settings and a new device id. A track still named after its instrument takes the new name.
+   - **Patterns:** adds the chosen instrument's starter phrase to the selected clip's track as a new clip, then opens it; Generator output opens the generator.
+   - **Project:** the project's clips by track (choosing one opens it in the dock); Renders points to Export, which lists them.
+   - **Inspector:** follows the timeline selection (else the clip being edited) with the clip's and its track's facts above the project facts.
+   - **Tests:** the instrument-picker test is ported (catalog listed, search and description, Enter adds); new tests cover swap, drag, undo, starter phrases and the Project list. The classic picker and its test stay until step 9. The inspector is hidden at tablet width, so the test that uses it is desktop-only.
 8. **Adaptive states, Generate, Export.** A Session-style states grid with intensity and a transitions strip, built on the existing adaptive graph; Generate as a drawer; Export as a dialog. **Done when** the adaptive authoring, generation and render UI tests are ported.
 9. **Switch over.** v2 becomes the default, v1 code and baselines are removed, and the README screenshots, baseline doc and changelog are updated.
 
@@ -192,3 +198,4 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: step 5 done (device chain with knobs in the dock).
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
+- 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.

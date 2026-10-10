@@ -110,7 +110,7 @@ test("an empty project asks for a first instrument and adds it in one step", asy
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await expect(page.getByText("Start with an instrument")).toBeVisible();
-  await page.getByRole("button", { name: "Add Warm Pad track" }).click();
+  await page.getByRole("region", { name: "Arrangement timeline" }).getByRole("button", { name: "Add Warm Pad track" }).click();
   await expect(page.getByRole("button", { name: "Mute Warm Pad" })).toBeVisible();
   await expect(page.getByText("Start with an instrument")).toHaveCount(0);
 });
@@ -173,9 +173,8 @@ test("the docked piano roll names chords, shades the scale and keeps rarer edits
   await switchToV2(page);
   await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   // The FM Electric Piano starter plays C major then D minor chords.
-  await page.getByRole("button", { name: /^All instruments/ }).click();
-  await page.getByRole("dialog", { name: "Choose an instrument" }).getByText("FM Electric Piano", { exact: true }).click();
-  await page.getByRole("button", { name: "Add instrument track" }).click();
+  await page.getByRole("complementary", { name: "Browser" }).getByRole("button", { name: "FM Electric Piano", exact: true }).click();
+  await page.getByRole("button", { name: "Add FM Electric Piano track" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).last().click();
   const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
 
@@ -351,6 +350,84 @@ test("the dock mixer shows a strip per channel whose fader, knobs and switches e
   await strip.getByRole("list", { name: "Bass insert slots" }).getByRole("button").first().click();
   await expect(dock.getByRole("tab", { name: /^Devices/ })).toHaveAttribute("aria-selected", "true");
   await expect(dock.getByRole("region", { name: "Bass devices" })).toBeVisible();
+});
+
+test("the browser searches instruments by family, adds with Enter and swaps with Shift+Enter or a drag", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "tablet", "The inspector is hidden on tablet layouts.");
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const browser = page.getByRole("complementary", { name: "Browser" });
+  const inspector = page.getByRole("complementary", { name: "Project inspector" });
+  const trackCount = inspector.locator(".property-row").filter({ hasText: "Tracks" }).locator("dd");
+
+  // Every catalog instrument is listed, grouped by family; search narrows by name, description or family.
+  await expect(browser.getByRole("region", { name: "Drums" })).toBeVisible();
+  const all = await browser.locator(".browser-family li").count();
+  expect(all).toBeGreaterThanOrEqual(30);
+  await browser.getByRole("searchbox", { name: "Search instruments" }).fill("organ");
+  await expect(browser.getByRole("button", { name: "Organ", exact: true })).toBeVisible();
+  await expect(browser.getByRole("button", { name: "Drum Synth", exact: true })).toHaveCount(0);
+  await expect(browser.getByText("Sustained square organ with a quick release.")).toHaveCount(0);
+  await browser.getByRole("button", { name: "Organ", exact: true }).click();
+  await expect(browser.getByText("Sustained square organ with a quick release.")).toBeVisible();
+
+  // Enter on an instrument adds a track (the keyboard equivalent of dragging it onto the timeline).
+  const before = Number(await trackCount.textContent());
+  await browser.getByRole("button", { name: "Organ", exact: true }).press("Enter");
+  await expect(trackCount).toHaveText(String(before + 1));
+  await expect(page.getByRole("button", { name: "Mute Organ" })).toBeVisible();
+
+  // Selecting a clip shows it in the inspector and makes its track the swap target.
+  await page.getByRole("button", { name: "Select Bass Generated Loop" }).click();
+  const selection = inspector.getByRole("region", { name: "Selection" });
+  await expect(selection.getByText("Bass Generated Loop")).toBeVisible();
+  await expect(selection.locator(".property-row").filter({ hasText: "Track" }).locator("dd")).toHaveText("Bass");
+  const instrument = selection.locator(".property-row").filter({ hasText: "Instrument" }).locator("dd");
+  const original = await instrument.textContent();
+
+  // Shift+Enter swaps the selected clip's track to the instrument, as one undo step.
+  await browser.getByRole("searchbox", { name: "Search instruments" }).fill("pluck");
+  const pluck = browser.locator(".browser-item").first();
+  const pluckName = (await pluck.textContent())!.trim();
+  await pluck.press("Shift+Enter");
+  await expect(instrument).toHaveText(pluckName);
+  await expect(trackCount).toHaveText(String(before + 1));
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(instrument).toHaveText(original!);
+
+  // Dragging onto a track swaps it; dropping elsewhere on the timeline adds a track.
+  await pluck.dragTo(page.locator("[data-track-id]").filter({ hasText: "Bass" }).first());
+  await expect(instrument).toHaveText(pluckName);
+  await browser.getByRole("searchbox", { name: "Search instruments" }).fill("organ");
+  await browser.getByRole("button", { name: "Organ", exact: true }).dragTo(page.getByText(/^Select a clip · Enter/));
+  await expect(trackCount).toHaveText(String(before + 2));
+
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+});
+
+test("the browser adds starter phrases and opens the project's clips", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const browser = page.getByRole("complementary", { name: "Browser" });
+  const dock = page.getByRole("region", { name: "Dock" });
+
+  // Project lists the clips; choosing one opens it in the dock's editor.
+  await browser.getByRole("tab", { name: "Project" }).click();
+  await browser.getByRole("region", { name: "Harmony clips" }).getByRole("button").first().click();
+  await expect(dock.getByRole("tab", { name: /^Editor/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dock.getByText(/^Harmony · /)).toBeVisible();
+
+  // Patterns adds the chosen instrument's starter phrase to that track as a new clip, then edits it.
+  await browser.getByRole("tab", { name: "Patterns" }).click();
+  await browser.getByRole("button", { name: "Add to Harmony" }).click();
+  await expect(page.getByRole("button", { name: /^Select Warm Pad Starter/ })).toBeVisible();
+  await expect(dock.getByText(/^Harmony · Warm Pad Starter/)).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Select Warm Pad Starter/ })).toHaveCount(0);
 });
 
 test("the DAW layout matches its visual baseline", async ({ page }) => {

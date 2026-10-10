@@ -16,6 +16,7 @@ import { canAddMidiClip, createEmptyMidiClip } from "../../../lib/editor/new-cli
 import { Playhead } from "./TransportPosition";
 import { ChannelMeters, TrackLevel } from "./ChannelMeters";
 import { LoopLane, MarkerLane } from "./TimelineLanes";
+import { INSTRUMENT_DRAG_TYPE } from "./StudioBrowser";
 import styles from "./editing.module.css";
 
 export function ArrangementTimeline({
@@ -25,7 +26,9 @@ export function ArrangementTimeline({
   onEdit,
   renderControls,
   trackColor,
-  emptyState
+  emptyState,
+  onSelect,
+  onDropInstrument
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -36,13 +39,29 @@ export function ArrangementTimeline({
   trackColor?: (track: Track) => string;
   /** The DAW layout: shown in place of the lanes when there are no tracks. */
   emptyState?: ReactNode;
+  /** The DAW layout: told when the selected clip changes (the inspector follows it). */
+  onSelect?: (clip: { trackId: string; clipId: string } | null) => void;
+  /** The DAW layout: an instrument dragged from the Browser was dropped on a track (swap) or elsewhere (add). */
+  onDropInstrument?: (deviceType: string, trackId: string | null) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const select = (clip: { trackId: string; clipId: string } | null) => {
+    setSelected(clip?.clipId ?? null);
+    onSelect?.(clip);
+  };
   const bars = arrangementBars(project);
   const duration = bars * barTicks(project);
   const daw = Boolean(trackColor);
   const timeline = (
     <section aria-label="Arrangement timeline" className="canvas-panel" data-variant={daw ? "daw" : undefined}
+      onDragOver={onDropInstrument ? (event) => { if (event.dataTransfer.types.includes(INSTRUMENT_DRAG_TYPE)) event.preventDefault(); } : undefined}
+      onDrop={onDropInstrument ? (event) => {
+        const deviceType = event.dataTransfer.getData(INSTRUMENT_DRAG_TYPE);
+        if (!deviceType) return;
+        event.preventDefault();
+        const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-track-id]") : null;
+        onDropInstrument(deviceType, row?.dataset.trackId ?? null);
+      } : undefined}
       onKeyDown={daw ? (event) => {
         // L loops the selected clip (whole bars it covers), as one undo step.
         if (event.key.toLowerCase() !== "l" || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -88,6 +107,7 @@ export function ArrangementTimeline({
           {daw && project.tracks.length === 0 && emptyState}
           {project.tracks.map((track, index) => (
             <div key={track.id} className={styles.trackRow} data-muted={daw && track.muted ? true : undefined}
+              data-track-id={onDropInstrument ? track.id : undefined}
               style={trackColor ? { "--track-color": trackColor(track) } as CSSProperties : undefined}>
               <div className={styles.trackHeader}>
                 {daw && <TrackLevel id={`track:${track.id}`} name={track.name} />}
@@ -174,7 +194,7 @@ export function ArrangementTimeline({
                       className={styles.clipSelect}
                       aria-label={`Select ${clip.name}`}
                       aria-pressed={selected === clip.id}
-                      onClick={() => setSelected(clip.id)}
+                      onClick={() => select({ trackId: track.id, clipId: clip.id })}
                       onDoubleClick={() =>
                         clip.kind === "midi" && onEdit({ trackId: track.id, clipId: clip.id })
                       }
@@ -183,7 +203,7 @@ export function ArrangementTimeline({
                           event.preventDefault();
                           onEdit({ trackId: track.id, clipId: clip.id });
                         }
-                        if (event.key === "Escape") setSelected(null);
+                        if (event.key === "Escape") select(null);
                       }}
                     >
                       <strong>{clip.name}</strong>
@@ -197,7 +217,7 @@ export function ArrangementTimeline({
                       <Button
                         className={styles.clipEdit}
                         onClick={() => {
-                          setSelected(clip.id);
+                          select({ trackId: track.id, clipId: clip.id });
                           onEdit({ trackId: track.id, clipId: clip.id });
                         }}
                       >
