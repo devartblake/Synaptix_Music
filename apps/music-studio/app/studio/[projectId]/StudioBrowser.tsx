@@ -5,7 +5,7 @@ import { INSTRUMENT_CATALOG, createInstrumentTrack, instrumentDefinition } from 
 import type { InstrumentProfileKind } from "@synaptix/daw-engine";
 import type { MusicProject, Track } from "@synaptix/project-model";
 
-import { Button, ViewTabs } from "../../../components/ui/StudioControls";
+import { Button } from "../../../components/ui/StudioControls";
 import { canAddMidiClip, createEmptyMidiClip, NEW_CLIP_BARS } from "../../../lib/editor/new-clip";
 import { barTicks } from "../../../lib/editor/timeline-model";
 import { InstrumentIcon, INSTRUMENT_ACCENTS } from "./InstrumentIcon";
@@ -71,14 +71,18 @@ export function StudioBrowser({ project, value, onChange, selectedTrack, disable
 
   return (
     <div className="studio-browser-panel">
-      <ViewTabs label="Browser sections" value={tab} onChange={(next) => setTab(next as Tab)} tabs={[
-        { value: "instruments", label: "Instruments", panelId: "browser-instruments" },
-        { value: "patterns", label: "Patterns", panelId: "browser-patterns" },
-        { value: "project", label: "Project", panelId: "browser-project" }
-      ]} />
+      {/* A drop-down rather than tabs: one row at any panel width. */}
+      <label className="browser-view">
+        <span className="visually-hidden">Browser view</span>
+        <select value={tab} onChange={(event) => setTab(event.currentTarget.value as Tab)}>
+          <option value="instruments">Instruments</option>
+          <option value="patterns">Patterns</option>
+          <option value="project">Project</option>
+        </select>
+      </label>
 
       {tab === "instruments" && (
-        <div id="browser-instruments" role="tabpanel" aria-labelledby="browser-instruments-tab" className="browser-section">
+        <div id="browser-instruments" role="group" aria-label="Instruments" className="browser-section">
           <input type="search" className="browser-search" aria-label="Search instruments" placeholder="Search instruments"
             value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
           <p className="browser-help" id="browser-keys">Enter adds a track{swapTarget ? `; Shift+Enter swaps ${swapTarget.name}` : ""}. Or drag onto the timeline.</p>
@@ -125,7 +129,7 @@ export function StudioBrowser({ project, value, onChange, selectedTrack, disable
       )}
 
       {tab === "patterns" && (
-        <div id="browser-patterns" role="tabpanel" aria-labelledby="browser-patterns-tab" className="browser-section">
+        <div id="browser-patterns" role="group" aria-label="Patterns" className="browser-section">
           <section className="browser-family" aria-label="Starter phrases">
             <h3>Starter phrases</h3>
             <p className="browser-help">{chosen.label} starter: a one-bar phrase of {phraseNotes} notes, looped for {NEW_CLIP_BARS} bars. Choose the instrument in Instruments.</p>
@@ -142,7 +146,7 @@ export function StudioBrowser({ project, value, onChange, selectedTrack, disable
       )}
 
       {tab === "project" && (
-        <div id="browser-project" role="tabpanel" aria-labelledby="browser-project-tab" className="browser-section">
+        <div id="browser-project" role="group" aria-label="Project" className="browser-section">
           {project.tracks.filter((track) => track.clips.length).map((track) => (
             <section key={track.id} className="browser-family" aria-label={`${track.name} clips`}>
               <h3>{track.name}</h3>

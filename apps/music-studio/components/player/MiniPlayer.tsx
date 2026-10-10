@@ -13,7 +13,11 @@ import styles from "./player.module.css";
  * Floating glass dock for listening pages: the mini player (when something is queued) above
  * the tab bar. The studio has its own transport, so this dock is not rendered there.
  */
-export function ListeningDock({ showTabs = true }: { showTabs?: boolean }) {
+export function ListeningDock({ showTabs = true, tabsOnPhonesOnly = false }: {
+  showTabs?: boolean;
+  /** Pages with their own header navigation show the tab bar on phones only. */
+  tabsOnPhonesOnly?: boolean;
+}) {
   const pathname = usePathname() ?? "/";
   const item = usePlayer(currentItem);
   const status = usePlayer((state) => state.status);
@@ -64,7 +68,7 @@ export function ListeningDock({ showTabs = true }: { showTabs?: boolean }) {
           </section>
         )}
         {showTabs && (
-          <nav className={styles.tabs} aria-label="Listening">
+          <nav className={tabsOnPhonesOnly ? `${styles.tabs} ${styles.tabsPhoneOnly}` : styles.tabs} aria-label="Listening">
             <div className={styles.tabBar}>
               {tab("/", "Home", <HomeIcon />)}
               {tab("/library", "Library", <LibraryIcon />)}

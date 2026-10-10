@@ -4,6 +4,8 @@
 
 ### Added
 
+- **The DAW Browser picks its view from a drop-down.** Instruments, Patterns and Project used to be tabs that wrapped onto two rows in a narrow Browser; they are now one drop-down, which leaves more room for the list.
+- **The home page's floating tab bar (Home, Library, Studio, Search) shows on phones only.** On wider screens the header already has the same links. The library pages keep it at every width, since their header has no other way to the studio or search.
 - **Project cards show where the music came from.** Each local project on the home page is marked with its own colour, icon and label:
   - **Generated** (purple, ✦): made with the generator and not changed since.
   - **Edited** (teal, ✦+): generated, then changed by hand.

@@ -202,4 +202,5 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
+- 2026-10-10: the Browser's Instruments / Patterns / Project tabs became one drop-down ("Browser view"), so they never wrap.
 - 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).
