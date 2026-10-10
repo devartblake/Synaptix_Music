@@ -122,7 +122,10 @@ export const GenerationMetadataSchema = z.object({
   generatorVersion: z.string().min(1),
   seed: z.number().int(),
   createdAt: IsoDateSchema,
-  prompt: z.string().optional()
+  prompt: z.string().optional(),
+  // The arrangement as generated (see arrangementFingerprint). Optional, and absent on projects
+  // generated before it existed, so their checksums don't change.
+  arrangementFingerprint: z.string().regex(/^fnv1a64:[0-9a-f]{16}$/).optional()
 });
 
 export const MixerChannelSchema = z.object({
@@ -213,4 +216,64 @@ export function createEmptyProject(
     assets: [],
     markers: []
   });
+}
+
+/** JSON with object keys sorted at every level and undefined properties left out. */
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => item !== undefined)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+}
+
+/** 64-bit FNV-1a over UTF-16 code units: a fast, deterministic change detector, not a security hash. */
+function fnv1a64(text: string): string {
+  let hash = 0xcbf29ce484222325n;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= BigInt(text.charCodeAt(index));
+    hash = (hash * 0x100000001b3n) & 0xffffffffffffffffn;
+  }
+  return hash.toString(16).padStart(16, "0");
+}
+
+/** The parts of a project, v1 or v2, that make up its music. */
+export interface ArrangementSource {
+  tracks: ReadonlyArray<Omit<Track, "devices"> & {
+    devices: ReadonlyArray<{ id: string; deviceType: string; deviceVersion: string; enabled: boolean; parameters: ReadonlyArray<unknown> }>;
+  }>;
+  tempoMap: unknown;
+  timeSignatureMap: unknown;
+  markers: unknown;
+  key?: unknown;
+  generationMetadata?: z.infer<typeof GenerationMetadataSchema>;
+}
+
+/**
+ * A fingerprint of the music: tracks (with devices reduced to the fields v1 and v2 share, so a
+ * project gets the same fingerprint in either schema), clips and notes, tempo, time signature,
+ * markers and key. The name, cover art and metadata are left out: renaming isn't editing the music.
+ */
+export function arrangementFingerprint(project: ArrangementSource): string {
+  const tracks = project.tracks.map(({ devices, ...track }) => ({
+    ...track,
+    devices: devices.map(({ id, deviceType, deviceVersion, enabled, parameters }) => ({ id, deviceType, deviceVersion, enabled, parameters }))
+  }));
+  const music = { tracks, tempoMap: project.tempoMap, timeSignatureMap: project.timeSignatureMap, markers: project.markers, key: project.key };
+  return `fnv1a64:${fnv1a64(canonicalJson(music))}`;
+}
+
+/**
+ * Where a project's music came from: "generated" when a generated arrangement was applied and the
+ * music still matches it, "edited" when it was generated and has changed since, "hand" when no
+ * generated arrangement was ever applied. Projects generated before the fingerprint existed count as
+ * "generated", since their later edits can't be told apart.
+ */
+export type ProjectOrigin = "generated" | "edited" | "hand";
+export function projectOrigin(project: ArrangementSource): ProjectOrigin {
+  const generation = project.generationMetadata;
+  if (!generation) return "hand";
+  if (!generation.arrangementFingerprint) return "generated";
+  return arrangementFingerprint(project) === generation.arrangementFingerprint ? "generated" : "edited";
 }

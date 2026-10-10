@@ -668,3 +668,32 @@
 .showAllButton {
   margin-top: 16px;
 }
+/* Where a project's music came from: one colour per origin, from the studio's tokens, for the card's
+   top edge, its icon and its label. */
+.projectCard[data-origin="generated"] { --origin: var(--sx-secondary); }
+.projectCard[data-origin="edited"] { --origin: var(--sx-active); }
+.projectCard[data-origin="hand"] { --origin: var(--sx-primary); }
+.projectCard[data-origin] {
+  border-top: 3px solid var(--origin);
+}
+.projectCard[data-origin]:hover {
+  border-color: var(--origin);
+}
+.projectCard[data-origin] .projectIcon {
+  background: color-mix(in srgb, var(--origin) 16%, transparent);
+  border-color: color-mix(in srgb, var(--origin) 40%, transparent);
+  color: color-mix(in srgb, var(--origin) 80%, var(--sx-text));
+}
+.originLabel {
+  margin-left: auto;
+  margin-right: 10px;
+  padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--origin) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--origin) 22%, transparent);
+  color: color-mix(in srgb, var(--origin) 55%, var(--sx-text));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}

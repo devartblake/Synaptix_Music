@@ -5,6 +5,12 @@
 ### Added
 
 - **The DAW piano roll's Edit and Rename menus float.** They open above everything else, below their button or above it when there's more room there, so the dock's height no longer cuts them off or hides them under the Browser. They stay open while you edit, so you can press +1 repeatedly and watch the notes move. The Edit actions are laid out three across.
+- **Project cards show where the music came from.** Each local project on the home page is marked with its own colour, icon and label:
+  - **Generated** (purple, ✦): made with the generator and not changed since.
+  - **Edited** (teal, ✦+): generated, then changed by hand.
+  - **Hand-composed** (blue, ♫): no generated arrangement was ever applied.
+  - **How it's worked out:** from the music itself (notes, tracks, tempo, markers and key) compared with a fingerprint taken when a generation is applied, so renaming a project doesn't count as editing it, and undoing back to the generated music shows Generated again. The fingerprint is a new optional `generationMetadata.arrangementFingerprint` field in all the schemas.
+  - **Older projects:** projects generated before this change show Generated. Cloud-only projects show no badge until the platform's project list carries the origin.
 - **Renamable note labels (from FL Studio 2026).** Notes can carry a name, such as "Hook" or "Kick", that the DAW piano roll shows in place of the pitch.
   - **Editing:** select notes, open **Rename** next to **Labels**, type a name and press Enter. A blank name or **Clear label** removes it. Each rename is one undo step, and copy and paste keep the labels.
   - **Schema:** an optional `label` (1–32 characters) on MIDI notes in TypeScript/Zod, both JSON Schemas and both Python models. Projects without labels are unchanged, including their checksums.
