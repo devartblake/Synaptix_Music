@@ -408,7 +408,7 @@ test("the Resonance control reaches the export, and 0 renders exactly as before"
 // Stereo voice path: Supersaw Lead and Unison Pad now spread their saws across the stereo field.
 // Modulation system: Acid Bass and Motion Pad were added.
 // Slice 3: Wobble Bass, Reese Bass, Ensemble Strings and Trance Pluck,
-// Riser FX, Downsweep FX, FM Marimba and FM Vibraphone were added.
+// Riser FX, Downsweep FX, FM Marimba, FM Vibraphone, NES Pulse and Chip Triangle were added.
 const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-drum-synth": "e2b2ffcb44e2e51794045fba4f3702e914b87016a27e784a6f6d379adc173327",
   "synaptix-sub-bass": "a3e24dc2dc0916b38d1a258b9d9ab3cf4bad014ea1e77b586ce0a37ed3bdeeb0",
@@ -439,9 +439,11 @@ const GOLDEN_STEMS: Record<string, string> = {
   "synaptix-riser": "def128d2be1421edd5d99d3ff722a1354f4ea039a4ffae3b6c49224b4e4f1cf1",
   "synaptix-downsweep": "9368463bca5df9381d205a7c9204c29d249289209dc83ff40db8188db1bf31c7",
   "synaptix-marimba": "ea88953559646b8595bb96b3b864f101082eda487415aa31f8dea79a9992325c",
-  "synaptix-vibes": "4a5fabd63bc8a5b9774087b1d61b7fd5ea35c58079c6e3f0ce901c7107535a4b"
+  "synaptix-vibes": "4a5fabd63bc8a5b9774087b1d61b7fd5ea35c58079c6e3f0ce901c7107535a4b",
+  "synaptix-nes-pulse": "3d33b45a54d3e48a5da84471b30d2faeeeb61ce5f48f60eb5456befdb6dbfa8c",
+  "synaptix-nes-triangle": "ef2d0b560825593c0e8379d34b10bd5a32ec5ad56583ba622da720b403fc7fba"
 };
-const GOLDEN_MASTER = "66a6586fb1e1caea97053d17fc8ef0ef7e3ad8e3a3cc081c47206090d1860529";
+const GOLDEN_MASTER = "c93dbff647e2cdf5c5a1173acd27b1df940caf37d410b4abd148337095b08b43";
 test("every catalog instrument renders the same bytes as before (golden checksums)", () => {
   const value = createEmptyProject("golden", { revisionId: "golden-r1" });
   value.tracks = INSTRUMENT_CATALOG.map((entry, index) => {

@@ -41,6 +41,11 @@ pub enum Oscillator {
     /// Two-operator FM at a 4:1 ratio with a slower, gentler fall: a metal bar, for presets that
     /// add tremolo.
     FmVibraphone,
+    /// Band-limited 12.5% pulse, centred on zero: the thinnest NES pulse duty.
+    Pulse125,
+    /// The NES triangle channel: a 4-bit, 32-step staircase (15 down to 0 and back up). Not
+    /// band-limited: the steps and their aliasing are the sound.
+    ChipTriangle,
 }
 
 /// How hard the 808 drives its soft clipper (higher is grittier).
@@ -115,6 +120,8 @@ impl Oscillator {
             11 => Some(Self::Noise),
             12 => Some(Self::FmMarimba),
             13 => Some(Self::FmVibraphone),
+            14 => Some(Self::Pulse125),
+            15 => Some(Self::ChipTriangle),
             _ => None,
         }
     }
@@ -496,6 +503,18 @@ impl VoiceState {
                     let fall = cycle + 0.75;
                     let shifted = if fall >= 1.0 { fall - 1.0 } else { fall };
                     naive + poly_blep(cycle, dt) - poly_blep(shifted, dt) + 0.5
+                }
+                Oscillator::Pulse125 => {
+                    // As Pulse25 with the falling edge at 0.125; the mean (−0.75) is removed.
+                    let naive = if cycle < 0.125 { 1.0 } else { -1.0 };
+                    let fall = cycle + 0.875;
+                    let shifted = if fall >= 1.0 { fall - 1.0 } else { fall };
+                    naive + poly_blep(cycle, dt) - poly_blep(shifted, dt) + 0.75
+                }
+                Oscillator::ChipTriangle => {
+                    let step = (cycle * 32.0) as u32;
+                    let level = if step < 16 { 15 - step } else { step - 16 };
+                    level as f64 / 7.5 - 1.0
                 }
                 Oscillator::Triangle => {
                     if cycle < 0.5 {
@@ -1206,6 +1225,8 @@ mod tests {
             Oscillator::Noise,
             Oscillator::FmMarimba,
             Oscillator::FmVibraphone,
+            Oscillator::Pulse125,
+            Oscillator::ChipTriangle,
         ] {
             let params = Voice {
                 alpha: 0.3,
@@ -1355,6 +1376,52 @@ mod tests {
         );
         let mean = out.iter().sum::<f64>() / out.len() as f64;
         assert!(mean.abs() < 1e-3, "mean {mean}");
+    }
+
+    #[test]
+    fn a_12_5_percent_pulse_has_no_eighth_harmonic_and_no_offset() {
+        // A 12.5% pulse skips every eighth harmonic. 375 Hz is 128 samples per cycle at 48 kHz.
+        let params = Voice {
+            frequency: 375.0,
+            ..voice(Oscillator::Pulse125)
+        };
+        let mut out = vec![0.0; 48_000];
+        render_mono(&mut out, &params, 0, 48_000);
+        let harmonic = |k: f64| {
+            let (mut re, mut im) = (0.0, 0.0);
+            for (i, s) in out.iter().enumerate() {
+                let angle = 2.0 * core::f64::consts::PI * k * 375.0 * i as f64 / 48_000.0;
+                re += s * angle.cos();
+                im += s * angle.sin();
+            }
+            (re * re + im * im).sqrt() / out.len() as f64
+        };
+        let (h1, h4, h8) = (harmonic(1.0), harmonic(4.0), harmonic(8.0));
+        assert!(h8 < h1.min(h4) / 50.0, "h1 {h1} h4 {h4} h8 {h8}");
+        let mean = out.iter().sum::<f64>() / out.len() as f64;
+        assert!(mean.abs() < 1e-3, "mean {mean}");
+    }
+
+    #[test]
+    fn the_chip_triangle_has_sixteen_levels_and_no_offset() {
+        // The NES triangle's 4-bit staircase: exactly 16 output levels, spanning −1..1, centred.
+        let params = Voice {
+            frequency: 375.0,
+            ..voice(Oscillator::ChipTriangle)
+        };
+        let mut out = vec![0.0; 48_000];
+        render_mono(&mut out, &params, 0, 48_000);
+        // Back to the 4-bit level, 0–15.
+        let level = |s: f64| (s + 1.0) * 7.5;
+        assert!(out
+            .iter()
+            .all(|&s| (level(s) - level(s).round()).abs() < 1e-9));
+        let mut levels: Vec<i64> = out.iter().map(|&s| level(s).round() as i64).collect();
+        levels.sort_unstable();
+        levels.dedup();
+        assert_eq!(levels, (0..16).collect::<Vec<i64>>());
+        let mean = out.iter().sum::<f64>() / out.len() as f64;
+        assert!(mean.abs() < 1e-2, "mean {mean}");
     }
 
     #[test]
