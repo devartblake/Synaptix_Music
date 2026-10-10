@@ -18,6 +18,7 @@
   - **Status bar:** names the control under the pointer or focus, and shows save and sync state with Sync now.
 
   The layout choice, dock tab, height and open state are remembered. Reset layout keeps the layout choice, and phones keep the classic layout. Also fixed: the classic sidebar's letter glyphs ran into their labels ("AArrangement"). See [the plan](docs/plans/ui/studio-ui-v2.md).
+
 - **The generator can use the new instruments.** Every instrument added since the original twelve is now offered for the roles it suits. Examples: Drum Kit for drums; 808, Acid, Wobble, Reese and Chip Triangle for bass; FM Marimba for arpeggios and sparkle; NES Pulse, Supersaw and Chiptune leads for melody. Composed plans can request them. Role defaults and the procedural ensemble are unchanged, so existing requests sound the same. Riser and Downsweep FX are left out because no role plays one-shot transitions. A test now fails if a playable catalog instrument isn't offered by any role.
 - **NES Pulse** and **Chip Triangle** (slice 3, step 4, the NES pack): two new kernel oscillators. **pulse-12** is a band-limited 12.5% pulse, the thinnest NES duty, for a buzzy lead. **chip-triangle** is the NES triangle channel's 4-bit, 32-step staircase. It is deliberately not band-limited, because its steps are the sound, and suits basslines. Each has its own icon, both are in the generation API's instrument list, and existing instruments render byte-identical.
 - **FM Marimba** and **FM Vibraphone** (slice 3, step 3): two new two-operator FM presets in the kernel (codes `fm-marimba` and `fm-vibraphone`), both at a 4:1 ratio like a tuned bar's first overtone. The marimba's brightness dies in tens of milliseconds, giving a woody knock. The vibraphone fades more gently and its preset adds a 5 Hz tremolo for the vibraphone's shimmer. Each has its own icon, both are in the generation API's instrument list, and existing instruments render byte-identical.
@@ -73,7 +74,7 @@
 - Added studio handoff from the player (#49): "Open in Studio" and "Edit in Studio" pass the listening position (`?t=`), and the studio opens at that point, snapped to the beat.
 - Changed prototype audio to queued jobs with live progress (#49): the MusicGen service runs jobs first-in first-out on one GPU worker (Redis when `REDIS_URL` is set), with `POST /audio/jobs`, status, a server-sent event stream, audio and cancel. The studio's panel shows the queue position, model loading and a progress bar, and resumes a job after a reload.
 - Recorded the game's audio-engine update for Stage 13 certification: the adaptive-music runtime in trivia_tycoon now runs on flutter_soloud 5.1.6 and Flutter 3.47.7 (trivia_tycoon #408, #417, #418), with a minimum of iOS 15 / Android 7.0. A failed play now throws instead of playing silence, so a failed stem start falls back to the master mix. The certification runbook asks for builds from #418 on, since earlier evidence doesn't carry over.
-- Recorded the SynaptixPlay backend side of Stage 13.6 and 13.7 (TycoonTycoon_Backend #571–#573, trivia_tycoon #399): the game's `adaptive_audio_*` runtime events are now ingested as metrics with a dashboard, alerts and a runbook; a staging preflight script checks the music setup end to end; and the kill switch reaches sessions already playing.
+- Recorded the SynaptixPlay backend side of Stage 13.6 and 13.7 (TycoonTycoon*Backend #571–#573, trivia_tycoon #399): the game's `adaptive_audio*\*` runtime events are now ingested as metrics with a dashboard, alerts and a runbook; a staging preflight script checks the music setup end to end; and the kill switch reaches sessions already playing.
 
 - Added switchable arrangement composers to the generation API (`SYNAPTIX_COMPOSER=procedural|claude|local`). The Claude composer (default model `claude-opus-5`, structured output, adaptive thinking, server-side refusal fallbacks) writes a compact arrangement plan: per-section chords, 16-step drum and bass patterns, and melody phrases in scale degrees. The service renders it into in-key, in-bounds notes. The studio now sends the creative brief, and previews name the composer. Any AI failure falls back to the procedural composer with a plain-language warning. The backend dispatch timeout is configurable (`Music:DispatchTimeoutSeconds`, default 180 s).
 - Added a piano-roll velocity lane: drag a note's bar (or the whole selection) or use arrow keys, with each change a single undo step.
@@ -107,31 +108,6 @@
 - Render evidence (`POST /internal/render-evidence`) now reports each render's `scopeKind` (`master`, `stems` or `plugin-freeze`). The SynaptixPlay backend publishes package audio only from master and stem renders, so a plug-in freeze (one track through its plug-ins) can't be published as a game state through the API. Before, only the studio's UI kept freezes out. A worker that doesn't report the scope is refused, so deploy this worker before the matching backend change (TycoonTycoon_Backend #571).
 
 - Studio sign-in uses SynaptixPlay's own studio routes (`/api/v1/auth/studio/login` and `/studio/refresh`), separate from the game clients: only the studio's server calls them, with `SYNAPTIX_PLATFORM_SERVICE_TOKEN` (the backend's `ServiceTokens:MusicStudio`), and the platform assigns the studio identity. Sessions now last: the studio's server keeps the refresh token in an HttpOnly cookie and renews the session a minute before the 8-minute access token ends, and when the studio is reopened (`PUT /api/auth/session`).
-
-### Changed
-
-- **Tidier device panel.** Each device now shows filter, envelope and reverb send first. The six modulation controls (Filter Envelope, Filter Env Decay, LFO Rate, Vibrato, LFO to Cutoff, Tremolo) move into a collapsible **Modulation** section. It starts open for presets that use modulation (such as Wobble Bass or FM Vibraphone), where it is marked "in use", and closed otherwise. It stays open while you edit, even if the edit takes it back to unused. A device without modulation is about a quarter shorter. The section is a native disclosure, so Tab and Enter work. The Devices visual baselines are updated.
-
-### Fixed
-
-- The Drum Kit's starter beat now has a closed hat on every eighth note; it skipped beat 3 (#67).
-- The generation API's instrument list now includes the ten new studio instruments (#72), so its catalog-parity test passes again. PR CI only runs the Python job when Python files change, so the PRs that added the instruments didn't catch the gap; `main`'s full run did. Generated arrangements don't use them yet: each role's suitable instruments are unchanged, and the plan still swaps an unsuitable choice for the role's default.
-- Fixed studio sign-in being refused by the platform, which requires a product registration on its game sign-in route: the studio now signs in through the platform's studio routes instead. Before, every sign-in showed "That email and password don't match".
-- Fixed studio edits being silently lost when made while the previous edit was still saving (the editor history refuses overlapping operations, and the mixer ignored clicks while busy). Edits, undo and redo now queue and each builds on the latest project; cloud uploads no longer hold up the queue. This also fixes the flaky mixer-meter UI test.
-- Added Linux visual-regression baselines, generated in the Playwright 1.63 Ubuntu 24.04 image, so CI (ubuntu-latest) compares against reviewed images instead of failing on missing snapshots.
-- Fixed local-model generations that timed out leaving Ollama busy with the abandoned answer, which made every queued request time out too; answers are now length-capped.
-- Fixed the procedural composer building every chord as a minor triad, which put the VI and VII chords out of key; chords now come from the scale.
-- Fixed the render-worker MinIO policy, which MinIO rejected (`s3:GetBucketLocation` can't take an `s3:prefix` condition), and made the local stack give the worker the scoped `RENDER_WORKER_MINIO_*` service account instead of the MinIO root credentials.
-- Fixed regressions from merging Project Schema v2 (#41, #43) with the studio workflow work: the studio compiles again; crash recovery, project export/import and new-project saves handle plug-in (schema v2) projects; cloud uploads again use the last revision that actually saved as their parent; per-track reverb sends and the project mixer survive v2 conversion (Zod, JSON Schema and Python contracts updated); and frequency-drone tracks follow their chosen output bus again.
-- Fixed the render-worker image installing with npm 10 (the base image default) instead of the repository's required npm 11.4.2, which printed `EBADENGINE` warnings during `run-local.sh`.
-- Fixed the local-development guide and environment templates: the SynaptixPlay backend runs on port 5100 (not 5080), must listen on all interfaces for Docker, and needs a matching render-worker service token; the SignalR URL includes `/ws/notify`.
-- Fixed adaptive package integration defects: version responses now include artifact descriptors, the Flutter parser reads the canonical `masterArtifactId`/`stemArtifactIds` manifest, the mobile app now bootstraps the adaptive runtime, and studio contracts accept the platform's `Accepted`-style enum casing.
-
-All notable Synaptix Music changes are documented here. The project is pre-release, so entries are grouped under `Unreleased` and reference the pull request or milestone that introduced each completed slice.
-
-## [Unreleased]
-
-### Added
 
 #### Stage 12 preview, artifact-manifest, and lossy export completion
 
@@ -320,12 +296,35 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 
 ### Changed
 
+- **Documentation refreshed (2026-10-10).** Updated for the instrument and Studio UI v2 work:
+  - **Roadmap:** a 32-instrument catalog, Rust kernel status, and a Studio UI v2 active-work section.
+  - **Implementation ledger:** merged PRs #52–#73 and an "In Review" table for #74–#85.
+  - **Docs index and root README:** the new capabilities and plans.
+  - **daw-engine README:** an "Adding an instrument" checklist covering keywords, the generation API list, icons, golden checksums, kernel oscillators and the engine version.
+  - **This changelog:** the two "Unreleased" sections are merged into one, keeping every entry.
+- **Tidier device panel.** Each device now shows filter, envelope and reverb send first. The six modulation controls (Filter Envelope, Filter Env Decay, LFO Rate, Vibrato, LFO to Cutoff, Tremolo) move into a collapsible **Modulation** section. It starts open for presets that use modulation (such as Wobble Bass or FM Vibraphone), where it is marked "in use", and closed otherwise. It stays open while you edit, even if the edit takes it back to unused. A device without modulation is about a quarter shorter. The section is a native disclosure, so Tab and Enter work. The Devices visual baselines are updated.
 - Updated the repository entry points to mark Stages 1–11 complete and Stage 12 active.
 - Replaced obsolete Stage 9 next-step text with the current production-audio and rendering sequence.
 - Clarified that browser Web Audio is a preview runtime and not production-render evidence.
 - Added a formal documentation ownership model and ADR process.
+- Refreshed the local-demo starter arrangement's note patterns in `createStarterProject()` (commit 15f13a4).
 
 ### Fixed
+
+- The Drum Kit's starter beat now has a closed hat on every eighth note; it skipped beat 3 (#67).
+- The generation API's instrument list now includes the ten new studio instruments (#72), so its catalog-parity test passes again. PR CI only runs the Python job when Python files change, so the PRs that added the instruments didn't catch the gap; `main`'s full run did. Generated arrangements don't use them yet: each role's suitable instruments are unchanged, and the plan still swaps an unsuitable choice for the role's default.
+- Fixed studio sign-in being refused by the platform, which requires a product registration on its game sign-in route: the studio now signs in through the platform's studio routes instead. Before, every sign-in showed "That email and password don't match".
+- Fixed studio edits being silently lost when made while the previous edit was still saving (the editor history refuses overlapping operations, and the mixer ignored clicks while busy). Edits, undo and redo now queue and each builds on the latest project; cloud uploads no longer hold up the queue. This also fixes the flaky mixer-meter UI test.
+- Added Linux visual-regression baselines, generated in the Playwright 1.63 Ubuntu 24.04 image, so CI (ubuntu-latest) compares against reviewed images instead of failing on missing snapshots.
+- Fixed local-model generations that timed out leaving Ollama busy with the abandoned answer, which made every queued request time out too; answers are now length-capped.
+- Fixed the procedural composer building every chord as a minor triad, which put the VI and VII chords out of key; chords now come from the scale.
+- Fixed the render-worker MinIO policy, which MinIO rejected (`s3:GetBucketLocation` can't take an `s3:prefix` condition), and made the local stack give the worker the scoped `RENDER_WORKER_MINIO_*` service account instead of the MinIO root credentials.
+- Fixed regressions from merging Project Schema v2 (#41, #43) with the studio workflow work: the studio compiles again; crash recovery, project export/import and new-project saves handle plug-in (schema v2) projects; cloud uploads again use the last revision that actually saved as their parent; per-track reverb sends and the project mixer survive v2 conversion (Zod, JSON Schema and Python contracts updated); and frequency-drone tracks follow their chosen output bus again.
+- Fixed the render-worker image installing with npm 10 (the base image default) instead of the repository's required npm 11.4.2, which printed `EBADENGINE` warnings during `run-local.sh`.
+- Fixed the local-development guide and environment templates: the SynaptixPlay backend runs on port 5100 (not 5080), must listen on all interfaces for Docker, and needs a matching render-worker service token; the SignalR URL includes `/ws/notify`.
+- Fixed adaptive package integration defects: version responses now include artifact descriptors, the Flutter parser reads the canonical `masterArtifactId`/`stemArtifactIds` manifest, the mobile app now bootstraps the adaptive runtime, and studio contracts accept the platform's `Accepted`-style enum casing.
+
+All notable Synaptix Music changes are documented here. The project is pre-release, so entries are grouped under `Unreleased` and reference the pull request or milestone that introduced each completed slice.
 
 - Corrected repeated npm workspace lockfile drift when packages were introduced.
 - Upgraded GitHub Actions to Node 24-compatible action versions.
@@ -340,11 +339,9 @@ All notable Synaptix Music changes are documented here. The project is pre-relea
 - Fixed the master meter reporting drifting, non-physical dBFS readings (e.g. -1300 dBFS) instead of settling to silence after playback stops, by clamping sub-floor meter readings to -Infinity (commit 15f13a4).
 - Aligned the music-studio app's test runner with the rest of the monorepo (`--experimental-transform-types`), fixing a TypeScript parameter-property incompatibility that only surfaced once a test imported `platform-project-repository.ts` (commit 3f997aa).
 
-### Changed
-
-- Refreshed the local-demo starter arrangement's note patterns in `createStarterProject()` (commit 15f13a4).
-
 ## Active Work
+
+Studio UI v2 (a DAW layout drawing on FL Studio 2026 and Ableton Live 12.4) is in progress behind Layout → "DAW layout (preview)": steps 1–3 (shell, dock, coloured timeline, markers and loop brace) are done; step 4 (piano roll in the dock) is next. See `docs/plans/ui/studio-ui-v2.md`.
 
 Stage 12 (Production Audio and Rendering) is implementation-complete: durable jobs, exact-revision loading, deterministic WAV rendering with master effects, stems, MP3/OGG derivatives, bounded previews, artifact manifests, MinIO signed delivery, production image/policy, and certification tooling are implemented and tested. Live secret provisioning and staging evidence remain before operational closure. Stage 13 execution is now ordered across publication hardening, Flutter loading/cache, playback scheduling, stem mixing, stingers/ducking, telemetry, and cross-device certification; publication remains gated on accepted Stage 12 evidence.
 
