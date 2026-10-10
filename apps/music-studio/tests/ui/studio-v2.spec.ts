@@ -659,11 +659,20 @@ test("on a phone the DAW layout is one column: every view is reachable and the s
   ).toEqual([]);
   await fits();
   await axe();
-  const more = page.getByRole("button", { name: "More", exact: true });
+  // Every project action is an icon (its name kept for screen readers and as a tooltip), so they
+  // all fit on one row of the transport bar without a More menu.
+  const actions = page.getByRole("group", { name: "Project actions" });
+  for (const name of ["Generate", "Export", "Notebook", "Browser", "Inspector", "Settings"]) {
+    const action = actions.getByRole("button", { name, exact: true });
+    await expect(action).toHaveAttribute("title", name);
+    await expect(action.locator("svg")).toBeVisible();
+  }
+  const rows = await actions.getByRole("button").evaluateAll((buttons) => new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size);
+  expect(rows).toBe(1);
 
-  // The Browser and inspector open over the timeline from More; Escape closes them and focus returns.
-  await more.click();
-  await page.getByRole("button", { name: "Browser", exact: true }).click();
+  // The Browser and inspector open over the timeline; Escape closes them and focus returns.
+  const browserButton = actions.getByRole("button", { name: "Browser", exact: true });
+  await browserButton.click();
   const browser = page.getByRole("complementary", { name: "Browser" });
   await expect(browser.getByRole("heading", { name: "Browser" })).toBeFocused();
   await expect(browser.getByRole("button", { name: "Drum Synth", exact: true })).toBeVisible();
@@ -671,9 +680,8 @@ test("on a phone the DAW layout is one column: every view is reachable and the s
   await axe();
   await page.keyboard.press("Escape");
   await expect(browser).toBeHidden();
-  await expect(more).toBeFocused();
-  await more.click();
-  await page.getByRole("button", { name: "Inspector", exact: true }).click();
+  await expect(browserButton).toBeFocused();
+  await actions.getByRole("button", { name: "Inspector", exact: true }).click();
   const inspector = page.getByRole("complementary", { name: "Project inspector" });
   await expect(inspector.getByRole("heading", { name: "Project inspector" })).toBeFocused();
   await inspector.getByRole("button", { name: "Close" }).click();
@@ -692,12 +700,11 @@ test("on a phone the DAW layout is one column: every view is reachable and the s
   await fits();
   await axe();
 
-  // Generate, Export (from More) and Adaptive states.
+  // Generate, Export and Adaptive states.
   await page.getByRole("button", { name: "Generate", exact: true }).click();
   await expect(page.getByRole("complementary", { name: "Generate" }).getByRole("heading", { name: "Create a project variation" })).toBeVisible();
   await fits();
   await page.keyboard.press("Escape");
-  await more.click();
   await page.getByRole("button", { name: "Export", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Export" }).getByRole("heading", { name: "Render & export" })).toBeVisible();
   await fits();

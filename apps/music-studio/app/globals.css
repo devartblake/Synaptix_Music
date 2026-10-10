@@ -270,6 +270,8 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .studio-transportbar > * { flex: none; }
 .studio-transportbar button { white-space: nowrap; }
 .studio-transportbar .transport-icon { width: 34px; padding: 0; font-size: 16px; }
+.studio-transportbar .transport-actions { display: flex; align-items: center; gap: 8px; }
+.studio-transportbar .generation-cta.transport-icon { width: 34px; }
 .studio-transportbar .generation-cta { width: auto; margin-top: 0; }
 .studio-transportbar .studio-mark { width: 30px; height: 30px; border-radius: 8px; }
 .studio-transportbar .studio-title { flex: 0 1 96px; min-width: 72px; }
@@ -447,6 +449,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .studio-v2-phone .studio-v2-centre { grid-column: 1; }
 .studio-v2-phone .studio-v2-main { padding: 8px; }
 .studio-v2-phone .studio-transportbar { gap: 6px; padding: 6px 8px; }
+.studio-v2-phone .studio-transportbar .transport-actions { gap: 6px; }
 .studio-v2-phone .studio-transportbar .studio-status,
 .studio-v2-phone .studio-transportbar .transport-spacer { display: none; }
 .studio-v2-phone .studio-dock-tabs kbd,
