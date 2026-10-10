@@ -121,3 +121,17 @@ test("project cards show whether the music was generated, generated then edited,
     (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
   ).toEqual([]);
 });
+
+test("the floating tab bar is for phones on the home page; desktop uses the header navigation", async ({ page }) => {
+  await page.route("**/api/platform/**", (route) => route.fulfill({ status: 503, json: { message: "Platform unavailable" } }));
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Library" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Listening" })).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("navigation", { name: "Listening" })).toBeVisible();
+  // The library keeps it on every screen: its header has no other way to the studio or search.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/library");
+  await expect(page.getByRole("navigation", { name: "Listening" })).toBeVisible();
+});
