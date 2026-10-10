@@ -77,6 +77,27 @@ export const DeviceSchema = z.object({
   parameters: z.array(DeviceParameterSchema).default([])
 });
 
+/**
+ * A sticky note: a short piece of text pinned to a track or to the project (in the studio's
+ * Notes setting). Notes aren't music, so they are left out of the arrangement fingerprint.
+ */
+export const STICKY_NOTE_TEXT_MAX_LENGTH = 500;
+export const StickyNoteSchema = z.object({
+  id: IdSchema,
+  text: z.string().min(1).max(STICKY_NOTE_TEXT_MAX_LENGTH)
+});
+export type StickyNote = z.infer<typeof StickyNoteSchema>;
+
+/** A page of the project's notebook: a title and plain text ("[ ] " and "[x] " lines are a checklist). */
+export const NOTEBOOK_TITLE_MAX_LENGTH = 80;
+export const NOTEBOOK_BODY_MAX_LENGTH = 20000;
+export const NotebookPageSchema = z.object({
+  id: IdSchema,
+  title: z.string().min(1).max(NOTEBOOK_TITLE_MAX_LENGTH),
+  body: z.string().max(NOTEBOOK_BODY_MAX_LENGTH)
+});
+export type NotebookPage = z.infer<typeof NotebookPageSchema>;
+
 export const TrackSchema = z.object({
   id: IdSchema,
   name: z.string().min(1),
@@ -89,7 +110,9 @@ export const TrackSchema = z.object({
   outputBusId: IdSchema.optional(),
   reverbSend: z.number().min(0).max(1).optional(),
   devices: z.array(DeviceSchema).default([]),
-  clips: z.array(ClipSchema).default([])
+  clips: z.array(ClipSchema).default([]),
+  // Optional, and absent when the track has none, so existing tracks keep their checksum.
+  stickyNotes: z.array(StickyNoteSchema).min(1).optional()
 });
 
 export const AssetReferenceSchema = z.object({
@@ -169,6 +192,9 @@ export const MusicProjectSchema = z.object({
   markers: z.array(MarkerSchema).default([]),
   // Optional, and absent when unset, so projects without a key keep their canonical checksum.
   key: MusicalKeySchema.optional(),
+  // The notebook and the project's own sticky notes: optional, and absent when empty.
+  notebook: z.array(NotebookPageSchema).min(1).optional(),
+  stickyNotes: z.array(StickyNoteSchema).min(1).optional(),
   generationMetadata: GenerationMetadataSchema.optional()
 });
 
@@ -253,10 +279,11 @@ export interface ArrangementSource {
 /**
  * A fingerprint of the music: tracks (with devices reduced to the fields v1 and v2 share, so a
  * project gets the same fingerprint in either schema), clips and notes, tempo, time signature,
- * markers and key. The name, cover art and metadata are left out: renaming isn't editing the music.
+ * markers and key. The name, cover art, metadata, notebook and sticky notes are left out: renaming
+ * or annotating isn't editing the music.
  */
 export function arrangementFingerprint(project: ArrangementSource): string {
-  const tracks = project.tracks.map(({ devices, ...track }) => ({
+  const tracks = project.tracks.map(({ devices, stickyNotes: _notes, ...track }) => ({
     ...track,
     devices: devices.map(({ id, deviceType, deviceVersion, enabled, parameters }) => ({ id, deviceType, deviceVersion, enabled, parameters }))
   }));

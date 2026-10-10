@@ -28,7 +28,8 @@ export function ArrangementTimeline({
   trackColor,
   emptyState,
   onSelect,
-  onDropInstrument
+  onDropInstrument,
+  trackAccessory
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -43,6 +44,8 @@ export function ArrangementTimeline({
   onSelect?: (clip: { trackId: string; clipId: string } | null) => void;
   /** The DAW layout: an instrument dragged from the Browser was dropped on a track (swap) or elsewhere (add). */
   onDropInstrument?: (deviceType: string, trackId: string | null) => void;
+  /** The DAW layout: extra content on a track's header, after its name (e.g. its sticky notes). */
+  trackAccessory?: (track: Track) => ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const select = (clip: { trackId: string; clipId: string } | null) => {
@@ -114,6 +117,7 @@ export function ArrangementTimeline({
                 <div className={styles.trackName}>
                   <span className="track-index">{index + 1}</span>
                   <strong>{track.name}</strong>
+                  {trackAccessory?.(track)}
                 </div>
                 <div className={styles.trackActions}>
                   <Button

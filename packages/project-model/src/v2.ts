@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ClipSchema, MusicProjectSchema, type MusicProject } from "./index.ts";
+import { ClipSchema, MusicProjectSchema, StickyNoteSchema, type MusicProject } from "./index.ts";
 
 export const PROJECT_SCHEMA_VERSION_V2 = 2 as const;
 
@@ -85,7 +85,8 @@ export const TrackV2Schema = z.object({
   outputBusId: IdSchema.optional(),
   reverbSend: z.number().min(0).max(1).optional(),
   devices: z.array(DeviceV2Schema).default([]),
-  clips: z.array(ClipSchema).default([])
+  clips: z.array(ClipSchema).default([]),
+  stickyNotes: z.array(StickyNoteSchema).min(1).optional()
 });
 
 export const MusicProjectV2Schema = MusicProjectSchema.omit({

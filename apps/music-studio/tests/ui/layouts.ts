@@ -22,7 +22,6 @@ export async function openWorkspace(page: Page, layout: StudioLayout, workspace:
   if (!(await page.locator(".studio-v2").isVisible())) {
     await page.getByRole("button", { name: "Layout", exact: true }).click();
     await page.getByRole("button", { name: "DAW layout (preview)" }).click();
-    await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
     await expect(page.locator(".studio-v2")).toBeVisible();
   }
   const button = { generation: "Generate", render: "Export", adaptive: "Adaptive states" }[workspace];

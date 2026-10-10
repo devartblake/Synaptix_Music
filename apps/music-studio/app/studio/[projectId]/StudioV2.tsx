@@ -25,13 +25,19 @@ export function StudioTransportBar(props: StudioTopbarProps & {
   onView: (view: StudioView) => void;
   onGenerate: () => void;
   onExport: () => void;
-  layoutMenu: ReactNode;
+  /** Opens the Settings dialog (features, layout, editing). */
+  onSettings: () => void;
+  /** Opens or closes the Notebook drawer; absent when the notebook is turned off in Settings. */
+  notebook?: { open: boolean; onToggle: () => void };
   /** Panels the screen is too narrow to show beside the timeline, opened as overlays. */
   panels?: { id: "browser" | "inspector"; label: string; open: boolean; onToggle: () => void }[];
   /** Phones: Export and the panel toggles move into a More menu so the bar stays short. */
   compact?: boolean;
 }) {
   const { engine, playing, bpm } = props;
+  const notebook = props.notebook && (
+    <Button data-opens="notebook" aria-expanded={props.notebook.open} onClick={props.notebook.onToggle}>Notebook</Button>
+  );
   const panelToggles = props.panels?.map((panel) => (
     <Button key={panel.id} data-opens={panel.id} aria-expanded={panel.open} aria-controls={`studio-${panel.id}`} onClick={panel.onToggle}>
       {panel.label}
@@ -78,13 +84,20 @@ export function StudioTransportBar(props: StudioTopbarProps & {
       {props.compact
         ? <DisclosureMenu label="More" floating>
           <Button data-opens="export" onClick={props.onExport}>Export</Button>
+          {notebook}
           {panelToggles}
         </DisclosureMenu>
         : <>
           <Button data-opens="export" onClick={props.onExport}>Export</Button>
+          {notebook}
           {panelToggles}
         </>}
-      {props.layoutMenu}
+      <Button className="transport-icon" data-opens="settings" aria-label="Settings" title="Settings" onClick={props.onSettings}>
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="8" r="2.2" />
+          <path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7 3.4 3.4" />
+        </svg>
+      </Button>
       <div className="studio-status">
         <MasterMeter engine={engine} />
       </div>

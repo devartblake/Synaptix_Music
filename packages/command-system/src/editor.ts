@@ -201,6 +201,76 @@ export class SetProjectKeyEditorCommand {
   undo<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.previous); }
 }
 
+export type NotebookPage = NonNullable<MusicProject["notebook"]>[number];
+export type StickyNote = NonNullable<MusicProject["stickyNotes"]>[number];
+
+function uniqueIds(items: ReadonlyArray<{ id: string }>, what: string): void {
+  if (new Set(items.map((item) => item.id)).size !== items.length) throw new RangeError(`${what} ids must be unique.`);
+}
+
+/**
+ * Replaces the project's notebook pages as one undo step. An empty notebook removes the field, so
+ * a project whose notes are all deleted is byte-identical to one that never had any.
+ */
+export class SetNotebookEditorCommand {
+  readonly id: string;
+  readonly kind = "set-notebook";
+
+  constructor(
+    readonly previous: readonly NotebookPage[],
+    readonly next: readonly NotebookPage[],
+    options: CommandOptions = {}
+  ) {
+    uniqueIds(next, "Notebook page");
+    if (next.some((page) => !page.title.trim())) throw new RangeError("A notebook page needs a title.");
+    this.id = commandId(options);
+  }
+
+  private write<P extends VersionedMusicProject>(project: P, pages: readonly NotebookPage[]): P {
+    const next = clone(project);
+    if (pages.length) next.notebook = pages.map((page) => ({ ...page }));
+    else delete next.notebook;
+    return next;
+  }
+
+  execute<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.next); }
+  undo<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.previous); }
+}
+
+/**
+ * Replaces the sticky notes on a track, or on the project when trackId is null, as one undo step.
+ * No notes removes the field, as for the notebook.
+ */
+export class SetStickyNotesEditorCommand {
+  readonly id: string;
+  readonly kind = "set-sticky-notes";
+
+  constructor(
+    readonly trackId: string | null,
+    readonly previous: readonly StickyNote[],
+    readonly next: readonly StickyNote[],
+    options: CommandOptions = {}
+  ) {
+    uniqueIds(next, "Sticky note");
+    if (next.some((note) => !note.text.trim())) throw new RangeError("A sticky note can't be empty.");
+    this.id = commandId(options);
+  }
+
+  private write<P extends VersionedMusicProject>(project: P, notes: readonly StickyNote[]): P {
+    const next = clone(project);
+    const owner: { stickyNotes?: StickyNote[] } | undefined = this.trackId === null
+      ? next
+      : next.tracks.find((track) => track.id === this.trackId);
+    if (!owner) throw new Error(`Track ${this.trackId} not found.`);
+    if (notes.length) owner.stickyNotes = notes.map((note) => ({ ...note }));
+    else delete owner.stickyNotes;
+    return next;
+  }
+
+  execute<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.next); }
+  undo<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.previous); }
+}
+
 export class SetLoopEnabledEditorCommand implements EditorCommand {
   readonly id: string;
   readonly kind = "set-loop-enabled";

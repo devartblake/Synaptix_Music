@@ -2,6 +2,7 @@
 
 import { Badge, Button, ViewTabs } from "../../../components/ui/StudioControls";
 import { useStudioLayout, type DockTab } from "../../../lib/editor/use-studio-layout";
+import { useStudioSettings } from "../../../lib/editor/use-studio-settings";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import { PLATFORM_SESSION_EVENT } from "../../../components/PlatformAccount";
 
@@ -14,10 +15,14 @@ import {
   EditorCommandHistory,
   RenameProjectEditorCommand,
   SetLoopEnabledEditorCommand,
+  SetNotebookEditorCommand,
+  SetStickyNotesEditorCommand,
   SetTempoEditorCommand,
   SetTrackPanEditorCommand,
   SetTrackVolumeEditorCommand,
-  type EditorCommand
+  type EditorCommand,
+  type NotebookPage,
+  type StickyNote
 } from "@synaptix/command-system/editor";
 import { liftEditorCommandToV2, SetFrozenPluginArtifactEditorCommand, type PluginEditorCommand } from "@synaptix/command-system/plugin";
 import { evaluateFrozenPluginEvidence, type FrozenPluginEvidenceStatus } from "@synaptix/project-model/plugin";
@@ -69,6 +74,9 @@ import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
 import { DeviceChain } from "./DeviceChain";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
+import { NotebookPanel } from "./NotebookPanel";
+import { StickyNotesEditor, TrackStickyNotes } from "./StickyNotes";
+import { StudioSettingsPanel } from "./StudioSettings";
 import { LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
 import { hintFor, SaveSyncStatus, StatusAccount, StudioDialog, StudioDock, StudioDrawer, StudioStatusBar, StudioTransportBar } from "./StudioV2";
 import { StudioTopbar } from "./StudioTopbar";
@@ -190,6 +198,10 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [newInstrument, setNewInstrument] = useState("synaptix-pad");
   const mixerToggleRef = useRef<HTMLButtonElement>(null);
   const panelLayout = useStudioLayout();
+  const studioSettings = useStudioSettings();
+  // DAW layout: the Notebook drawer and the Settings dialog.
+  const [notebookOpen, setNotebookOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     try { setMixerOpen(localStorage.getItem("synaptix-music:mixer-open:v1") === "true"); }
@@ -484,6 +496,28 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     return enqueueEdit((current) => historyRef.current.execute(current, command));
   }
 
+  /** Notebook edits are built from the latest pages, so quick successive saves never undo each other. */
+  function editNotebook(update: (pages: NotebookPage[]) => NotebookPage[]): Promise<void> {
+    return enqueueEdit(async (current) => {
+      const previous = current.notebook ?? [];
+      const next = update(previous);
+      if (JSON.stringify(next) === JSON.stringify(previous)) return null;
+      return historyRef.current.execute(current, new SetNotebookEditorCommand(previous, next));
+    });
+  }
+
+  /** Sticky notes on a track, or on the project when trackId is null; built from the latest notes. */
+  function editStickyNotes(trackId: string | null, update: (notes: StickyNote[]) => StickyNote[]): Promise<void> {
+    return enqueueEdit(async (current) => {
+      const owner = trackId === null ? current : current.tracks.find((track) => track.id === trackId);
+      if (!owner) return null;
+      const previous = owner.stickyNotes ?? [];
+      const next = update(previous);
+      if (JSON.stringify(next) === JSON.stringify(previous)) return null;
+      return historyRef.current.execute(current, new SetStickyNotesEditorCommand(trackId, previous, next));
+    });
+  }
+
   async function addFrequencyDrone(frequencyHz: number): Promise<void> {
     await executeV1(new AddTrackEditorCommand(createFrequencyDroneTrack({ frequencyHz })));
     setWorkspace("arrangement");
@@ -645,10 +679,22 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   }
   const [hint, setHint] = useState("Alt+1, Alt+2 and Alt+3 switch the dock · Alt+S switches Arrange and Adaptive states");
   /** DAW layout: closes the Generate drawer or Export dialog and returns focus to the button that opened it. */
-  function closeOverlay(opener: "generate" | "export"): void {
-    setWorkspace("arrangement");
+  function closeOverlay(opener: "generate" | "export" | "notebook" | "settings"): void {
+    if (opener === "notebook") setNotebookOpen(false);
+    else if (opener === "settings") setSettingsOpen(false);
+    else setWorkspace("arrangement");
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`.studio-transportbar [data-opens="${opener}"]`)?.focus());
   }
+  // The Notebook drawer and Settings dialog take focus to their heading, like Generate and Export.
+  useEffect(() => {
+    if (notebookOpen) document.querySelector<HTMLElement>(".notebook-panel h2")?.focus({ preventScroll: true });
+  }, [notebookOpen]);
+  useEffect(() => {
+    if (settingsOpen) document.querySelector<HTMLElement>(".studio-settings h2")?.focus({ preventScroll: true });
+  }, [settingsOpen]);
+  const notebookVisible = v2 && notebookOpen && studioSettings.settings.notebook && workspace !== "generation";
+  const stickyNotesOn = v2 && studioSettings.settings.stickyNotes;
+
   // DAW layout on narrow screens: the Browser or inspector opened over the timeline.
   const [panelOverlay, setPanelOverlay] = useState<"browser" | "inspector" | null>(null);
   function togglePanelOverlay(panel: "browser" | "inspector"): void {
@@ -726,7 +772,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
     </section>
   ));
-  const timeline = (onEdit: (clip: ActiveClip) => void, daw?: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState" | "onSelect" | "onDropInstrument">) => (
+  const timeline = (onEdit: (clip: ActiveClip) => void, daw?: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState" | "onSelect" | "onDropInstrument" | "trackAccessory">) => (
     <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={onEdit} {...daw}
       renderControls={(track) => {
         const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
@@ -778,11 +824,23 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     bars: Math.round(inspectedClipData.range.durationTicks / barTicks(builtinView)),
     startBar: inspectedClipData.range.start.bar + 1
   } : null;
+  const notedTrack = inspectedTrack && project.tracks.find((track) => track.id === inspectedTrack.id);
   const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
     bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel} selection={selection}
     publication={panelLayout.v2 ? { revisionId: project.revisionId, refreshKey: workspace, onOpenAdaptive: () => setWorkspace("adaptive") } : undefined}
     onOpenGenerator={() => setWorkspace("generation")}
-    overlay={panelLayout.v2 ? { open: panelOverlay === "inspector", onClose: closePanelOverlay } : undefined} />;
+    overlay={panelLayout.v2 ? { open: panelOverlay === "inspector", onClose: closePanelOverlay } : undefined}
+    notes={stickyNotesOn ? <section className="inspector-card sticky-card" aria-labelledby="sticky-card-title">
+      <strong id="sticky-card-title">Sticky notes</strong>
+      {notedTrack && <>
+        <span className="sticky-card-owner">{notedTrack.name}</span>
+        <StickyNotesEditor key={notedTrack.id} notes={notedTrack.stickyNotes ?? []} owner={notedTrack.name} disabled={!hydrated}
+          onChange={(update) => void editStickyNotes(notedTrack.id, update)} />
+      </>}
+      <span className="sticky-card-owner">Project</span>
+      <StickyNotesEditor notes={project.stickyNotes ?? []} owner="this project" disabled={!hydrated}
+        onChange={(update) => void editStickyNotes(null, update)} />
+    </section> : undefined} />;
 
   // DAW layout: a track takes its own colour, else its instrument family's (as the engine resolves it).
   const dawTrackColor = (track: Track) => track.color ?? INSTRUMENT_ACCENTS[resolveInstrumentDefinition((primaryDevice(track) ?? track.devices[0])?.deviceType ?? "", track.name).profile.kind];
@@ -803,8 +861,13 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           position={<TransportCounters engine={engine} project={builtinView} />}
           view={workspace === "adaptive" ? "adaptive" : "arrange"}
           onView={(view) => setWorkspace(view === "adaptive" ? "adaptive" : "arrangement")}
-          onGenerate={() => setWorkspace("generation")} onExport={() => setWorkspace("render")}
-          layoutMenu={<LayoutMenu panelLayout={panelLayout} onReset={() => undefined} />}
+          onGenerate={() => { setNotebookOpen(false); setWorkspace("generation"); }} onExport={() => setWorkspace("render")}
+          onSettings={() => setSettingsOpen(true)}
+          notebook={studioSettings.settings.notebook ? { open: notebookVisible, onToggle: () => {
+            if (notebookVisible) { closeOverlay("notebook"); return; }
+            if (workspace === "generation") setWorkspace("arrangement");
+            setNotebookOpen(true);
+          } } : undefined}
           compact={panelLayout.mobile}
           panels={[
             ...(!panelLayout.navigationVisible && panelLayout.mobile ? [{ id: "browser" as const, label: "Browser", open: panelOverlay === "browser", onToggle: () => togglePanelOverlay("browser") }] : []),
@@ -837,6 +900,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                   trackColor: dawTrackColor,
                   onSelect: setSelectedClip,
                   onDropInstrument: (deviceType, trackId) => void (trackId ? swapInstrument(trackId, deviceType) : addInstrument(deviceType)),
+                  trackAccessory: stickyNotesOn ? (track) => <TrackStickyNotes trackName={track.name} disabled={!hydrated}
+                    notes={project.tracks.find((candidate) => candidate.id === track.id)?.stickyNotes ?? []}
+                    onChange={(update) => void editStickyNotes(track.id, update)} /> : undefined,
                   emptyState: <div className="timeline-empty">
                     <strong>Start with an instrument</strong>
                     <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>
@@ -872,10 +938,18 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             <GenerationWorkspace project={builtinView} onAddDrone={addFrequencyDrone} onApply={applyGeneratedVariation}
               onClose={() => closeOverlay("generate")} variant="drawer" />
           </StudioDrawer>}
+          {notebookVisible && <StudioDrawer label="Notebook" onClose={() => closeOverlay("notebook")}>
+            <NotebookPanel pages={project.notebook ?? []} disabled={!hydrated}
+              onChange={(update) => void editNotebook(update)} onClose={() => closeOverlay("notebook")} />
+          </StudioDrawer>}
         </div>
         {workspace === "render" && <StudioDialog label="Export" onClose={() => closeOverlay("export")}>
           <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} variant="dialog"
             onClose={() => closeOverlay("export")} onSync={async () => coordinatorRef.current?.drain()} />
+        </StudioDialog>}
+        {settingsOpen && <StudioDialog label="Settings" onClose={() => closeOverlay("settings")}>
+          <StudioSettingsPanel settings={studioSettings.settings} onSettings={studioSettings.update} panelLayout={panelLayout}
+            onClose={() => closeOverlay("settings")} />
         </StudioDialog>}
         <StudioStatusBar hint={hint}
           facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span><StatusAccount /></>} />

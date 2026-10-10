@@ -77,6 +77,17 @@ class Device(StrictModel):
     parameters: list[DeviceParameter]
 
 
+class StickyNote(StrictModel):
+    id: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=500)
+
+
+class NotebookPage(StrictModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=80)
+    body: str = Field(max_length=20000)
+
+
 class Track(StrictModel):
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
@@ -90,6 +101,7 @@ class Track(StrictModel):
     reverbSend: float | None = Field(default=None, ge=0, le=1)
     devices: list[Device]
     clips: list[Clip]
+    stickyNotes: list[StickyNote] | None = Field(default=None, min_length=1)
 
 
 class AssetReference(StrictModel):
@@ -161,4 +173,6 @@ class MusicProject(StrictModel):
     markers: list[Marker]
     mixer: Mixer | None = None
     key: MusicalKey | None = None
+    notebook: list[NotebookPage] | None = Field(default=None, min_length=1)
+    stickyNotes: list[StickyNote] | None = Field(default=None, min_length=1)
     generationMetadata: GenerationMetadata | None = None

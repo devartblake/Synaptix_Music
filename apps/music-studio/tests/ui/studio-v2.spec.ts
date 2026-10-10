@@ -75,9 +75,10 @@ test("the layout choice and dock state survive a reload, and the classic layout 
   await expect(page.locator(".studio-v2")).toBeVisible();
   await expect(page.getByRole("region", { name: "Dock" }).getByRole("tab", { name: /^Mixer/ })).toHaveAttribute("aria-selected", "true");
 
-  await page.getByRole("button", { name: "Layout", exact: true }).click();
-  await expect(page.getByRole("button", { name: "DAW layout (preview)" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "DAW layout (preview)" }).click();
+  // The DAW layout's Settings dialog switches back to the classic layout.
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("switch", { name: "DAW layout (preview)" })).toBeChecked();
+  await page.getByRole("switch", { name: "DAW layout (preview)" }).click();
   await expect(page.locator(".studio-topbar")).toBeVisible();
   await expect(page.locator(".studio-v2")).toHaveCount(0);
 });
@@ -171,7 +172,6 @@ test("the loop is set by dragging the brace or pressing L on a clip, and undoes 
 test("the docked piano roll names chords, shades the scale and keeps rarer edits in a menu", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   // The FM Electric Piano starter plays C major then D minor chords.
   await page.getByRole("complementary", { name: "Browser" }).getByRole("button", { name: "FM Electric Piano", exact: true }).click();
   await page.getByRole("button", { name: "Add FM Electric Piano track" }).click();
@@ -201,6 +201,8 @@ test("the docked piano roll names chords, shades the scale and keeps rarer edits
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(scale.locator("option:checked")).toHaveText("Auto (C major)");
   await scale.selectOption({ label: "A minor" });
+  // Reload only once the key is saved, or a slow save loses it.
+  await expect(page.getByRole("status", { name: "Save state" })).toHaveText("Saved");
   await page.reload();
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await page.getByRole("button", { name: "Edit", exact: true }).last().click();
@@ -214,7 +216,6 @@ test("the docked piano roll names chords, shades the scale and keeps rarer edits
 test("piano roll tools: draw with one click, ghost another track, humanize and label notes", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
   const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
   const grid = roll.getByRole("group", { name: "MIDI notes" });
@@ -257,7 +258,6 @@ test("piano roll tools: draw with one click, ghost another track, humanize and l
 test("selected notes are renamed and cleared as undoable edits, and their labels survive a reload", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
   const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
   const notes = roll.getByRole("group", { name: "MIDI notes" }).locator("[data-note-id]");
@@ -311,7 +311,6 @@ test("selected notes are renamed and cleared as undoable edits, and their labels
 test("the piano roll's Edit menu floats above the dock, fully visible, and stays open for repeated edits", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
   const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
   const note = roll.getByRole("group", { name: "MIDI notes" }).locator("[data-note-id]").first();
@@ -397,7 +396,6 @@ test("the piano roll's Edit menu floats above the dock, fully visible, and stays
 test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   const dock = page.getByRole("region", { name: "Dock" });
 
   // The chain follows the clip being edited.
@@ -441,7 +439,6 @@ test("the device chain shows one track's devices as knobs that edit, undo and re
 test("the dock mixer shows a strip per channel whose fader, knobs and switches edit and undo", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   const dock = page.getByRole("region", { name: "Dock" });
   await page.keyboard.press("Alt+3");
   const strip = dock.getByRole("region", { name: "Bass channel" });
@@ -496,7 +493,6 @@ test("the browser searches instruments by family, adds with Enter and swaps with
   test.skip(testInfo.project.name === "tablet", "The inspector is hidden on tablet layouts.");
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   const browser = page.getByRole("complementary", { name: "Browser" });
   const inspector = page.getByRole("complementary", { name: "Project inspector" });
   const trackCount = inspector.locator(".property-row").filter({ hasText: "Tracks" }).locator("dd");
@@ -551,7 +547,6 @@ test("the browser searches instruments by family, adds with Enter and swaps with
 test("the browser adds starter phrases and opens the project's clips", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   const browser = page.getByRole("complementary", { name: "Browser" });
   const dock = page.getByRole("region", { name: "Dock" });
 
@@ -577,7 +572,6 @@ test("the browser adds starter phrases and opens the project's clips", async ({ 
 test("Generate opens a drawer beside the timeline and Export a dialog; Escape closes each and returns focus", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   const generate = page.getByRole("button", { name: "Generate", exact: true });
   const exportButton = page.getByRole("button", { name: "Export", exact: true });
 
@@ -620,7 +614,6 @@ test("the inspector's SynaptixPlay card says whether the music is live in games"
   // Never published: it says so and opens Adaptive states, where publishing happens.
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   await expect(card.getByRole("status")).toHaveText("Not in SynaptixPlay yet");
   await card.getByRole("button", { name: "Open Adaptive states" }).click();
   await expect(page.getByRole("heading", { name: "Author adaptive states" })).toBeVisible();
@@ -719,7 +712,6 @@ test("on a tablet the inspector opens over the timeline from the transport bar",
   test.skip(testInfo.project.name !== "tablet", "Desktop shows the inspector beside the timeline.");
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   const toggle = page.getByRole("button", { name: "Inspector", exact: true });
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await toggle.click();
@@ -731,10 +723,88 @@ test("on a tablet the inspector opens over the timeline from the transport bar",
   await expect(toggle).toBeFocused();
 });
 
+test("the notebook and sticky notes save with the project, undo, and can be turned off in Settings", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+
+  // Notebook: a drawer of titled pages; typing saves when focus leaves, "[ ] " lines are a checklist.
+  const notebookButton = page.getByRole("button", { name: "Notebook", exact: true });
+  await notebookButton.click();
+  const notebook = page.getByRole("complementary", { name: "Notebook" });
+  await expect(notebook.getByRole("heading", { name: "Notebook" })).toBeFocused();
+  await expect(notebook.getByText("No pages yet")).toBeVisible();
+  await notebook.getByRole("button", { name: "New page" }).click();
+  await notebook.getByRole("textbox", { name: "Title" }).fill("Lyrics");
+  await notebook.getByRole("textbox", { name: "Title" }).press("Enter");
+  await expect(notebook.getByRole("combobox", { name: "Page" })).toHaveValue(/.+/);
+  await expect(notebook.getByRole("combobox", { name: "Page" }).locator("option:checked")).toHaveText("Lyrics");
+  await notebook.getByRole("textbox", { name: "Page text" }).fill("Verse one\n[ ] Write the chorus");
+  await notebook.getByRole("button", { name: "Add checklist item" }).focus();
+  const item = notebook.getByRole("checkbox", { name: "Write the chorus" });
+  await item.check();
+  await expect(notebook.getByRole("textbox", { name: "Page text" })).toHaveValue("Verse one\n[x] Write the chorus");
+  await expect(notebook.getByText("1 of 1 done")).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(item).not.toBeChecked();
+  await item.focus();
+  await page.keyboard.press("Escape");
+  await expect(notebook).toBeHidden();
+  await expect(notebookButton).toBeFocused();
+
+  // Sticky notes on a track header (a movable panel) and, in the inspector, on the project.
+  await page.getByRole("button", { name: "Add a sticky note to Bass" }).click();
+  await page.getByRole("textbox", { name: "New sticky note on Bass" }).fill("Brighter hats from bar 9");
+  await page.getByRole("button", { name: "Add note to Bass", exact: true }).click();
+  const trackNote = page.getByRole("button", { name: "Sticky notes on Bass (1)" });
+  await expect(trackNote).toContainText("Brighter hats from bar 9");
+  await page.keyboard.press("Escape");
+  const inspectorToggle = page.getByRole("button", { name: "Inspector", exact: true });
+  if (await inspectorToggle.isVisible()) await inspectorToggle.click();
+  const card = page.getByRole("complementary", { name: "Project inspector" }).getByRole("region", { name: "Sticky notes" });
+  await card.getByRole("textbox", { name: "New sticky note on this project" }).fill("Send to Sam on Friday");
+  await card.getByRole("button", { name: "Add note to this project", exact: true }).click();
+  await expect(card.getByRole("list", { name: "Sticky notes on this project" }).getByRole("textbox")).toHaveValue("Send to Sam on Friday");
+  // Clearing a note's text deletes it; undo brings it back.
+  await card.getByRole("textbox", { name: "Sticky note 1" }).fill("");
+  await card.getByRole("textbox", { name: "New sticky note on this project" }).focus();
+  await expect(card.getByRole("list", { name: "Sticky notes on this project" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(card.getByRole("textbox", { name: "Sticky note 1" })).toHaveValue("Send to Sam on Friday");
+
+  // Notes are project data: they survive a reload.
+  await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await expect(page.getByRole("button", { name: "Sticky notes on Bass (1)" })).toBeVisible();
+  await page.getByRole("button", { name: "Notebook", exact: true }).click();
+  await expect(page.getByRole("complementary", { name: "Notebook" }).getByRole("textbox", { name: "Page text" })).toHaveValue("Verse one\n[ ] Write the chorus");
+  await page.keyboard.press("Escape");
+
+  // Settings turns each feature off (per browser); the notes stay in the project.
+  const settingsButton = page.getByRole("button", { name: "Settings", exact: true });
+  await settingsButton.click();
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings.getByRole("heading", { name: "Settings" })).toBeFocused();
+  expect((await new AxeBuilder({ page }).include(".studio-settings").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await settings.getByRole("switch", { name: "Sticky notes" }).click();
+  await settings.getByRole("switch", { name: "Notebook" }).click();
+  await expect(settings.getByRole("switch", { name: "Notebook" })).not.toBeChecked();
+  await page.keyboard.press("Escape");
+  await expect(settings).toBeHidden();
+  await expect(settingsButton).toBeFocused();
+  await expect(page.getByRole("button", { name: /Sticky notes on Bass/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Notebook", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await expect(page.getByRole("button", { name: "Notebook", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("switch", { name: "Sticky notes" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Sticky notes on Bass (1)" })).toBeVisible();
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
-  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
   await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
   await page.locator(".studio-hint").evaluate((element) => { element.textContent = ""; });
   // The account control appears after the platform check and changes the status bar's height.

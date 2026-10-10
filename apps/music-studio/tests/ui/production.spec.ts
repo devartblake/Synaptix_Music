@@ -195,7 +195,8 @@ test(titled("export retries with one idempotency key, recovers history, and down
   await openExport(page, layout, true);
   await expect(page.getByText("completed", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // The DAW layout switches to its phone layout on the resize's re-render; measure once it has.
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 for (const layout of LAYOUTS)

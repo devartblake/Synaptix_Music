@@ -324,5 +324,6 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
       .violations
   ).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // The DAW layout switches to its phone layout on the resize's re-render; measure once it has.
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

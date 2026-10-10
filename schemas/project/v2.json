@@ -126,6 +126,20 @@
     "key": {
       "$ref": "#/$defs/musicalKey"
     },
+    "notebook": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/notebookPage"
+      }
+    },
+    "stickyNotes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/stickyNote"
+      }
+    },
     "generationMetadata": {
       "$ref": "#/$defs/generationMetadata"
     }
@@ -147,6 +161,40 @@
         },
         "mode": {
           "enum": ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"]
+        }
+      }
+    },
+    "stickyNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "notebookPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "body"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 20000
         }
       }
     },
@@ -513,6 +561,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/clip"
+          }
+        },
+        "stickyNotes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/stickyNote"
           }
         }
       }
