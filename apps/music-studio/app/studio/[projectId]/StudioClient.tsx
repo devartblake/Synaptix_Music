@@ -62,6 +62,7 @@ import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/p
 import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
 import { MixerDrawer } from "./MixerDrawer";
+import { DockMixer } from "./DockMixer";
 import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
 import { DeviceChain } from "./DeviceChain";
 import { StudioBanners } from "./StudioBanners";
@@ -71,7 +72,7 @@ import { hintFor, SaveSyncStatus, StatusAccount, StudioDock, StudioStatusBar, St
 import { StudioTopbar } from "./StudioTopbar";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
-import { PluginRack } from "./PluginRack";
+import { PluginRack, pluginInsertNames } from "./PluginRack";
 import { createFreezeManifest, FreezeError, freezeReference, storedRevision } from "../../../lib/platform/plugin-freeze-model";
 import { createPlatformFrozenAudioSource } from "../../../lib/platform/frozen-audio-source";
 import { studioStartTick } from "../../../lib/player/playback-model";
@@ -725,6 +726,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel}
     onOpenGenerator={() => setWorkspace("generation")} />;
 
+  // DAW layout: a track takes its own colour, else its instrument family's (as the engine resolves it).
+  const dawTrackColor = (track: Track) => track.color ?? INSTRUMENT_ACCENTS[resolveInstrumentDefinition((primaryDevice(track) ?? track.devices[0])?.deviceType ?? "", track.name).profile.kind];
+
   if (panelLayout.v2) {
     const { dockTab, dockOpen } = panelLayout.layout;
     const dockClip = activeClip && builtinView.tracks.find((track) => track.id === activeClip.trackId);
@@ -757,7 +761,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             <section className="studio-v2-main" aria-label="Project workspace">
               {workspace === "arrangement" || workspace === "devices"
                 ? <>{conflictBanners}{timeline(openInDock, {
-                  trackColor: (track) => track.color ?? INSTRUMENT_ACCENTS[resolveInstrumentDefinition((primaryDevice(track) ?? track.devices[0])?.deviceType ?? "", track.name).profile.kind],
+                  trackColor: dawTrackColor,
                   emptyState: <div className="timeline-empty">
                     <strong>Start with an instrument</strong>
                     <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>
@@ -783,9 +787,10 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                       preview: previewDeviceParameter,
                       end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
                     }} />; }} />,
-                mixer: <MixerDrawer docked project={builtinView} engine={engine} storageStatus={storageStatus}
-                  height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax} onResize={() => undefined}
-                  syncLabel={syncLabel} onExecute={executeV1} onExport={() => setWorkspace("render")} onClose={() => undefined} />
+                mixer: <DockMixer project={builtinView} engine={engine} trackColor={dawTrackColor}
+                  pluginNames={(id) => { const track = project.tracks.find((candidate) => candidate.id === id); return track ? pluginInsertNames(track) : []; }}
+                  selectedTrackId={activeClip?.trackId ?? null} onExecute={executeV1}
+                  onOpenDevices={(id) => { setDeviceTrackId(id); chooseDockTab("devices"); }} />
               }} />
           </div>
           {inspector}

@@ -31,8 +31,7 @@ export function MixerDrawer({
   onResize,
   onExecute,
   onExport,
-  onClose,
-  docked = false
+  onClose
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -44,8 +43,6 @@ export function MixerDrawer({
   onExecute: (command: EditorCommand) => Promise<void>;
   onExport: () => void;
   onClose: () => void;
-  /** Shown in the v2 dock: in place, sized by the dock, without its own resize handle or Close. */
-  docked?: boolean;
 }) {
   // Changes queue in the studio's edit queue, so none is dropped while another is saving.
   const [pendingCount, setPendingCount] = useState(0);
@@ -55,8 +52,8 @@ export function MixerDrawer({
   const mixer = project.mixer ?? defaultMixer();
 
   useEffect(() => {
-    if (!docked) heading.current?.focus({ preventScroll: true });
-  }, [docked]);
+    heading.current?.focus({ preventScroll: true });
+  }, []);
 
   async function execute(command: EditorCommand) {
     setPendingCount((count) => count + 1);
@@ -73,11 +70,11 @@ export function MixerDrawer({
   return (
     <section
       id="studio-mixer"
-      className={docked ? styles.docked : styles.drawer}
+      className={styles.drawer}
       aria-labelledby="mixer-heading"
-      style={docked ? undefined : { height }}
+      style={{ height }}
     >
-      {!docked && <ResizeHandle
+      <ResizeHandle
         label="Mixer height"
         controls="studio-mixer"
         orientation="horizontal"
@@ -86,7 +83,7 @@ export function MixerDrawer({
         max={maxHeight}
         direction={-1}
         onChange={onResize}
-      />}
+      />
       <header className={styles.header}>
         <div>
           <h2 id="mixer-heading" ref={heading} tabIndex={-1}>
@@ -97,11 +94,9 @@ export function MixerDrawer({
         <p className={styles.saveStatus} role="status">
           {pending ? "Saving mixer change…" : storageStatus}
         </p>
-        {!docked && (
-          <Button onClick={onClose} aria-label="Close mixer">
-            Close
-          </Button>
-        )}
+        <Button onClick={onClose} aria-label="Close mixer">
+          Close
+        </Button>
       </header>
       {error && (
         <p className={styles.error} role="alert">

@@ -31,16 +31,19 @@ export function ChannelMeter({ id, name }: { id: string; name: string }) {
   );
 }
 
-/** A slim vertical level for a timeline track header (the DAW layout). */
-export function TrackLevel({ id, name }: { id: string; name: string }) {
+/** A slim vertical level for a timeline track header or, with `rms`, a mixer strip (the DAW layout). */
+export function TrackLevel({ id, name, className = "track-level", rms = false }: { id: string; name: string; className?: string; rms?: boolean }) {
   const meter = useContext(Levels)[id] ?? SILENT_METER;
   // -60 dBFS to 0 dBFS fills the bar.
-  const fill = Number.isFinite(meter.peakDbfs) ? Math.max(0, Math.min(1, (meter.peakDbfs + 60) / 60)) : 0;
+  const fill = (dbfs: number) => Number.isFinite(dbfs) ? Math.max(0, Math.min(1, (dbfs + 60) / 60)) : 0;
+  const db = (value: number) => (Number.isFinite(value) ? `${value.toFixed(1)} dBFS` : "silent");
   return (
-    <span className="track-level" role="meter" aria-label={`${name} level`} aria-valuemin={-60} aria-valuemax={0}
+    <span className={className} role="meter" aria-label={`${name} level`} aria-valuemin={-60} aria-valuemax={0}
       aria-valuenow={Number.isFinite(meter.peakDbfs) ? Math.round(meter.peakDbfs) : -60}
+      aria-valuetext={rms ? `Peak ${db(meter.peakDbfs)}, RMS ${db(meter.rmsDbfs)}` : undefined}
       data-clipped={meter.clipped || undefined}>
-      <span style={{ transform: `scaleY(${fill})` }} />
+      <span style={{ transform: `scaleY(${fill(meter.peakDbfs)})` }} />
+      {rms && <span className="rms" style={{ transform: `scaleY(${fill(meter.rmsDbfs)})` }} />}
     </span>
   );
 }

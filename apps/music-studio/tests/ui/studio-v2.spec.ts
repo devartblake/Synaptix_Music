@@ -36,7 +36,7 @@ test("the DAW layout keeps the timeline in view while the dock edits, mixes and 
   // Alt+3 shows the mixer in place; pressing it again collapses the dock, and Alt+2 reopens it on Devices.
   await page.keyboard.press("Alt+3");
   await expect(tab("Mixer")).toHaveAttribute("aria-selected", "true");
-  await expect(dock.getByRole("heading", { name: "Mixer" })).toBeVisible();
+  await expect(dock.getByRole("group", { name: "Mixer channels" })).toBeVisible();
   await expect(dock.getByRole("button", { name: "Close mixer" })).toHaveCount(0);
   await page.keyboard.press("Alt+3");
   await expect(dock.getByRole("tabpanel")).toHaveCount(0);
@@ -297,6 +297,60 @@ test("the device chain shows one track's devices as knobs that edit, undo and re
   expect(
     (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
   ).toEqual([]);
+});
+
+test("the dock mixer shows a strip per channel whose fader, knobs and switches edit and undo", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const dock = page.getByRole("region", { name: "Dock" });
+  await page.keyboard.press("Alt+3");
+  const strip = dock.getByRole("region", { name: "Bass channel" });
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+
+  // The vertical fader moves with the arrow keys; letting go is one undo step.
+  const fader = strip.getByRole("slider", { name: "Bass volume" });
+  const level = await fader.inputValue();
+  await fader.focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(fader).not.toHaveValue(level);
+  await undo.click();
+  await expect(fader).toHaveValue(level);
+
+  // Each strip meters peak and RMS.
+  await expect(strip.getByRole("meter", { name: "Bass level" })).toHaveAttribute("aria-valuetext", /^Peak .*, RMS /);
+
+  // Pan is a knob; double-click centres it.
+  const pan = strip.getByRole("slider", { name: "Pan" });
+  await pan.focus();
+  await page.keyboard.press("PageDown");
+  await expect(pan).not.toHaveAttribute("aria-valuetext", "C");
+  await pan.dblclick();
+  await expect(pan).toHaveAttribute("aria-valuetext", "C");
+
+  // Mute, solo and the output route are the same edits the classic mixer makes.
+  await strip.getByRole("button", { name: "Mute Bass" }).click();
+  await expect(strip.getByRole("button", { name: "Mute Bass" })).toHaveAttribute("aria-pressed", "true");
+  await strip.getByRole("button", { name: "Solo Bass" }).click();
+  await expect(strip.getByRole("button", { name: "Solo Bass" })).toHaveAttribute("aria-pressed", "true");
+  await strip.getByLabel("Bass output").selectOption("master");
+  await expect(strip.getByLabel("Bass output")).toHaveValue("master");
+  await undo.click();
+  await expect(strip.getByLabel("Bass output")).not.toHaveValue("master");
+
+  // The master strip mutes the whole mix; buses have their own strips.
+  await dock.getByRole("region", { name: "Master channel" }).getByRole("button", { name: "Mute Master" }).click();
+  await expect(dock.getByRole("button", { name: "Mute Master" })).toHaveAttribute("aria-pressed", "true");
+  await expect(dock.getByRole("region", { name: "Reverb return channel" }).getByRole("slider", { name: "Reverb return volume" })).toBeVisible();
+
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+
+  // An insert slot opens that track's device chain.
+  await strip.getByRole("list", { name: "Bass insert slots" }).getByRole("button").first().click();
+  await expect(dock.getByRole("tab", { name: /^Devices/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dock.getByRole("region", { name: "Bass devices" })).toBeVisible();
 });
 
 test("the DAW layout matches its visual baseline", async ({ page }) => {

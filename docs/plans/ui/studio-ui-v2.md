@@ -142,7 +142,12 @@ Each step is one PR with its own visual baselines and UI tests.
    - **Track:** a Track picker, which follows the clip being edited.
    - **Knobs** (`components/ui/Knob.tsx`, `role="slider"`): drag up and down, use the arrow keys or Page Up/Down, Home/End, or double-click to reset to the instrument's default. Each gesture is one command, the same one the classic sliders send. Cutoff moves logarithmically.
    - The classic Devices page stays until step 9; the DAW layout no longer reaches it. Every parameter is reachable in the chain.
-6. **Dock: Mixer.** Channel strips with vertical faders, live meters, insert slots (the existing chain shown as slots), pan and reverb-send knobs, mute/solo and routing. Master shows loudness and peak. The mixer drawer is removed. **Done when** mixer tests are ported, and meters show peak and RMS per strip.
+6. **Dock: Mixer.** **Done.** The Mixer tab shows channel strips (`DockMixer.tsx`), left to right:
+   - **Track strips:** colour, name, insert slots (the instrument then its plug-ins; choosing a slot opens that track in Devices), Pan and Send knobs, a vertical fader with a peak-and-RMS meter, mute/solo, and the output route.
+   - **Buses:** Music, Drums and the Reverb return, each with a fader, meter and mute. **Master** shows peak and RMS, with a fader and mute.
+   - **Edits:** each gesture is one command, the same ones the classic drawer sends.
+   - The drawer's in-dock mode is removed; the drawer itself stays for the classic layout until step 9. The step-6 UI test covers what `mixer.spec` covers for the drawer (fader undo, pan, mute/solo, routing, master, axe).
+   - **Next follow-up, after step 7 (requested 2026-10-10):** FL Studio 2026's renamable note labels. This needs an optional per-note `label` in the schema (TypeScript/Zod, both JSON Schemas, both Pydantic models; absent when unset), a rename command with undo, and a way to rename notes in the piano roll.
 7. **Browser and inspector.** Search; family groups; drag to add or swap a track; Patterns (starter phrases and generator output); Project (clips, renders). The inspector follows the selection. **Done when** dragging has a keyboard equivalent (Enter adds a track, Shift+Enter swaps), and the instrument-picker tests are ported.
 8. **Adaptive states, Generate, Export.** A Session-style states grid with intensity and a transitions strip, built on the existing adaptive graph; Generate as a drawer; Export as a dialog. **Done when** the adaptive authoring, generation and render UI tests are ported.
 9. **Switch over.** v2 becomes the default, v1 code and baselines are removed, and the README screenshots, baseline doc and changelog are updated.
@@ -186,3 +191,4 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: step 4b done (tools, ghost notes, humanize, labels). The project owner decided the key should be project data; that work is scheduled after step 5.
 - 2026-10-10: step 5 done (device chain with knobs in the dock).
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
+- 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
