@@ -90,7 +90,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .studio-nav button { width: 100%; display: flex; align-items: center; justify-content: space-between; border-color: transparent; background: transparent; color: var(--sx-text-muted); text-align: left; }
 .studio-nav button[aria-current="page"] { border-color: rgb(109 124 255 / 35%); background: rgb(109 124 255 / 13%); color: var(--sx-text); }
 .studio-nav button:disabled { opacity: .62; }
-.nav-glyph { width: 22px; color: var(--sx-primary-strong); font-weight: 800; }
+.nav-glyph { display: inline-block; width: 22px; color: var(--sx-primary-strong); font-weight: 800; }
 .nav-badge { border-radius: 999px; padding: 2px 6px; background: rgb(39 215 196 / 13%); color: var(--sx-active); font-size: 9px; }
 .sidebar-card, .inspector-card { margin-top: 16px; padding: 12px; border: 1px solid var(--sx-line-soft); border-radius: var(--sx-radius-md); background: linear-gradient(145deg, rgb(23 29 40 / 96%), rgb(15 19 28 / 96%)); }
 .sidebar-card strong, .inspector-card strong { font-size: 12px; }
@@ -244,7 +244,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .device-workspace legend { font-weight: 700; }
 @media (max-width: 319px), (max-height: 479px) {
   .viewport-notice { display: block; }
-  .studio-shell { display: none; }
+  .studio-shell, .studio-v2 { display: none; }
 }
 .adaptive-state-card fieldset { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--sx-line); }
 .adaptive-state-card select, .adaptive-state-card input, .certification-gate input { min-width: 0; max-width: 100%; }
@@ -261,3 +261,53 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .device-modulation > summary { cursor: pointer; font-size: 0.85rem; font-weight: 600; padding: 4px 0; }
 .device-modulation-state { color: var(--sx-text-muted); font-weight: 400; }
 .device-modulation-controls { display: grid; gap: 6px; padding-top: 6px; }
+
+/* Studio UI v2 shell (docs/plans/ui/studio-ui-v2.md): transport bar, browser, centre with a bottom
+   dock, inspector and status bar, filling the viewport; panels scroll inside. */
+.studio-v2 { height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; background: var(--sx-canvas); }
+.studio-transportbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; min-height: 52px; padding: 6px 12px; border-bottom: 1px solid var(--sx-line); background: var(--sx-surface); }
+.studio-transportbar > * { flex: none; }
+.studio-transportbar button { white-space: nowrap; }
+.studio-transportbar .transport-icon { width: 34px; padding: 0; font-size: 16px; }
+.studio-transportbar .generation-cta { width: auto; margin-top: 0; }
+.studio-transportbar .studio-mark { width: 30px; height: 30px; border-radius: 8px; }
+.studio-transportbar .studio-title { flex: 0 1 110px; min-width: 80px; }
+/* MasterMeter sets an inline min-width for the v1 top bar's roomier status area. */
+.studio-transportbar section[aria-label="Master output meter"] { min-width: 110px !important; }
+.studio-transportbar .studio-title h1 { font-size: 13px; }
+.transport-group { display: flex; align-items: center; gap: 4px; padding-left: 8px; border-left: 1px solid var(--sx-line-soft); }
+.transport-group button[aria-pressed="true"], .view-switch button[aria-pressed="true"] { border-color: var(--sx-primary); background: rgb(109 124 255 / 18%); color: var(--sx-text); }
+.transport-lcd { display: grid; justify-items: start; padding: 2px 8px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-canvas); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.transport-lcd input { width: 58px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--sx-active); font: inherit; font-size: 14px; font-weight: 600; }
+.transport-lcd span { color: var(--sx-text-muted); font-size: 9px; letter-spacing: .06em; }
+.view-switch { display: flex; border: 1px solid var(--sx-line); border-radius: 8px; overflow: hidden; }
+.view-switch button { border: 0; border-radius: 0; background: transparent; color: var(--sx-text-muted); white-space: nowrap; }
+.studio-transportbar .transport-spacer, .studio-statusbar .transport-spacer { flex: 1 1 0; min-width: 0; }
+.studio-transportbar .studio-status { gap: 8px; }
+.studio-v2-body { display: grid; grid-template-columns: var(--studio-nav-width, 232px) minmax(0, 1fr) var(--studio-inspector-width, 272px); min-height: 0; }
+.studio-browser { position: relative; grid-column: 1; min-height: 0; overflow: hidden; border-right: 1px solid var(--sx-line); background: var(--sx-surface); }
+.studio-browser[hidden] { display: none; }
+.studio-browser h2.panel-label { margin-top: 2px; }
+.studio-browser .sidebar-card { margin-top: 8px; }
+.studio-v2-body .studio-inspector { min-height: 0; overflow-y: auto; }
+.studio-v2-centre { grid-column: 2; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.studio-v2-main { min-width: 0; min-height: 0; padding: 14px; overflow: auto; container-type: inline-size; }
+.studio-dock { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; border-top: 1px solid var(--sx-line); background: var(--sx-surface); }
+.studio-dock-collapsed { grid-template-rows: auto; }
+.studio-dock-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 8px 0; border-bottom: 1px solid var(--sx-line); }
+.studio-dock-tabs [role="tablist"] { display: flex; gap: 2px; }
+.studio-dock-tabs [role="tab"] { min-height: 30px; border: 0; border-radius: var(--sx-radius-sm) var(--sx-radius-sm) 0 0; background: transparent; color: var(--sx-text-muted); }
+.studio-dock-tabs [role="tab"][aria-selected="true"] { background: var(--sx-canvas); color: var(--sx-text); box-shadow: inset 0 2px 0 var(--sx-primary); }
+.studio-dock-tabs kbd { margin-left: 6px; padding: 0 3px; border: 1px solid var(--sx-line); border-radius: 3px; color: var(--sx-text-muted); font-size: 9px; font-family: inherit; }
+.studio-dock-context { flex: 1; margin-left: 12px; overflow: hidden; color: var(--sx-text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.studio-dock-toggle { min-height: 26px; margin-bottom: 4px; font-size: 11px; }
+.studio-dock-body { min-height: 0; overflow: auto; padding: 10px 14px; background: var(--sx-canvas); }
+.studio-dock-body .device-workspace { padding: 0; }
+.studio-dock-empty { margin: 24px auto; max-width: 420px; color: var(--sx-text-muted); text-align: center; }
+.studio-statusbar { display: flex; align-items: center; gap: 16px; min-height: 26px; padding: 0 12px; border-top: 1px solid var(--sx-line); background: var(--sx-surface); color: var(--sx-text-muted); font-size: 11px; }
+.studio-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio-statusbar .status-pill { padding: 1px 8px; }
+.studio-sync-now { min-height: 20px; padding: 0 8px; font-size: 11px; }
+@media (max-width: 1120px) {
+  .studio-v2-body { grid-template-columns: var(--studio-nav-width, 184px) minmax(0, 1fr); }
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import { Badge, Button, ViewTabs } from "../../../components/ui/StudioControls";
-import { useStudioLayout } from "../../../lib/editor/use-studio-layout";
+import { useStudioLayout, type DockTab } from "../../../lib/editor/use-studio-layout";
+import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import { PLATFORM_SESSION_EVENT } from "../../../components/PlatformAccount";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -61,7 +62,8 @@ import { MixerDrawer } from "./MixerDrawer";
 import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
-import { StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
+import { InstrumentAdder, LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
+import { hintFor, SaveSyncStatus, StudioDock, StudioStatusBar, StudioTransportBar } from "./StudioV2";
 import { StudioTopbar } from "./StudioTopbar";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
@@ -598,12 +600,35 @@ export default function StudioClient({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (workspace === "arrangement") return;
-    const heading = document.querySelector<HTMLElement>(".studio-workspace h2");
+    const heading = document.querySelector<HTMLElement>(".studio-workspace h2, .studio-v2-main h2");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
     if (workspace === "adaptive") { engine.stop(); setPlaying(false); }
   }, [workspace, engine]);
+
+  // v2 dock: choosing the open tab collapses it; any other tab opens the dock on that tab.
+  function chooseDockTab(tab: DockTab): void {
+    const { dockTab, dockOpen } = panelLayout.layout;
+    panelLayout.update(dockOpen && dockTab === tab ? { dockOpen: false } : { dockTab: tab, dockOpen: true });
+  }
+  function openInDock(clip: ActiveClip): void {
+    setActiveClip(clip);
+    panelLayout.update({ dockTab: "editor", dockOpen: true });
+  }
+  const [hint, setHint] = useState("Alt+1, Alt+2 and Alt+3 switch the dock · Alt+S switches Arrange and Adaptive states");
+  const v2 = panelLayout.v2;
+  useEffect(() => {
+    if (!v2) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey) return;
+      const tab = ({ Digit1: "editor", Digit2: "devices", Digit3: "mixer" } as const)[event.code as "Digit1"];
+      if (tab) { event.preventDefault(); chooseDockTab(tab); }
+      else if (event.code === "KeyS") { event.preventDefault(); setWorkspace((current) => current === "adaptive" ? "arrangement" : "adaptive"); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 319px), (max-height: 479px)");
@@ -626,22 +651,132 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     : sync.state === "conflict" || sync.error ? "danger"
       : sync.state === "offline" || sync.state === "signed-out" ? "warning" : "";
 
+  const bpm = project.tempoMap[0]?.bpm ?? 120;
+  const topbarProps = {
+    engine, name: project.metadata.name, bpm, storageStatus, renameDisabled: !hydrated || session.readOnly,
+    onRename: (next: string) => execute(new RenameProjectEditorCommand(project.metadata.name, next)),
+    playing, onPlay: () => void play(), onPause: pause, onStop: stop,
+    canUndo: history.canUndo, canRedo: history.canRedo, onUndo: () => void undo(), onRedo: () => void redo(),
+    loopEnabled: project.transport.loopEnabled,
+    onToggleLoop: () => void executeV1(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled)),
+    onTempo: (next: number) => void executeV1(new SetTempoEditorCommand(bpm, next)),
+    onSyncNow: () => void syncNow(), saveState: session, syncLabel, syncTone
+  };
+  const banners = <StudioBanners recovery={recovery} readOnly={session.readOnly} saveFailed={session.state === "failed"}
+    saveError={session.error} storageLevel={storageHealth.level}
+    onRestore={(entry) => void restoreRecovery(entry)} onDiscard={discardRecovery} onRetrySave={() => void retrySave()} />;
+  const conflictBanners = sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
+    <section key={conflict.currentRevisionId} className="conflict-banner">
+      <strong>Cloud revision conflict</strong>
+      <p style={{ margin: "6px 0" }}>Remote head: {conflict.currentRevisionId}. Choose which version should remain active.</p>
+      <Button onClick={() => void useCloud(conflict)}>Use cloud</Button>{" "}
+      <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
+    </section>
+  ));
+  const timeline = (onEdit: (clip: ActiveClip) => void) => (
+    <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={onEdit}
+      renderControls={(track) => {
+        const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
+        return <>
+          <CommitSlider label="Volume" value={track.volumeDb} min={-36} max={6} step={1} disabled={!hydrated}
+            format={(value) => `${value} dB`} onCommit={(value) => executeV1(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))} />
+          <CommitSlider label="Pan" value={track.pan} min={-1} max={1} step={0.1} disabled={!hydrated}
+            format={(value) => value.toFixed(1)} onCommit={(value) => executeV1(new SetTrackPanEditorCommand(track.id, track.pan, value))} />
+          <DeviceControls track={track} {...deviceControls} />
+          {pluginTrack && <PluginRack track={pluginTrack}
+            statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
+            onExecute={(command) => void execute(command)}
+            freeze={{ evidence: freezeEvidence, progress: freezeProgress, onFreeze: (trackId, deviceId) => void freezePlugin(trackId, deviceId) }}
+            gestures={{
+              begin: beginDeviceGesture,
+              preview: previewDeviceParameter,
+              end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
+            }} />}
+        </>;
+      }} />
+  );
+  const pianoRoll = activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine}
+    project={builtinView}
+    trackId={activeClip.trackId}
+    clipId={activeClip.clipId}
+    onExecute={executeV1}
+    onClose={() => setActiveClip(null)}
+  />;
+  const toArrangement = () => setWorkspace("arrangement");
+  const workspaces = <>
+    {workspace === "generation" && <GenerationWorkspace
+      project={builtinView}
+      onAddDrone={addFrequencyDrone}
+      onApply={applyGeneratedVariation}
+      onClose={toArrangement}
+    />}
+    {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={toArrangement} onSync={async () => coordinatorRef.current?.drain()} />}
+    {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} />}
+  </>;
+  const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
+    bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel}
+    onOpenGenerator={() => setWorkspace("generation")} />;
+
+  if (panelLayout.v2) {
+    const { dockTab, dockOpen } = panelLayout.layout;
+    const dockClip = activeClip && builtinView.tracks.find((track) => track.id === activeClip.trackId);
+    return (
+      <main className="studio-v2"
+        onFocus={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
+        onPointerOver={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
+        style={{
+          "--studio-nav-width": panelLayout.navigationVisible ? `${panelLayout.navigationWidth}px` : "0px",
+          "--studio-inspector-width": panelLayout.inspectorVisible ? `${panelLayout.layout.inspectorWidth}px` : "0px"
+        } as React.CSSProperties}>
+        <StudioTransportBar {...topbarProps}
+          position={<TransportPosition engine={engine} project={builtinView} />}
+          view={workspace === "adaptive" ? "adaptive" : "arrange"}
+          onView={(view) => setWorkspace(view === "adaptive" ? "adaptive" : "arrangement")}
+          onGenerate={() => setWorkspace("generation")} onExport={() => setWorkspace("render")}
+          layoutMenu={<LayoutMenu panelLayout={panelLayout} onReset={() => undefined} />} />
+        <div className="studio-v2-banners">{banners}</div>
+        <div className="studio-v2-body">
+          <aside id="studio-browser" className="studio-browser" aria-label="Browser" hidden={!panelLayout.navigationVisible}>
+            <ResizeHandle label="Browser panel size" controls="studio-browser" orientation="vertical"
+              value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />
+            <div className="studio-sidebar-scroll">
+              <h2 className="panel-label">Browser</h2>
+              <InstrumentAdder newInstrument={newInstrument} onNewInstrument={setNewInstrument}
+                onAddInstrument={(deviceType) => void addInstrument(deviceType)} addDisabled={!hydrated} />
+            </div>
+          </aside>
+          <div className="studio-v2-centre">
+            <section className="studio-v2-main" aria-label="Project workspace">
+              {workspace === "arrangement" || workspace === "devices"
+                ? <>{conflictBanners}{timeline(openInDock)}</>
+                : workspaces}
+            </section>
+            <StudioDock tab={dockTab} open={dockOpen} onTab={chooseDockTab}
+              height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax}
+              onResize={(dockHeight) => panelLayout.update({ dockHeight })}
+              context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Every track" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
+              panels={{
+                editor: pianoRoll || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
+                devices: <DevicesWorkspace tracks={project.tracks} {...deviceControls} />,
+                mixer: <MixerDrawer docked project={builtinView} engine={engine} storageStatus={storageStatus}
+                  height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax} onResize={() => undefined}
+                  syncLabel={syncLabel} onExecute={executeV1} onExport={() => setWorkspace("render")} onClose={() => undefined} />
+              }} />
+          </div>
+          {inspector}
+        </div>
+        <StudioStatusBar hint={hint}
+          facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span></>} />
+      </main>
+    );
+  }
+
   return (
     <main className={`studio-shell${mixerOpen ? " studio-shell-mixer-open" : ""}`}
       style={{ "--studio-mixer-height": `${panelLayout.mixerHeight}px` } as React.CSSProperties}>
-      <StudioTopbar engine={engine} name={project.metadata.name} bpm={project.tempoMap[0]?.bpm ?? 120}
-        storageStatus={storageStatus} renameDisabled={!hydrated || session.readOnly}
-        onRename={(next) => execute(new RenameProjectEditorCommand(project.metadata.name, next))}
-        playing={playing} onPlay={() => void play()} onPause={pause} onStop={stop}
-        canUndo={history.canUndo} canRedo={history.canRedo} onUndo={() => void undo()} onRedo={() => void redo()}
-        loopEnabled={project.transport.loopEnabled}
-        onToggleLoop={() => void executeV1(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}
-        onTempo={(next) => void executeV1(new SetTempoEditorCommand(project.tempoMap[0]?.bpm ?? 120, next))}
-        onSyncNow={() => void syncNow()} saveState={session} syncLabel={syncLabel} syncTone={syncTone} />
+      <StudioTopbar {...topbarProps} />
 
-      <StudioBanners recovery={recovery} readOnly={session.readOnly} saveFailed={session.state === "failed"}
-        saveError={session.error} storageLevel={storageHealth.level}
-        onRestore={(entry) => void restoreRecovery(entry)} onDiscard={discardRecovery} onRetrySave={() => void retrySave()} />
+      {banners}
 
       <StudioViewbar ref={mixerToggleRef} workspace={workspace} onWorkspace={setWorkspace} panelLayout={panelLayout}
         mixerOpen={mixerOpen} onMixerOpen={changeMixerOpen} />
@@ -668,63 +803,22 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </div>}
 
       {workspace === "arrangement" && <>
-      {sync.conflicts.map((conflict) => conflict.outcome === "conflict" && (
-        <section key={conflict.currentRevisionId} className="conflict-banner">
-          <strong>Cloud revision conflict</strong>
-          <p style={{ margin: "6px 0" }}>Remote head: {conflict.currentRevisionId}. Choose which version should remain active.</p>
-          <Button onClick={() => void useCloud(conflict)}>Use cloud</Button>{" "}
-          <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
-        </section>
-      ))}
+      {conflictBanners}
 
       <div id="arrangement-view" role="tabpanel" aria-labelledby="arrangement-view-tab" hidden={Boolean(activeClip)}>
-      <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={setActiveClip}
-        renderControls={(track) => {
-          const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
-          return <>
-            <CommitSlider label="Volume" value={track.volumeDb} min={-36} max={6} step={1} disabled={!hydrated}
-              format={(value) => `${value} dB`} onCommit={(value) => executeV1(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))} />
-            <CommitSlider label="Pan" value={track.pan} min={-1} max={1} step={0.1} disabled={!hydrated}
-              format={(value) => value.toFixed(1)} onCommit={(value) => executeV1(new SetTrackPanEditorCommand(track.id, track.pan, value))} />
-            <DeviceControls track={track} {...deviceControls} />
-            {pluginTrack && <PluginRack track={pluginTrack}
-              statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
-              onExecute={(command) => void execute(command)}
-              freeze={{ evidence: freezeEvidence, progress: freezeProgress, onFreeze: (trackId, deviceId) => void freezePlugin(trackId, deviceId) }}
-              gestures={{
-                begin: beginDeviceGesture,
-                preview: previewDeviceParameter,
-                end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
-              }} />}
-          </>;
-        }} />
+      {timeline(setActiveClip)}
       </div>
 
       <div id="midi-view" role="tabpanel" aria-labelledby="midi-view-tab" hidden={!activeClip}>
-      {activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine}
-        project={builtinView}
-        trackId={activeClip.trackId}
-        clipId={activeClip.clipId}
-        onExecute={executeV1}
-        onClose={() => setActiveClip(null)}
-      />}
+      {pianoRoll}
       </div>
       </>}
 
-      {workspace === "generation" && <GenerationWorkspace
-        project={builtinView}
-        onAddDrone={addFrequencyDrone}
-        onApply={applyGeneratedVariation}
-        onClose={() => setWorkspace("arrangement")}
-      />}
-      {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={() => setWorkspace("arrangement")} onSync={async () => coordinatorRef.current?.drain()} />}
-      {workspace === "devices" && <DevicesWorkspace tracks={project.tracks} {...deviceControls} onClose={() => setWorkspace("arrangement")} />}
-      {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={() => setWorkspace("arrangement")} />}
+      {workspaces}
+      {workspace === "devices" && <DevicesWorkspace tracks={project.tracks} {...deviceControls} onClose={toArrangement} />}
         </section>
 
-        <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
-          bars={arrangementBars(builtinView)} bpm={project.tempoMap[0]?.bpm ?? 120} syncLabel={syncLabel}
-          onOpenGenerator={() => setWorkspace("generation")} />
+        {inspector}
       </div>
       {mixerOpen && <MixerDrawer project={builtinView} engine={engine} storageStatus={storageStatus}
         height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
