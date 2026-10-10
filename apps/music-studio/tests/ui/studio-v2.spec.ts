@@ -470,18 +470,61 @@ test("the browser adds starter phrases and opens the project's clips", async ({ 
   const dock = page.getByRole("region", { name: "Dock" });
 
   // Project lists the clips; choosing one opens it in the dock's editor.
-  await browser.getByRole("tab", { name: "Project" }).click();
+  // The sections are a drop-down: one row however narrow the panel is.
+  const picker = browser.getByLabel("Browser view");
+  expect((await picker.boundingBox())!.height).toBeLessThan(40);
+  await expect(picker.locator("option")).toHaveText(["Instruments", "Patterns", "Project"]);
+  await browser.getByLabel("Browser view").selectOption("Project");
   await browser.getByRole("region", { name: "Harmony clips" }).getByRole("button").first().click();
   await expect(dock.getByRole("tab", { name: /^Editor/ })).toHaveAttribute("aria-selected", "true");
   await expect(dock.getByText(/^Harmony · /)).toBeVisible();
 
   // Patterns adds the chosen instrument's starter phrase to that track as a new clip, then edits it.
-  await browser.getByRole("tab", { name: "Patterns" }).click();
+  await browser.getByLabel("Browser view").selectOption("Patterns");
   await browser.getByRole("button", { name: "Add to Harmony" }).click();
   await expect(page.getByRole("button", { name: /^Select Warm Pad Starter/ })).toBeVisible();
   await expect(dock.getByText(/^Harmony · Warm Pad Starter/)).toBeVisible();
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.getByRole("button", { name: /^Select Warm Pad Starter/ })).toHaveCount(0);
+});
+
+test("Generate opens a drawer beside the timeline and Export a dialog; Escape closes each and returns focus", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const generate = page.getByRole("button", { name: "Generate", exact: true });
+  const exportButton = page.getByRole("button", { name: "Export", exact: true });
+
+  // Generate: a drawer; the arrangement stays on screen and focus moves to the drawer's heading.
+  await generate.click();
+  const drawer = page.getByRole("complementary", { name: "Generate" });
+  await expect(drawer.getByRole("heading", { name: "Create a project variation" })).toBeFocused();
+  await expect(page.getByRole("region", { name: "Project workspace" }).getByText("Drums Generated Loop")).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await expect(generate).toBeFocused();
+  await generate.click();
+  await drawer.getByRole("button", { name: "Close" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(generate).toBeFocused();
+
+  // Export: Ctrl+E opens a modal dialog; Escape closes it and focus returns to Export.
+  await page.keyboard.press("Control+e");
+  const dialog = page.getByRole("dialog", { name: "Export" });
+  await expect(dialog.getByRole("heading", { name: "Render & export" })).toBeFocused();
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(exportButton).toBeFocused();
+  await exportButton.click();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(exportButton).toBeFocused();
 });
 
 test("the inspector's SynaptixPlay card says whether the music is live in games", async ({ page }, testInfo) => {

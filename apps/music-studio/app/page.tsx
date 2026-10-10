@@ -125,7 +125,7 @@ export default function HomePage() {
         <span>Synaptix Music · A space to create.</span>
         <span>Local editing works without the SynaptixPlay platform.</span>
       </footer>
-      <ListeningDock />
+      <ListeningDock tabsOnPhonesOnly />
     </div>
   );
 }

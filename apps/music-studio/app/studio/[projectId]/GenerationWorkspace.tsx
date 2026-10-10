@@ -46,6 +46,8 @@ interface GenerationWorkspaceProps {
   onApply(proposal: GenerationProposal, jobId: string): Promise<void>;
   onAddDrone(frequencyHz: number): Promise<void>;
   onClose(): void;
+  /** DAW layout: shown in the Generate drawer, so it stacks in one column and closes rather than going back. */
+  variant?: "drawer";
 }
 
 /** The signed-in platform token for the live-updates connection; empty when signed out. */
@@ -62,7 +64,7 @@ function newestProjectJob(jobs: GenerationJob[], projectId: string): GenerationJ
     .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
 }
 
-export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: GenerationWorkspaceProps) {
+export function GenerationWorkspace({ project, onApply, onAddDrone, onClose, variant }: GenerationWorkspaceProps) {
   const [form, setForm] = useState<GenerationForm>(() => formForPreset("bright-round", Math.floor(Math.random() * 100_000)));
   const [brief, setBrief] = useState("Upbeat trivia loop with a clear build and satisfying victory section");
   const [job, setJob] = useState<GenerationJob | null>(null);
@@ -209,10 +211,10 @@ export function GenerationWorkspace({ project, onApply, onAddDrone, onClose }: G
 
   const summary = job?.result ? proposalSummary(job.result) : null;
 
-  return <section className="generation-workspace" aria-label="AI generation workspace">
+  return <section className={`generation-workspace${variant === "drawer" ? " generation-drawer" : ""}`} aria-label="AI generation workspace">
     <header className="generation-header">
       <div><span className="eyebrow">Synaptix generator</span><h2>Create a project variation</h2><p>Structured procedural generation with durable status and an explicit apply step.</p></div>
-      <Button onClick={onClose}>Back to arrangement</Button>
+      <Button onClick={onClose}>{variant === "drawer" ? "Close" : "Back to arrangement"}</Button>
     </header>
 
     <div className="generation-grid">

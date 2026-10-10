@@ -10,6 +10,10 @@
   - **Hand-composed** (blue, ♫): no generated arrangement was ever applied.
   - **How it's worked out:** from the music itself (notes, tracks, tempo, markers and key) compared with a fingerprint taken when a generation is applied, so renaming a project doesn't count as editing it, and undoing back to the generated music shows Generated again. The fingerprint is a new optional `generationMetadata.arrangementFingerprint` field in all the schemas.
   - **Older projects:** projects generated before this change show Generated. Cloud-only projects show no badge until the platform's project list carries the origin.
+- **Adaptive states, Generate and Export in the DAW layout (Studio UI v2, step 8).**
+  - **Adaptive states (Alt+S):** a grid with a row per state, showing its intensity, render, loop, cues and the states it leads to, then a strip of transitions and cue points. Choose a row to edit that state. The row lights up while the runtime preview plays it.
+  - **Generate and Export:** Generate opens as a drawer beside the arrangement. Export, or Ctrl/Cmd+E, opens as a dialog. Escape closes either and returns focus to the button that opened it.
+  - The classic layout is unchanged.
 - **Renamable note labels (from FL Studio 2026).** Notes can carry a name, such as "Hook" or "Kick", that the DAW piano roll shows in place of the pitch.
   - **Editing:** select notes, open **Rename** next to **Labels**, type a name and press Enter. A blank name or **Clear label** removes it. Each rename is one undo step, and copy and paste keep the labels.
   - **Schema:** an optional `label` (1–32 characters) on MIDI notes in TypeScript/Zod, both JSON Schemas and both Python models. Projects without labels are unchanged, including their checksums.
@@ -24,6 +28,8 @@
   - **Schema:** the field is in TypeScript/Zod, both JSON Schemas and both Python models. Projects without a key are unchanged, including their checksums.
   - **Editing:** choosing a key in the piano roll's **Scale** menu saves it to the project as an undoable edit, and **Auto** clears it and detects the key from the clip's notes. Hiding the shading (**Off**) stays a per-browser choice.
   - **Generator:** applying a generated arrangement sets the project key from the generator's chosen key; undo restores the previous key.
+- **The DAW Browser picks its view from a drop-down.** Instruments, Patterns and Project used to be tabs that wrapped onto two rows in a narrow Browser; they are now one drop-down, which leaves more room for the list.
+- **The home page's floating tab bar (Home, Library, Studio, Search) shows on phones only.** On wider screens the header already has the same links. The library pages keep it at every width, since their header has no other way to the studio or search.
 - **Browser and inspector in the DAW layout (Studio UI v2, step 7).** The Browser searches every instrument by name, description or family and groups them by family. Enter adds a track and Shift+Enter swaps the selected clip's track; dragging onto a track swaps it and dropping elsewhere adds one. Swapping is one undo step (`SwapInstrumentEditorCommand`). A Patterns tab adds an instrument's starter phrase as a new clip, and a Project tab lists the clips. The inspector shows the selected clip and its track. The classic layout is unchanged.
 - **Mixer channel strips in the DAW dock (Studio UI v2, step 6).** The dock's Mixer tab shows one strip per track, then the Music, Drums and Reverb buses, then Master. A track strip has insert slots (choosing one opens the track in Devices), Pan and Send knobs, a vertical fader with a peak-and-RMS meter, mute/solo and its output route. Every change is one undo step. The classic layout's mixer drawer is unchanged.
 - **Device chain in the DAW dock (Studio UI v2, step 5).** The dock's Devices tab shows one track's devices left to right, with a Track picker that follows the clip being edited.

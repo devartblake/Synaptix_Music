@@ -15,11 +15,14 @@ import { Button } from "../../../components/ui/StudioControls";
 export function AdaptivePreviewPanel({
   manifest,
   jobs,
-  clock
+  clock,
+  onActiveState
 }: {
   manifest: AdaptiveGameAudioManifest | null;
   jobs: RenderJob[];
   clock: TransitionClock;
+  /** Called with the playing state's ID, or null when the preview stops. */
+  onActiveState?(stateId: string | null): void;
 }) {
   const player = useRef<AdaptivePreview | null>(null);
   const controller = useRef<AbortController | null>(null);
@@ -52,8 +55,16 @@ export function AdaptivePreviewPanel({
       player.current = null;
     };
   }, [manifest]);
+  const activeState = useRef<string | null>(null);
+  const onActiveStateRef = useRef(onActiveState);
+  onActiveStateRef.current = onActiveState;
   useEffect(() => {
     const timer = setInterval(() => {
+      const stateId = player.current?.stateId ?? null;
+      if (stateId !== activeState.current) {
+        activeState.current = stateId;
+        onActiveStateRef.current?.(stateId);
+      }
       if (player.current)
         setPosition(
           player.current.stateId

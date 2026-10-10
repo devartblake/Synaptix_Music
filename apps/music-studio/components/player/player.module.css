@@ -91,6 +91,8 @@
 
 /* ---- Tab bar ---- */
 .tabs { display: flex; gap: 10px; align-items: center; justify-content: center; }
+/* The home page has header navigation, so its floating tab bar is for phones only. */
+@media (min-width: 761px) { .tabsPhoneOnly { display: none; } }
 .tabBar {
   composes: glass;
   display: flex;

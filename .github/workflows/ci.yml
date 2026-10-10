@@ -112,6 +112,15 @@ jobs:
       - run: npm run ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui --workspace @synaptix/music-studio
+      # Screenshot diffs and traces of failed UI tests, to review visual changes from CI's browser.
+      - name: Upload UI test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: apps/music-studio/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   python:
     name: Python
