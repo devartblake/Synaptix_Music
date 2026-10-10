@@ -1,4 +1,8 @@
-import { AdaptivePackageVersionListSchema, type AdaptivePackageVersionSummary } from "@synaptix/platform-contracts/adaptive-packages";
+import {
+  AdaptivePackageListSchema,
+  AdaptivePackageVersionListSchema,
+  type AdaptivePackageVersionSummary
+} from "@synaptix/platform-contracts/adaptive-packages";
 
 /**
  * Whether a project's adaptive music is in SynaptixPlay games. Versions start "pending" while the
@@ -39,6 +43,25 @@ export function draftPackageId(projectId: string, storage: Pick<Storage, "getIte
   } catch {
     return null;
   }
+}
+
+/**
+ * The project's packages on the platform, newest first, so the status shows on any device, not
+ * only the browser that published. Filtered here too: a platform without the `projectId` filter
+ * returns all the caller's packages, and this still finds the right ones.
+ */
+export async function findProjectPackageIds(
+  projectId: string,
+  request: (path: string, init?: RequestInit) => Promise<unknown>,
+  signal?: AbortSignal
+): Promise<string[]> {
+  const packages = AdaptivePackageListSchema.parse(
+    await request(`adaptive-packages?projectId=${encodeURIComponent(projectId)}`, { signal })
+  );
+  return packages
+    .filter((item) => item.projectId === projectId)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .map((item) => item.packageId);
 }
 
 /** The package's versions from the platform (the status is worked out from them as the project changes). */

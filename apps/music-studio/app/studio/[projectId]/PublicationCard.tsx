@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import type { AdaptivePackageVersionSummary } from "@synaptix/platform-contracts/adaptive-packages";
 import { Button } from "../../../components/ui/StudioControls";
 import { platformRequest } from "../../../lib/platform/platform-request";
-import { draftPackageId, loadPackageVersions, publicationStatus } from "../../../lib/platform/publication-status";
+import { isPlatformProjectId } from "@synaptix/project-storage/platform-sync";
+import { draftPackageId, findProjectPackageIds, loadPackageVersions, publicationStatus } from "../../../lib/platform/publication-status";
 
 type Versions =
   | { kind: "loading" }
@@ -29,15 +30,20 @@ export function PublicationCard({ projectId, revisionId, refreshKey, onOpenAdapt
   const [versions, setVersions] = useState<Versions>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    const packageId = draftPackageId(projectId);
-    if (!packageId) {
+    // The package this browser is authoring comes first; otherwise ask the platform for the
+    // project's newest package (cloud projects only: browser-only projects can't be published).
+    const draft = draftPackageId(projectId);
+    if (!draft && !isPlatformProjectId(projectId)) {
       setVersions({ kind: "none" });
       return;
     }
     const controller = new AbortController();
     setVersions({ kind: "loading" });
-    loadPackageVersions(packageId, platformRequest, controller.signal).then(
-      (loaded) => setVersions({ kind: "loaded", versions: loaded }),
+    const packageId = draft
+      ? Promise.resolve(draft)
+      : findProjectPackageIds(projectId, platformRequest, controller.signal).then((ids) => ids[0] ?? null);
+    packageId.then((id) => id === null ? null : loadPackageVersions(id, platformRequest, controller.signal)).then(
+      (loaded) => { if (!controller.signal.aborted) setVersions(loaded === null ? { kind: "none" } : { kind: "loaded", versions: loaded }); },
       (error: unknown) => {
         if (!controller.signal.aborted)
           setVersions({ kind: "unavailable", message: error instanceof Error ? error.message : "The platform didn't answer." });
