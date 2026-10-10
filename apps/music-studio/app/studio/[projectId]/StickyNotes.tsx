@@ -37,7 +37,7 @@ export function StickyNotesEditor({ notes, owner, disabled, onChange }: {
         ))}
       </ul>}
       <div className="sticky-note-new">
-        <textarea aria-label={`New sticky note on ${owner}`} placeholder="Write a note…" rows={2}
+        <textarea aria-label={`New sticky note on ${owner}`} placeholder="Write a note…" rows={1}
           maxLength={STICKY_NOTE_TEXT_MAX_LENGTH} value={draft} disabled={disabled}
           onChange={(event) => setDraft(event.currentTarget.value)}
           onKeyDown={(event) => {

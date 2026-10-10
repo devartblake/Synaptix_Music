@@ -467,7 +467,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .notebook-pages select { flex: 1; min-width: 0; }
 .notebook-page { display: grid; gap: 10px; }
 .notebook-title, .notebook-body { display: grid; gap: 4px; color: var(--sx-text-muted); font-size: 11px; }
-.notebook-title input, .notebook-body textarea, .sticky-notes textarea { width: 100%; padding: 8px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-canvas); color: var(--sx-text); font: inherit; font-size: 13px; }
+.notebook-title input, .notebook-body textarea, .sticky-notes textarea { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-canvas); color: var(--sx-text); font: inherit; font-size: 13px; }
 .notebook-body textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
 .notebook-checklist { padding: 10px; border: 1px solid var(--sx-line-soft); border-radius: var(--sx-radius-md); background: var(--sx-surface-raised); }
 .notebook-checklist-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
@@ -477,13 +477,17 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .notebook-checklist input:checked + span { color: var(--sx-text-muted); text-decoration: line-through; }
 .notebook-empty { padding: 16px; border: 1px dashed var(--sx-line); border-radius: var(--sx-radius-md); color: var(--sx-text-muted); font-size: 12px; }
 .notebook-empty strong { color: var(--sx-text); }
-.sticky-notes { display: grid; gap: 8px; min-width: min(280px, calc(100vw - 48px)); }
+.sticky-notes { display: grid; gap: 8px; min-width: 0; }
+[popover] .sticky-notes { width: min(300px, calc(100vw - 48px)); }
 .sticky-notes ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .sticky-note { display: flex; align-items: flex-start; gap: 4px; padding: 4px; border-left: 3px solid var(--sx-warning); border-radius: var(--sx-radius-sm); background: color-mix(in srgb, var(--sx-warning) 14%, var(--sx-surface-raised)); }
 .sticky-notes .sticky-note textarea { border-color: transparent; background: transparent; resize: vertical; }
 .sticky-note-new { display: grid; gap: 6px; justify-items: start; }
 .sticky-note-new textarea { resize: vertical; }
-.sticky-card { display: grid; gap: 8px; }
+.sticky-card .sticky-note-new { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.sticky-card .sticky-note-new textarea { min-height: 34px; padding: 6px 8px; font-size: 12px; }
+.sticky-card .sticky-note-new button { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+.sticky-card { display: grid; gap: 8px; margin-bottom: 14px; }
 .sticky-card-owner { color: var(--sx-text-muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .track-sticky { min-width: 0; margin-left: 8px; }
 .track-sticky .track-sticky-trigger { display: inline-flex; align-items: center; gap: 4px; max-width: 132px; min-height: 22px; padding: 1px 6px; border-color: color-mix(in srgb, var(--sx-warning) 45%, transparent); background: color-mix(in srgb, var(--sx-warning) 14%, var(--sx-surface)); color: var(--sx-text); font-size: 11px; }

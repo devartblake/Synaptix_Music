@@ -201,6 +201,8 @@ test("the docked piano roll names chords, shades the scale and keeps rarer edits
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(scale.locator("option:checked")).toHaveText("Auto (C major)");
   await scale.selectOption({ label: "A minor" });
+  // Reload only once the key is saved, or a slow save loses it.
+  await expect(page.getByRole("status", { name: "Save state" })).toHaveText("Saved");
   await page.reload();
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await page.getByRole("button", { name: "Edit", exact: true }).last().click();
