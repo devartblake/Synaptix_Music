@@ -9,7 +9,7 @@ Local-first persistence for projects, and the queue that syncs them to the Synap
 | `IndexedDbProjectStorage`                           | Browser storage (database `synaptix-music`): project records, revisions, summaries |
 | `InMemoryProjectStorage`                            | Same contract for tests and non-browser code                                       |
 | `LocalProjectRepository`                            | `load(projectId)` / `save(project, revision?)` over a storage                      |
-| `createStoredProjectRecord`, `StoredProjectSummary` | Record creation and the home-page project list                                     |
+| `createStoredProjectRecord`, `StoredProjectSummary` | Record creation and the home-page project list; a summary's `origin` says whether the music was generated, generated then edited, or composed by hand (`projectOrigin` in project-model) |
 | `ProjectStorageCorruptionError`                     | Thrown when a stored record fails schema or checksum validation                    |
 
 Every stored project is validated against the project schema on read. Corrupt data fails closed rather than loading a half-valid project.

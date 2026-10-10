@@ -8,7 +8,7 @@ import {
   type StoredProjectSummary
 } from "@synaptix/project-storage";
 import { IndexedDbProjectSyncQueue } from "@synaptix/project-storage/platform-sync";
-import { createEmptyProject } from "@synaptix/project-model";
+import { createEmptyProject, type ProjectOrigin } from "@synaptix/project-model";
 import { z } from "zod";
 import styles from "./home.module.css";
 import {
@@ -21,6 +21,14 @@ import {
 import { PLATFORM_SESSION_EVENT } from "../components/PlatformAccount";
 import { formatBytes } from "../lib/editor/storage-health";
 import { useStorageHealth } from "../lib/editor/use-storage-health";
+
+/** How a project card shows where its music came from (the colours are in home.module.css). */
+const ORIGIN_BADGES: Record<ProjectOrigin, { icon: string; label: string; description: string }> = {
+  generated: { icon: "✦", label: "Generated", description: "Made with the generator and not changed since" },
+  edited: { icon: "✦+", label: "Edited", description: "Made with the generator, then edited by hand" },
+  hand: { icon: "♫", label: "Hand-composed", description: "Composed by hand, without the generator" }
+};
+
 
 /** Cards shown before "Show all"; the modal search reaches every project. */
 const RECENT_LIMIT = 6;
@@ -451,12 +459,18 @@ export function RecentProjects() {
           <li key={project.projectId} className={styles.projectItem}>
             <a
               className={styles.projectCard}
+              data-origin={project.origin}
               href={`/studio/${encodeURIComponent(project.projectId)}`}
             >
               <span className={styles.projectCardTop}>
                 <span className={styles.projectIcon} aria-hidden="true">
-                  ♫
+                  {ORIGIN_BADGES[project.origin ?? "hand"].icon}
                 </span>
+                {project.origin && (
+                  <span className={styles.originLabel} title={ORIGIN_BADGES[project.origin].description}>
+                    {ORIGIN_BADGES[project.origin].label}
+                  </span>
+                )}
                 <span aria-hidden="true">↗</span>
               </span>
               <h3>{project.name}</h3>

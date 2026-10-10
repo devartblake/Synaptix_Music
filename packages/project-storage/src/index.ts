@@ -1,5 +1,5 @@
 import { computeProjectChecksum, type ProjectRevision } from "@synaptix/command-system";
-import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import { MusicProjectSchema, projectOrigin, type MusicProject, type ProjectOrigin } from "@synaptix/project-model";
 import { MusicProjectV2Schema, type MusicProjectV2 } from "@synaptix/project-model/v2";
 
 export const LOCAL_STORAGE_SCHEMA_VERSION = 1 as const;
@@ -12,6 +12,8 @@ export interface StoredProjectSummary {
   updatedAt: string;
   createdAt: string;
   checksumSha256: string;
+  /** Where the music came from (generated, generated then edited, or by hand), for project lists. */
+  origin?: ProjectOrigin;
 }
 
 export type StoredMusicProject = MusicProject | MusicProjectV2;
@@ -70,7 +72,13 @@ function revisionKey(projectId: string, revisionId: string): string {
 
 function summaryFromRecord(record: StoredProjectRecord<StoredMusicProject>): StoredProjectSummary {
   const { projectId, name, revisionId, updatedAt, createdAt, checksumSha256 } = record;
-  return { projectId, name, revisionId, updatedAt, createdAt, checksumSha256 };
+  let origin: ProjectOrigin | undefined;
+  try {
+    origin = projectOrigin(record.project);
+  } catch {
+    // A malformed stored project still lists; it just shows no origin.
+  }
+  return { projectId, name, revisionId, updatedAt, createdAt, checksumSha256, ...(origin ? { origin } : {}) };
 }
 
 export async function createStoredProjectRecord<P extends StoredMusicProject = MusicProject>(

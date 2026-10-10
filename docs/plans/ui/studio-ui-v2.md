@@ -210,9 +210,10 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: step 4b done (tools, ghost notes, humanize, labels). The project owner decided the key should be project data; that work is scheduled after step 5.
 - 2026-10-10: step 5 done (device chain with knobs in the dock).
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
+- 2026-10-10: the Browser's Instruments / Patterns / Project tabs became one drop-down ("Browser view"), so they never wrap.
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
-- 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).
-- 2026-10-10: step 9 split into 9a (a phone layout for v2) and 9b (switch over). 9a done.
 - 2026-10-10: step 8 done (states grid with transitions strip, Generate drawer, Export dialog). The grid's columns are the state's own data rather than the mockup's per-track clip slots, which have no data behind them.
+- 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).
 - 2026-10-10: the piano roll's Edit and Rename menus float (`DisclosureMenu floating`, a top-layer popover placed from its button), so the dock can't clip them; chosen over a modal so the notes stay in view.
+- 2026-10-10: step 9 split into 9a (a phone layout for v2) and 9b (switch over). 9a done.

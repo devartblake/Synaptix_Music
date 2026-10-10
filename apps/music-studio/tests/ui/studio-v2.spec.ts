@@ -519,13 +519,17 @@ test("the browser adds starter phrases and opens the project's clips", async ({ 
   const dock = page.getByRole("region", { name: "Dock" });
 
   // Project lists the clips; choosing one opens it in the dock's editor.
-  await browser.getByRole("tab", { name: "Project" }).click();
+  // The sections are a drop-down: one row however narrow the panel is.
+  const picker = browser.getByLabel("Browser view");
+  expect((await picker.boundingBox())!.height).toBeLessThan(40);
+  await expect(picker.locator("option")).toHaveText(["Instruments", "Patterns", "Project"]);
+  await browser.getByLabel("Browser view").selectOption("Project");
   await browser.getByRole("region", { name: "Harmony clips" }).getByRole("button").first().click();
   await expect(dock.getByRole("tab", { name: /^Editor/ })).toHaveAttribute("aria-selected", "true");
   await expect(dock.getByText(/^Harmony · /)).toBeVisible();
 
   // Patterns adds the chosen instrument's starter phrase to that track as a new clip, then edits it.
-  await browser.getByRole("tab", { name: "Patterns" }).click();
+  await browser.getByLabel("Browser view").selectOption("Patterns");
   await browser.getByRole("button", { name: "Add to Harmony" }).click();
   await expect(page.getByRole("button", { name: /^Select Warm Pad Starter/ })).toBeVisible();
   await expect(dock.getByText(/^Harmony · Warm Pad Starter/)).toBeVisible();

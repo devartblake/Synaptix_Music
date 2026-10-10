@@ -320,7 +320,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .transport-lcd b { color: var(--sx-active); font-size: 13px; font-weight: 600; }
 /* Studio UI v2 browser (step 7). */
 .studio-browser-panel { display: grid; gap: 8px; }
-.studio-browser-panel [role="tablist"] { flex-wrap: wrap; }
+.browser-view select { width: 100%; min-height: 30px; padding: 4px 8px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-surface-raised); color: var(--sx-text); font: inherit; font-size: 12px; font-weight: 600; }
 .browser-section { display: grid; gap: 8px; }
 .browser-search { width: 100%; min-height: 30px; padding: 4px 8px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-canvas); color: var(--sx-text); font: inherit; font-size: 12px; }
 .browser-help { margin: 0; color: var(--sx-text-muted); font-size: 11px; line-height: 1.4; }
