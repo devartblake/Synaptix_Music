@@ -27,6 +27,9 @@ import {
   builtinProjectView,
   createFrequencyDroneTrack,
   createInstrumentTrack,
+  instrumentDefinition,
+  primaryDevice,
+  resolveInstrumentDefinition,
   type PluginRuntimeStatus
 } from "@synaptix/daw-engine";
 import type { GenerationProposal } from "@synaptix/generator-contracts";
@@ -73,7 +76,8 @@ import { createPlatformFrozenAudioSource } from "../../../lib/platform/frozen-au
 import { studioStartTick } from "../../../lib/player/playback-model";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
-import { TransportPosition } from "./TransportPosition";
+import { TransportCounters, TransportPosition } from "./TransportPosition";
+import { INSTRUMENT_ACCENTS } from "./InstrumentIcon";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
 import { arrangementBars } from "../../../lib/editor/timeline-model";
 import { describeSaveError } from "../../../lib/editor/storage-health";
@@ -673,8 +677,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
     </section>
   ));
-  const timeline = (onEdit: (clip: ActiveClip) => void) => (
-    <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={onEdit}
+  const timeline = (onEdit: (clip: ActiveClip) => void, daw?: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState">) => (
+    <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={onEdit} {...daw}
       renderControls={(track) => {
         const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
         return <>
@@ -729,7 +733,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           "--studio-inspector-width": panelLayout.inspectorVisible ? `${panelLayout.layout.inspectorWidth}px` : "0px"
         } as React.CSSProperties}>
         <StudioTransportBar {...topbarProps}
-          position={<TransportPosition engine={engine} project={builtinView} />}
+          position={<TransportCounters engine={engine} project={builtinView} />}
           view={workspace === "adaptive" ? "adaptive" : "arrange"}
           onView={(view) => setWorkspace(view === "adaptive" ? "adaptive" : "arrangement")}
           onGenerate={() => setWorkspace("generation")} onExport={() => setWorkspace("render")}
@@ -748,7 +752,14 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           <div className="studio-v2-centre">
             <section className="studio-v2-main" aria-label="Project workspace">
               {workspace === "arrangement" || workspace === "devices"
-                ? <>{conflictBanners}{timeline(openInDock)}</>
+                ? <>{conflictBanners}{timeline(openInDock, {
+                  trackColor: (track) => track.color ?? INSTRUMENT_ACCENTS[resolveInstrumentDefinition((primaryDevice(track) ?? track.devices[0])?.deviceType ?? "", track.name).profile.kind],
+                  emptyState: <div className="timeline-empty">
+                    <strong>Start with an instrument</strong>
+                    <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>
+                    <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add {instrumentDefinition(newInstrument)?.label ?? "instrument"} track</Button>
+                  </div>
+                })}</>
                 : workspaces}
             </section>
             <StudioDock tab={dockTab} open={dockOpen} onTab={chooseDockTab}

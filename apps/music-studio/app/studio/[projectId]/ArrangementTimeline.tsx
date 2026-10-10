@@ -13,6 +13,7 @@ import { Badge, Button } from "../../../components/ui/StudioControls";
 import { arrangementBars, barTicks, positionTicks } from "../../../lib/editor/timeline-model";
 import { canAddMidiClip, createEmptyMidiClip } from "../../../lib/editor/new-clip";
 import { Playhead } from "./TransportPosition";
+import { ChannelMeters, TrackLevel } from "./ChannelMeters";
 import styles from "./editing.module.css";
 
 export function ArrangementTimeline({
@@ -20,19 +21,26 @@ export function ArrangementTimeline({
   engine,
   onExecute,
   onEdit,
-  renderControls
+  renderControls,
+  trackColor,
+  emptyState
 }: {
   project: MusicProject;
   engine: AudioTransport;
   onExecute(command: EditorCommand): Promise<void>;
   onEdit(clip: { trackId: string; clipId: string }): void;
   renderControls(track: Track): ReactNode;
+  /** The DAW layout (Studio UI v2): each track and its clips take this colour, and headers get a level meter. */
+  trackColor?: (track: Track) => string;
+  /** The DAW layout: shown in place of the lanes when there are no tracks. */
+  emptyState?: ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const bars = arrangementBars(project);
   const duration = bars * barTicks(project);
-  return (
-    <section aria-label="Arrangement timeline" className="canvas-panel">
+  const daw = Boolean(trackColor);
+  const timeline = (
+    <section aria-label="Arrangement timeline" className="canvas-panel" data-variant={daw ? "daw" : undefined}>
       <div
         className={styles.arrangement}
         style={{ "--bars": bars, minWidth: 240 + bars * 52 } as CSSProperties}
@@ -54,12 +62,15 @@ export function ArrangementTimeline({
           </div>
         </div>
         <div className={styles.lanes}>
-          <div className={styles.arrangementPlayhead}>
+          {!(daw && project.tracks.length === 0) && <div className={styles.arrangementPlayhead}>
             <Playhead engine={engine} project={project} duration={duration} />
-          </div>
+          </div>}
+          {daw && project.tracks.length === 0 && emptyState}
           {project.tracks.map((track, index) => (
-            <div key={track.id} className={styles.trackRow}>
+            <div key={track.id} className={styles.trackRow} data-muted={daw && track.muted ? true : undefined}
+              style={trackColor ? { "--track-color": trackColor(track) } as CSSProperties : undefined}>
               <div className={styles.trackHeader}>
+                {daw && <TrackLevel id={`track:${track.id}`} name={track.name} />}
                 <div className={styles.trackName}>
                   <span className="track-index">{index + 1}</span>
                   <strong>{track.name}</strong>
@@ -185,6 +196,7 @@ export function ArrangementTimeline({
       </p>
     </section>
   );
+  return daw ? <ChannelMeters engine={engine}>{timeline}</ChannelMeters> : timeline;
 }
 
 function ClipPreview({ clip }: { clip: Clip }) {

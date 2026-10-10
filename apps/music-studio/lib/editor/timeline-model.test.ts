@@ -6,7 +6,8 @@ import {
   barTicks,
   clipPlaybackTick,
   positionTicks,
-  transportLabel
+  transportLabel,
+  transportTime
 } from "./timeline-model.ts";
 
 test("timeline includes beat/tick offsets and clips beyond the original 16 bars", () => {
@@ -41,4 +42,15 @@ test("timeline includes beat/tick offsets and clips beyond the original 16 bars"
   assert.equal(clipPlaybackTick(project, clip, 29292), 0);
   assert.equal(clipPlaybackTick(project, clip, 30292), null);
   assert.equal(transportLabel(project, 29292), "21:2:012");
+});
+
+test("the time counter follows the tempo, so a bar at 120 BPM is two seconds and at 90 BPM is longer", () => {
+  const project = createEmptyProject("clock");
+  const bar = barTicks(project);
+  assert.equal(transportTime(project, 0), "0:00.0");
+  assert.equal(transportTime(project, bar), "0:02.0");
+  assert.equal(transportTime(project, bar * 30 + bar / 4), "1:00.5");
+  project.tempoMap[0]!.bpm = 90;
+  assert.equal(transportTime(project, bar), "0:02.6");
+  assert.equal(transportTime(project, -5), "0:00.0");
 });

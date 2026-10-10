@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Coloured timeline in the DAW layout (Studio UI v2, step 3a).** Each track and its clips take their instrument family's colour, matching how the audio engine resolves the instrument. Each track header has a live level meter, and muted tracks are dimmed. The transport bar shows bar.beat and clock time. A new, empty project shows a "Start with an instrument" prompt that adds the instrument chosen in the Browser. The classic layout is unchanged.
 - **DAW layout preview (Studio UI v2, step 2).** Turn it on from Layout → "DAW layout (preview)"; the classic layout stays the default. Its parts:
   - **Transport bar:** playback, position, tempo, undo/redo, an Arrange / Adaptive states switch (Alt+S), Generate, Export, the master meter and your account.
   - **Browser:** the instrument picker.

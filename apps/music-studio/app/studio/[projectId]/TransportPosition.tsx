@@ -3,7 +3,7 @@
 import type { AudioTransport } from "@synaptix/daw-engine";
 import type { Clip, MusicProject } from "@synaptix/project-model";
 import { useTransport } from "../../../lib/editor/use-transport";
-import { clipPlaybackTick, transportLabel } from "../../../lib/editor/timeline-model";
+import { clipPlaybackTick, transportLabel, transportTime } from "../../../lib/editor/timeline-model";
 import styles from "./editing.module.css";
 
 export function TransportPosition({
@@ -23,6 +23,19 @@ export function TransportPosition({
       {transportLabel(project, snapshot.positionTicks)}
     </span>
   );
+}
+
+/** The v2 transport bar's position readouts: bar:beat:tick and clock time. */
+export function TransportCounters({ engine, project }: { engine: AudioTransport; project: MusicProject }) {
+  const snapshot = useTransport(engine);
+  return <>
+    <span className="transport-lcd" aria-label="Playback position" data-tick={Math.floor(snapshot.positionTicks)}>
+      <b>{transportLabel(project, snapshot.positionTicks)}</b><span aria-hidden="true">BAR · BEAT</span>
+    </span>
+    <span className="transport-lcd" aria-label="Playback time">
+      <b>{transportTime(project, snapshot.positionTicks)}</b><span aria-hidden="true">TIME</span>
+    </span>
+  </>;
 }
 
 export function Playhead({
