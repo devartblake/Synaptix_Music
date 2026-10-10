@@ -57,6 +57,13 @@ function freezeSummary(evidence: FrozenPluginEvidenceStatus | undefined): string
   return `Frozen · out of date: ${evidence.reasons[0] ?? "the plug-in or its input changed"}`;
 }
 
+/** The display names of a track's plug-in inserts, in chain order (the DAW mixer's insert slots). */
+export function pluginInsertNames(track: TrackV2): string[] {
+  return track.devices
+    .filter((device) => device.plugin.runtimeKind !== "builtin")
+    .map((device) => CATALOG.descriptorFor(device.plugin)?.name ?? device.plugin.pluginId);
+}
+
 export function PluginRack({ track, statuses, onExecute, gestures, freeze }: {
   track: TrackV2;
   statuses: readonly PluginRuntimeStatus[];

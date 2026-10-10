@@ -318,6 +318,33 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .timeline-empty { display: grid; justify-items: center; gap: 10px; margin: 24px; padding: 32px; border: 1px dashed var(--sx-line); border-radius: var(--sx-radius-md); color: var(--sx-text-muted); text-align: center; }
 .timeline-empty strong { color: var(--sx-text); font-size: 15px; }
 .transport-lcd b { color: var(--sx-active); font-size: 13px; font-weight: 600; }
+/* Studio UI v2 dock mixer (step 6): channel strips with vertical faders. */
+.dock-mixer { display: flex; align-items: stretch; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.mixer-error { margin: 0 0 6px; color: var(--sx-danger); font-size: 12px; }
+.strip { display: flex; flex: none; flex-direction: column; align-items: center; gap: 4px; width: 104px; padding: 6px; border: 1px solid var(--sx-line); border-top: 3px solid var(--strip-color, var(--sx-line)); border-radius: var(--sx-radius-sm); background: var(--sx-surface); }
+.strip[data-selected] { border-color: var(--sx-active); border-top-color: var(--strip-color, var(--sx-active)); }
+.strip-bus { border-top-color: var(--sx-text-muted); }
+.strip-master { width: 212px; border-top-color: var(--sx-active); }
+.strip-name { width: 100%; margin: 0; overflow: hidden; font-size: 12px; font-weight: 600; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.strip-note { margin: 0; color: var(--sx-text-muted); font-size: 11px; }
+.strip-inserts { display: grid; gap: 2px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.strip-inserts button { width: 100%; padding: 1px 4px; overflow: hidden; border: 1px solid var(--sx-line-soft); border-radius: 3px; background: var(--sx-canvas); color: var(--sx-text); font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.strip-inserts .strip-insert-add { color: var(--sx-text-muted); text-align: center; }
+.strip-knobs { display: flex; gap: 2px; }
+.strip-knobs .knob-dial svg { width: 28px; height: 28px; }
+.strip-knobs .knob { gap: 0; width: 44px; font-size: 10px; }
+.strip-fader { display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
+.strip-fader label { display: flex; flex-direction: column-reverse; align-items: center; gap: 4px; }
+/* The strip names its fader; keep the label for assistive tech, show only the value. */
+.strip-fader label > span { font-size: 0; }
+.strip-fader label > span output { font-size: 11px; }
+.strip-fader input[type="range"] { width: 24px; height: 88px; writing-mode: vertical-lr; direction: rtl; }
+.strip-meter { position: relative; display: block; width: 6px; height: 88px; margin-bottom: 20px; overflow: hidden; border-radius: 3px; background: var(--sx-canvas); }
+.strip-meter > span { position: absolute; inset: 0; transform-origin: bottom; background: linear-gradient(0deg, var(--sx-active) 60%, var(--sx-warning) 85%, var(--sx-danger)); transition: transform 60ms linear; }
+.strip-meter > .rms { background: var(--sx-text); opacity: 0.35; }
+.strip-meter[data-clipped] { box-shadow: 0 0 0 1px var(--sx-danger); }
+.strip-switches { display: flex; gap: 4px; }
+.strip-route { width: 100%; font-size: 11px; }
 /* Studio UI v2 device chain (step 5). */
 .device-chain { display: grid; gap: 8px; }
 .device-chain-track { display: flex; align-items: center; gap: 8px; color: var(--sx-text-muted); font-size: 12px; }

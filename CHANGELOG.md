@@ -8,6 +8,7 @@
   - **Schema:** the field is in TypeScript/Zod, both JSON Schemas and both Python models. Projects without a key are unchanged, including their checksums.
   - **Editing:** choosing a key in the piano roll's **Scale** menu saves it to the project as an undoable edit, and **Auto** clears it and detects the key from the clip's notes. Hiding the shading (**Off**) stays a per-browser choice.
   - **Generator:** applying a generated arrangement sets the project key from the generator's chosen key; undo restores the previous key.
+- **Mixer channel strips in the DAW dock (Studio UI v2, step 6).** The dock's Mixer tab shows one strip per track, then the Music, Drums and Reverb buses, then Master. A track strip has insert slots (choosing one opens the track in Devices), Pan and Send knobs, a vertical fader with a peak-and-RMS meter, mute/solo and its output route. Every change is one undo step. The classic layout's mixer drawer is unchanged.
 - **Device chain in the DAW dock (Studio UI v2, step 5).** The dock's Devices tab shows one track's devices left to right, with a Track picker that follows the clip being edited.
   - **Devices:** Instrument (with its on/off switch), Filter, Envelope (with an ADSR drawing), Modulation (folded unless the preset uses it), Reverb send and plug-in inserts.
   - **Knobs:** drag up or down, or use the arrow keys, Page Up/Down or Home/End. Double-click resets a knob to the instrument's default. Each gesture is one undo step, and cutoff moves logarithmically. The classic Devices page is unchanged.
