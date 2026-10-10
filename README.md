@@ -4,6 +4,16 @@ Synaptix Music is the multi-runtime music-production system for **SynaptixPlay**
 
 The product is intentionally narrower than a general-purpose desktop DAW. Its primary use cases are editable generated music, trivia and game-show loops, stingers, adaptive music states, and creator-safe exports.
 
+## The Studio
+
+![Studio arrangement with four instrument tracks](docs/images/studio/05-arrangement-with-tracks.png)
+
+| Piano roll                                          | Drum sequencer                                                | Mixer                                            |
+| --------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------ |
+| ![Piano roll](docs/images/studio/07-piano-roll.png) | ![Drum step sequencer](docs/images/studio/08-drum-editor.png) | ![Mixer drawer](docs/images/studio/06-mixer.png) |
+
+More screens, and notes on the current layout, are in the [studio UI baseline](docs/plans/ui/studio-ui-baseline-2026-10.md).
+
 ## Current Capabilities
 
 The repository currently provides:
@@ -146,6 +156,7 @@ Stage 12 now includes the live `BrowserAudioEngine` production graph, mounted ma
 - [Documentation index](docs/README.md)
 - [Current roadmap and status](docs/roadmap.md)
 - [Current architecture](docs/architecture/system-architecture.md)
+- [Studio UI baseline (screenshots)](docs/plans/ui/studio-ui-baseline-2026-10.md)
 - [Architecture decisions](docs/architecture/decisions/README.md)
 - [Implementation-stage index](docs/plans/implementation/README.md)
 - [Stage 12 deployment certification](docs/operations/stage-12-deployment-certification.md)
