@@ -157,6 +157,8 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
   };
   const fixture = adaptiveFixture();
   let published: any = null;
+  let retentionStatus = "pending";
+  let shareRequest: unknown = null;
   await page.route("**/api/platform/**", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === `/api/platform/projects/${fixture.project.projectId}`)
@@ -178,12 +180,26 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
                 revisionId: published.revisionId,
                 projectChecksumSha256: published.projectChecksumSha256,
                 createdAt: fixture.project.metadata.createdAt,
-                retentionStatus: "pending",
+                retentionStatus,
                 expiresAt: null
               }
             ]
           : []
       });
+    if (url.pathname.endsWith("/sharing") || url.pathname.endsWith("/versions/1/share")) {
+      if (route.request().method() === "POST") shareRequest = route.request().postDataJSON();
+      return route.fulfill({
+        json: {
+          packageId: url.pathname.split("/")[4],
+          kind: "community",
+          sharing: shareRequest ? "shared" : "private",
+          sharedAt: shareRequest ? fixture.project.metadata.createdAt : null,
+          takenDownAt: null,
+          takedownReason: null,
+          versions: [{ version: 1, review: shareRequest ? "pending" : "none", requestedAt: null, reviewedAt: null, reason: null }]
+        }
+      });
+    }
     if (url.pathname.endsWith("/versions/1"))
       return route.fulfill({
         json: {
@@ -318,6 +334,27 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
   await expect(page.getByText("Published immutable version 1.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Inspect version 1" }).click();
   await expect(page.getByText("Immutable snapshot", { exact: true })).toBeVisible();
+  // Music stays private until its creator shares a finished version, and confirms sharing is final.
+  const shareSwitch = page.getByRole("switch", { name: "Let other players use the music" });
+  await expect(shareSwitch).not.toBeChecked();
+  await expect(shareSwitch).toBeDisabled();
+  retentionStatus = "active";
+  await page.getByRole("button", { name: "Refresh versions" }).click();
+  await expect(shareSwitch).toBeEnabled();
+  await shareSwitch.check();
+  const confirm = page.getByRole("group", { name: "Confirm sharing" });
+  await expect(confirm).toContainText("Sharing is final.");
+  await confirm.getByRole("button", { name: "Keep private" }).click();
+  await expect(shareSwitch).not.toBeChecked();
+  expect(shareRequest).toBeNull();
+  await shareSwitch.check();
+  await confirm.getByRole("button", { name: "Share version 1" }).click();
+  expect(shareRequest).toEqual({ confirmPermanent: true });
+  await expect(shareSwitch).toBeChecked();
+  await expect(shareSwitch).toBeDisabled();
+  await expect(page.getByText("Shared. Version 1 is waiting for review before players see it.")).toBeVisible();
+  // Shared music can't be revoked: players keep what they've added.
+  await expect(page.getByRole("button", { name: "Revoke version 1" })).toHaveCount(0);
   expect(published.manifest.cuePoints[0].positionSeconds).toBe(0.5);
   expect(
     (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze())

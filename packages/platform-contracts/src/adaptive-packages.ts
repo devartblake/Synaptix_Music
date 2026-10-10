@@ -119,6 +119,30 @@ export const AdaptivePackageDeliveryGrantSchema = z.object({
   mediaType: z.string().min(1)
 }).strict();
 
+/** Sharing a version with other players is final: the creator must confirm it. */
+export const ShareAdaptivePackageRequestSchema = z.object({
+  confirmPermanent: z.literal(true)
+}).strict();
+
+export const AdaptiveVersionReviewSchema = z.object({
+  version: z.number().int().positive(),
+  review: z.enum(["none", "pending", "approved", "rejected"]),
+  requestedAt: IsoDateSchema.nullable(),
+  reviewedAt: IsoDateSchema.nullable(),
+  reason: z.string().nullable()
+}).strict();
+
+/** Whether other players can use the music: private until the creator shares it, then shared for good. */
+export const AdaptivePackageSharingSchema = z.object({
+  packageId: UuidSchema,
+  kind: z.enum(["community", "official"]),
+  sharing: z.enum(["private", "shared"]),
+  sharedAt: IsoDateSchema.nullable(),
+  takenDownAt: IsoDateSchema.nullable(),
+  takedownReason: z.string().nullable(),
+  versions: z.array(AdaptiveVersionReviewSchema)
+}).strict();
+
 export const AdaptivePackageListSchema = z.array(AdaptivePackageSummarySchema);
 export const AdaptivePackageVersionListSchema = z.array(AdaptivePackageVersionSummarySchema);
 
@@ -132,3 +156,6 @@ export type AdaptivePackageDeliveryGrant = z.infer<typeof AdaptivePackageDeliver
 export type AdaptivePackageRetentionStatus = z.infer<typeof AdaptivePackageRetentionStatusSchema>;
 export type RevokeAdaptivePackageVersionRequest = z.infer<typeof RevokeAdaptivePackageVersionRequestSchema>;
 export type AdaptivePackageRevokeResponse = z.infer<typeof AdaptivePackageRevokeResponseSchema>;
+export type ShareAdaptivePackageRequest = z.infer<typeof ShareAdaptivePackageRequestSchema>;
+export type AdaptiveVersionReview = z.infer<typeof AdaptiveVersionReviewSchema>;
+export type AdaptivePackageSharing = z.infer<typeof AdaptivePackageSharingSchema>;
