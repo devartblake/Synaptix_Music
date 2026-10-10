@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { adaptiveFixture } from "../fixtures/adaptive";
+import { LAYOUTS, openWorkspace, titled } from "./layouts";
 import { resolve } from "node:path";
 
 async function offline(page: Page) {
@@ -138,9 +139,18 @@ test("devices support keyboard history and the editing viewport has an accessibl
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("adaptive authoring validates timing, persists its graph, verifies evidence, previews audio and publishes versions", async ({
+// The DAW layout shows the states as a grid and edits one state at a time, so `state(n)` selects it first.
+for (const layout of LAYOUTS)
+test(titled("adaptive authoring validates timing, persists its graph, verifies evidence, previews audio and publishes versions", layout), async ({
   page
 }) => {
+  const daw = layout === "daw";
+  const openAdaptive = () => openWorkspace(page, layout, "adaptive");
+  const grid = page.getByRole("table", { name: "States grid" });
+  const state = async (n: number) => {
+    if (daw) await grid.locator("tbody tr").nth(n - 1).getByRole("button").click();
+    return page.getByRole("group", { name: `State ${n}`, exact: true });
+  };
   const fixture = adaptiveFixture();
   let published: any = null;
   await page.route("**/api/platform/**", async (route) => {
@@ -205,19 +215,16 @@ test("adaptive authoring validates timing, persists its graph, verifies evidence
   );
   await page.goto(`/studio/${fixture.project.projectId}`);
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
-  await page.getByRole("combobox", { name: "Workspace", exact: true }).selectOption("adaptive");
+  await openAdaptive();
   await page.getByRole("button", { name: "Add state", exact: true }).nth(0).click();
   await page.getByRole("button", { name: "Add state", exact: true }).nth(1).click();
-  const first = page.getByRole("group", { name: "State 1", exact: true });
+  const first = await state(1);
   await first.getByLabel("Name", { exact: true }).fill("Exploration");
   await first.getByLabel("State ID", { exact: true }).fill("exploration");
   await first.getByRole("slider", { name: /Intensity/ }).press("End");
   await expect(first.getByRole("slider", { name: /Intensity/ })).toHaveValue("1");
-  await page
-    .getByRole("group", { name: "State 2", exact: true })
-    .getByLabel("State ID", { exact: true })
-    .fill("combat");
-  await first.getByLabel("Loop end seconds").fill("5");
+  await (await state(2)).getByLabel("State ID", { exact: true }).fill("combat");
+  await (await state(1)).getByLabel("Loop end seconds").fill("5");
   await expect(page.getByRole("alert").filter({ hasText: "loop and entry" })).toBeVisible();
   await first.getByLabel("Loop end seconds").fill("2");
   await page.getByRole("button", { name: "Add transition", exact: true }).click();
@@ -235,14 +242,27 @@ test("adaptive authoring validates timing, persists its graph, verifies evidence
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; } .studio-topbar { position: static !important; }" });
   await expect(
     page.getByRole("region", { name: "Transitions and cues", exact: true })
-  ).toHaveScreenshot("adaptive-graph.png", {
+  ).toHaveScreenshot(daw ? "adaptive-graph-daw.png" : "adaptive-graph.png", {
     animations: "disabled",
     stylePath: resolve("tests/ui/visual.css"),
     maxDiffPixelRatio: 0.002
   });
+  if (daw) {
+    // The grid has a row per state: its intensity, render, loop, cues and where it leads; transitions below.
+    await expect(grid.locator("tbody tr")).toHaveCount(2);
+    await expect(grid.locator("tbody tr").first()).toContainText("Intensity 100%");
+    await expect(grid.locator("tbody tr").first()).toContainText("Adaptive state 2 (immediate)");
+    await expect(page.getByRole("region", { name: "Transitions strip" })).toContainText("Exploration → Adaptive state 2 · immediate");
+    await expect(grid).toHaveScreenshot("adaptive-states-grid-daw.png", {
+      animations: "disabled",
+      stylePath: resolve("tests/ui/visual.css"),
+      maxDiffPixelRatio: 0.002
+    });
+  }
   await page.reload();
-  await page.getByRole("combobox", { name: "Workspace", exact: true }).selectOption("adaptive");
-  await expect(first.getByLabel("Name", { exact: true })).toHaveValue("Exploration");
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await openAdaptive();
+  await expect((await state(1)).getByLabel("Name", { exact: true })).toHaveValue("Exploration");
   await expect(transition.getByRole("combobox", { name: "Trigger", exact: true })).toHaveValue(
     "immediate"
   );
@@ -280,6 +300,7 @@ test("adaptive authoring validates timing, persists its graph, verifies evidence
   await page.getByRole("button", { name: "Play preview" }).click();
   await expect(page.getByLabel("Preview position")).toContainText("exploration:");
   await page.getByRole("combobox", { name: "Target state", exact: true }).selectOption("combat");
+  if (daw) await expect(grid.locator("tbody tr").first()).toContainText("Playing");
   await page.getByRole("button", { name: "Send set-state event" }).click();
   await expect(page.getByRole("log", { name: "Runtime events" })).toContainText(
     "exploration → combat"

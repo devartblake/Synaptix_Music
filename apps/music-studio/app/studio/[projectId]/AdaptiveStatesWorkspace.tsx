@@ -64,11 +64,17 @@ const DraftSchema = z.object({
 
 export function AdaptiveStatesWorkspace({
   project,
-  onClose
+  onClose,
+  variant
 }: {
   project: MusicProject;
   onClose(): void;
+  /** DAW layout: a Session-style grid of states, a transitions strip, then the selected state's editor. */
+  variant?: "daw";
 }) {
+  // DAW layout: the state being edited, and the one the runtime preview is playing.
+  const [selectedStateIndex, setSelectedStateIndex] = useState(0);
+  const [liveStateId, setLiveStateId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<RenderJob[]>([]);
   const [states, setStates] = useState<AdaptiveStateDraft[]>([]);
   const [deviceMappings, setDeviceMappings] = useState<AdaptiveDeviceParameterMapping[]>([]);
@@ -181,6 +187,7 @@ export function AdaptiveStatesWorkspace({
 
   function addState(job: RenderJob): void {
     const index = states.length + 1;
+    setSelectedStateIndex(states.length);
     setStates((current) => [
       ...current,
       {
@@ -265,6 +272,341 @@ export function AdaptiveStatesWorkspace({
     );
   }
 
+  const stateCard = (state: AdaptiveStateDraft, index: number) => (
+    <fieldset className="adaptive-state-card" key={state.jobId}>
+      <legend>State {index + 1}</legend>
+      <label>
+        Name
+        <input
+          value={state.displayName}
+          onChange={(event) => updateState(index, { displayName: event.target.value })}
+        />
+      </label>
+      <label>
+        State ID
+        <input
+          value={state.stateId}
+          onChange={(event) => updateState(index, { stateId: event.target.value })}
+        />
+      </label>
+      <label>
+        Role
+        <select
+          value={(() => {
+            const role = adaptiveStateRole(state.tags);
+            return role.kind === "music" ? "music" : `stinger:${role.cue}`;
+          })()}
+          onChange={(event) => {
+            const value = event.target.value;
+            const role =
+              value === "music"
+                ? ({ kind: "music" } as const)
+                : ({ kind: "stinger", cue: value.slice("stinger:".length) as AdaptiveStingerCue } as const);
+            if (role.kind === "stinger")
+              // One-shots never take part in the transition graph.
+              setConfiguration((current) => ({
+                ...current,
+                transitions: current.transitions.filter(
+                  (item) => item.fromStateId !== state.stateId && item.toStateId !== state.stateId
+                )
+              }));
+            updateState(index, { tags: tagsForAdaptiveRole(role, state.tags) });
+          }}
+        >
+          <option value="music">Music state (loops, transitions)</option>
+          {ADAPTIVE_STINGER_CUES.map((item) => (
+            <option key={item.cue} value={`stinger:${item.cue}`}>
+              Stinger: {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Intensity <span>{Math.round(state.intensity * 100)}%</span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={state.intensity}
+          onChange={(event) =>
+            updateState(index, { intensity: Number(event.target.value) })
+          }
+        />
+      </label>
+      <label>
+        Loop start seconds
+        <input
+          type="number"
+          min={0}
+          step={0.1}
+          value={state.loopStartSeconds ?? 0}
+          onChange={(event) =>
+            updateState(index, { loopStartSeconds: Number(event.target.value) })
+          }
+        />
+      </label>
+      <label>
+        Loop end seconds
+        <input
+          type="number"
+          min={0.1}
+          step={0.1}
+          value={state.loopEndSeconds ?? 0}
+          onChange={(event) =>
+            updateState(index, { loopEndSeconds: Number(event.target.value) })
+          }
+        />
+      </label>
+      <label>
+        Entry seconds
+        <input
+          type="number"
+          min={0}
+          step={0.1}
+          value={state.entryCueSeconds ?? 0}
+          onChange={(event) =>
+            updateState(index, { entryCueSeconds: Number(event.target.value) })
+          }
+        />
+      </label>
+      <label>
+        Exit seconds (optional)
+        <input
+          type="number"
+          min={0}
+          step={0.1}
+          value={state.exitCueSeconds ?? ""}
+          onChange={(event) =>
+            updateState(index, {
+              exitCueSeconds: event.target.value === "" ? null : Number(event.target.value)
+            })
+          }
+        />
+      </label>
+      <Button
+        onClick={() => {
+          setStates((current) => current.filter((_, candidate) => candidate !== index));
+          setConfiguration((current) => ({
+            transitions: current.transitions.filter(
+              (item) =>
+                item.fromStateId !== state.stateId && item.toStateId !== state.stateId
+            ),
+            cuePoints: current.cuePoints.filter((item) => item.stateId !== state.stateId)
+          }));
+          setDeviceMappings((current) =>
+            current.filter((item) => item.stateId !== state.stateId)
+          );
+        }}
+      >
+        Remove state
+      </Button>
+    </fieldset>
+  );
+  const candidates = (
+    <section className="adaptive-candidates" aria-labelledby="render-candidates-title">
+      <h3 id="render-candidates-title">Render candidates</h3>
+      <p role="status">{message}</p>
+      <Button onClick={() => setRefresh((value) => value + 1)}>Refresh renders</Button>
+      {eligible.length === 0 ? (
+        <div className="preview-empty">
+          <strong>No eligible master renders</strong>
+          <p>Complete a master render for this project before authoring a state.</p>
+        </div>
+      ) : (
+        eligible.map((job) => (
+          <article className="adaptive-render-card" key={job.jobId}>
+            <div>
+              <strong>{job.manifest.revisionId}</strong>
+              <small>
+                {job.result?.artifacts.length} artifacts ·{" "}
+                {job.manifest.output.format.toUpperCase()}
+              </small>
+            </div>
+            <Button
+              onClick={() => addState(job)}
+              disabled={states.some((state) => state.jobId === job.jobId)}
+            >
+              Add state
+            </Button>
+          </article>
+        ))
+      )}
+    </section>
+  );
+  // The graph, validation, runtime preview, device mappings and manifest, below the states.
+  const details = (
+    <>
+      <AdaptiveGraphEditor
+        states={states.filter((state) => adaptiveStateRole(state.tags).kind === "music")}
+        value={configuration}
+        onChange={setConfiguration}
+      />
+      {validation.error && <p role="alert">{validation.error}</p>}
+      <AdaptivePreviewPanel
+        manifest={manifest}
+        jobs={jobs}
+        clock={clock}
+        onActiveState={setLiveStateId}
+      />
+      {droneDevices.length > 0 && (
+        <section aria-labelledby="adaptive-device-mappings">
+          <h3 id="adaptive-device-mappings">Adaptive device mappings</h3>
+          <p>
+            Map a persisted drone parameter to a target value when an adaptive state becomes
+            active.
+          </p>
+          <p>
+            Device mappings are draft annotations. The current audio-manifest contract publishes
+            rendered states; live device mappings are not included in preview or publication.
+          </p>
+          {states.map((state) =>
+            droneDevices.map(({ track, device }) => (
+              <div key={state.stateId + device.id} className="adaptive-state-card">
+                <strong>
+                  {state.displayName} · {track.name}
+                </strong>
+                <select
+                  aria-label="Drone parameter"
+                  defaultValue="droneGain"
+                  id={`parameter-${state.stateId}-${device.id}`}
+                >
+                  {DEVICE_PARAMETER_DEFINITIONS.filter((definition) =>
+                    definition.id.startsWith("drone")
+                  ).map((definition) => (
+                    <option key={definition.id} value={definition.id}>
+                      {definition.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Target value"
+                  type="number"
+                  defaultValue={0.12}
+                  step={0.01}
+                  id={`value-${state.stateId}-${device.id}`}
+                />
+                <Button
+                  onClick={() => {
+                    const parameter = (
+                      document.getElementById(
+                        `parameter-${state.stateId}-${device.id}`
+                      ) as HTMLSelectElement
+                    ).value;
+                    const value = Number(
+                      (
+                        document.getElementById(
+                          `value-${state.stateId}-${device.id}`
+                        ) as HTMLInputElement
+                      ).value
+                    );
+                    addDeviceMapping(state.stateId, track.id, device.id, parameter, value);
+                  }}
+                >
+                  Add mapping
+                </Button>
+              </div>
+            ))
+          )}
+          {deviceMappings.length > 0 && (
+            <details>
+              <summary>{deviceMappings.length} device mappings</summary>
+              <pre tabIndex={0} aria-label="Device mappings JSON">
+                {JSON.stringify(deviceMappings, null, 2)}
+              </pre>
+            </details>
+          )}
+        </section>
+      )}
+      {manifest && (
+        <details className="adaptive-manifest">
+          <summary>Preview validated package manifest</summary>
+          <pre tabIndex={0} aria-label="Draft manifest JSON">
+            {JSON.stringify(manifest, null, 2)}
+          </pre>
+        </details>
+      )}
+    </>
+  );
+
+  if (variant === "daw") {
+    const selectedIndex = Math.min(selectedStateIndex, states.length - 1);
+    const selectedState = states[selectedIndex];
+    const nameOf = (stateId: string) => states.find((state) => state.stateId === stateId)?.displayName ?? stateId;
+    return (
+      <section className="adaptive-workspace adaptive-daw" aria-label="Adaptive States authoring workspace">
+        <header className="adaptive-daw-header">
+          <h2>Author adaptive states</h2>
+          <p>Each state is a completed master render of this project. Choose a state to edit it; the runtime preview lights the one playing.</p>
+        </header>
+        <div className="adaptive-grid-scroll">
+          <table className="adaptive-grid" aria-label="States grid">
+            <thead>
+              <tr>
+                <th scope="col">State</th>
+                <th scope="col">Render</th>
+                <th scope="col">Loop</th>
+                <th scope="col">Entry · exit</th>
+                <th scope="col">Leads to</th>
+              </tr>
+            </thead>
+            <tbody>
+              {states.map((state, index) => {
+                const job = jobs.find((candidate) => candidate.jobId === state.jobId);
+                const master = job?.result?.artifacts.find((artifact) => artifact.trackId === null && artifact.mediaType.startsWith("audio/") && !artifact.fileName.startsWith("preview."));
+                const role = adaptiveStateRole(state.tags);
+                const outgoing = configuration.transitions.filter((item) => item.fromStateId === state.stateId);
+                return (
+                  <tr key={state.jobId} data-live={liveStateId === state.stateId ? "" : undefined}>
+                    <th scope="row">
+                      <button type="button" className="adaptive-scene" aria-pressed={index === selectedIndex} onClick={() => setSelectedStateIndex(index)}>
+                        <strong>{state.displayName}</strong>
+                        <small>{role.kind === "music" ? "Music state" : `Stinger: ${ADAPTIVE_STINGER_CUES.find((item) => item.cue === role.cue)?.label}`}{liveStateId === state.stateId ? " · Playing" : ""}</small>
+                        <span className="adaptive-intensity" aria-hidden="true"><i style={{ width: `${Math.round(state.intensity * 100)}%` }} /></span>
+                        <small>Intensity {Math.round(state.intensity * 100)}%</small>
+                      </button>
+                    </th>
+                    <td>{master ? `${master.durationSeconds.toFixed(1)} s` : "—"}<small>{job ? `Revision ${job.manifest.revisionId.slice(0, 8)}` : "Render not loaded"}</small></td>
+                    <td>{role.kind === "music" ? `${(state.loopStartSeconds ?? 0).toFixed(1)}–${(state.loopEndSeconds ?? 0).toFixed(1)} s` : "One-shot"}</td>
+                    <td>{(state.entryCueSeconds ?? 0).toFixed(1)} s · {state.exitCueSeconds == null ? "end" : `${state.exitCueSeconds.toFixed(1)} s`}</td>
+                    <td>{outgoing.length ? outgoing.map((item) => `${nameOf(item.toStateId)} (${item.trigger})`).join(", ") : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {states.length === 0 && <p className="adaptive-grid-empty">No states yet. Add one from a render candidate.</p>}
+        </div>
+        <section className="adaptive-transitions-strip" aria-label="Transitions strip">
+          <strong>Transitions</strong>
+          {configuration.transitions.length === 0 && <span className="adaptive-strip-empty">None yet: add one in State intensity &amp; transitions.</span>}
+          <ul>
+            {configuration.transitions.map((item) => (
+              <li key={item.transitionId}>
+                {nameOf(item.fromStateId)} → {nameOf(item.toStateId)} · {item.trigger} · {item.crossfadeMilliseconds} ms crossfade
+              </li>
+            ))}
+            {configuration.cuePoints.map((cue) => (
+              <li key={cue.cuePointId}>Cue {cue.cuePointId} · {nameOf(cue.stateId)} at {cue.positionSeconds} s</li>
+            ))}
+          </ul>
+        </section>
+        <div className="adaptive-daw-panes">
+          <section className="adaptive-state-editor" aria-labelledby="adaptive-states-title">
+            <h3 id="adaptive-states-title">Selected state</h3>
+            <p role="status">{draftStatus}</p>
+            {selectedState ? stateCard(selectedState, selectedIndex) : <p>Choose or add a state to edit its name, role, intensity and loop.</p>}
+            {details}
+          </section>
+          <div className="adaptive-daw-side">
+            {candidates}
+            <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="adaptive-workspace" aria-label="Adaptive States authoring workspace">
       <header className="generation-header">
@@ -276,257 +618,12 @@ export function AdaptiveStatesWorkspace({
         <Button onClick={onClose}>Back to arrangement</Button>
       </header>
       <div className="adaptive-authoring-grid">
-        <section className="adaptive-candidates" aria-labelledby="render-candidates-title">
-          <h3 id="render-candidates-title">Render candidates</h3>
-          <p role="status">{message}</p>
-          <Button onClick={() => setRefresh((value) => value + 1)}>Refresh renders</Button>
-          {eligible.length === 0 ? (
-            <div className="preview-empty">
-              <strong>No eligible master renders</strong>
-              <p>Complete a master render for this project before authoring a state.</p>
-            </div>
-          ) : (
-            eligible.map((job) => (
-              <article className="adaptive-render-card" key={job.jobId}>
-                <div>
-                  <strong>{job.manifest.revisionId}</strong>
-                  <small>
-                    {job.result?.artifacts.length} artifacts ·{" "}
-                    {job.manifest.output.format.toUpperCase()}
-                  </small>
-                </div>
-                <Button
-                  onClick={() => addState(job)}
-                  disabled={states.some((state) => state.jobId === job.jobId)}
-                >
-                  Add state
-                </Button>
-              </article>
-            ))
-          )}
-        </section>
+        {candidates}
         <section className="adaptive-state-editor" aria-labelledby="adaptive-states-title">
           <h3 id="adaptive-states-title">Package states</h3>
           <p role="status">{draftStatus}</p>
-          {states.map((state, index) => (
-            <fieldset className="adaptive-state-card" key={state.jobId}>
-              <legend>State {index + 1}</legend>
-              <label>
-                Name
-                <input
-                  value={state.displayName}
-                  onChange={(event) => updateState(index, { displayName: event.target.value })}
-                />
-              </label>
-              <label>
-                State ID
-                <input
-                  value={state.stateId}
-                  onChange={(event) => updateState(index, { stateId: event.target.value })}
-                />
-              </label>
-              <label>
-                Role
-                <select
-                  value={(() => {
-                    const role = adaptiveStateRole(state.tags);
-                    return role.kind === "music" ? "music" : `stinger:${role.cue}`;
-                  })()}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    const role =
-                      value === "music"
-                        ? ({ kind: "music" } as const)
-                        : ({ kind: "stinger", cue: value.slice("stinger:".length) as AdaptiveStingerCue } as const);
-                    if (role.kind === "stinger")
-                      // One-shots never take part in the transition graph.
-                      setConfiguration((current) => ({
-                        ...current,
-                        transitions: current.transitions.filter(
-                          (item) => item.fromStateId !== state.stateId && item.toStateId !== state.stateId
-                        )
-                      }));
-                    updateState(index, { tags: tagsForAdaptiveRole(role, state.tags) });
-                  }}
-                >
-                  <option value="music">Music state (loops, transitions)</option>
-                  {ADAPTIVE_STINGER_CUES.map((item) => (
-                    <option key={item.cue} value={`stinger:${item.cue}`}>
-                      Stinger: {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Intensity <span>{Math.round(state.intensity * 100)}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={state.intensity}
-                  onChange={(event) =>
-                    updateState(index, { intensity: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label>
-                Loop start seconds
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={state.loopStartSeconds ?? 0}
-                  onChange={(event) =>
-                    updateState(index, { loopStartSeconds: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label>
-                Loop end seconds
-                <input
-                  type="number"
-                  min={0.1}
-                  step={0.1}
-                  value={state.loopEndSeconds ?? 0}
-                  onChange={(event) =>
-                    updateState(index, { loopEndSeconds: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label>
-                Entry seconds
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={state.entryCueSeconds ?? 0}
-                  onChange={(event) =>
-                    updateState(index, { entryCueSeconds: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label>
-                Exit seconds (optional)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={state.exitCueSeconds ?? ""}
-                  onChange={(event) =>
-                    updateState(index, {
-                      exitCueSeconds: event.target.value === "" ? null : Number(event.target.value)
-                    })
-                  }
-                />
-              </label>
-              <Button
-                onClick={() => {
-                  setStates((current) => current.filter((_, candidate) => candidate !== index));
-                  setConfiguration((current) => ({
-                    transitions: current.transitions.filter(
-                      (item) =>
-                        item.fromStateId !== state.stateId && item.toStateId !== state.stateId
-                    ),
-                    cuePoints: current.cuePoints.filter((item) => item.stateId !== state.stateId)
-                  }));
-                  setDeviceMappings((current) =>
-                    current.filter((item) => item.stateId !== state.stateId)
-                  );
-                }}
-              >
-                Remove state
-              </Button>
-            </fieldset>
-          ))}
-          <AdaptiveGraphEditor
-            states={states.filter((state) => adaptiveStateRole(state.tags).kind === "music")}
-            value={configuration}
-            onChange={setConfiguration}
-          />
-          {validation.error && <p role="alert">{validation.error}</p>}
-          <AdaptivePreviewPanel
-            manifest={manifest}
-            jobs={jobs}
-            clock={clock}
-          />
-          {droneDevices.length > 0 && (
-            <section aria-labelledby="adaptive-device-mappings">
-              <h3 id="adaptive-device-mappings">Adaptive device mappings</h3>
-              <p>
-                Map a persisted drone parameter to a target value when an adaptive state becomes
-                active.
-              </p>
-              <p>
-                Device mappings are draft annotations. The current audio-manifest contract publishes
-                rendered states; live device mappings are not included in preview or publication.
-              </p>
-              {states.map((state) =>
-                droneDevices.map(({ track, device }) => (
-                  <div key={state.stateId + device.id} className="adaptive-state-card">
-                    <strong>
-                      {state.displayName} · {track.name}
-                    </strong>
-                    <select
-                      aria-label="Drone parameter"
-                      defaultValue="droneGain"
-                      id={`parameter-${state.stateId}-${device.id}`}
-                    >
-                      {DEVICE_PARAMETER_DEFINITIONS.filter((definition) =>
-                        definition.id.startsWith("drone")
-                      ).map((definition) => (
-                        <option key={definition.id} value={definition.id}>
-                          {definition.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      aria-label="Target value"
-                      type="number"
-                      defaultValue={0.12}
-                      step={0.01}
-                      id={`value-${state.stateId}-${device.id}`}
-                    />
-                    <Button
-                      onClick={() => {
-                        const parameter = (
-                          document.getElementById(
-                            `parameter-${state.stateId}-${device.id}`
-                          ) as HTMLSelectElement
-                        ).value;
-                        const value = Number(
-                          (
-                            document.getElementById(
-                              `value-${state.stateId}-${device.id}`
-                            ) as HTMLInputElement
-                          ).value
-                        );
-                        addDeviceMapping(state.stateId, track.id, device.id, parameter, value);
-                      }}
-                    >
-                      Add mapping
-                    </Button>
-                  </div>
-                ))
-              )}
-              {deviceMappings.length > 0 && (
-                <details>
-                  <summary>{deviceMappings.length} device mappings</summary>
-                  <pre tabIndex={0} aria-label="Device mappings JSON">
-                    {JSON.stringify(deviceMappings, null, 2)}
-                  </pre>
-                </details>
-              )}
-            </section>
-          )}
-          {manifest && (
-            <details className="adaptive-manifest">
-              <summary>Preview validated package manifest</summary>
-              <pre tabIndex={0} aria-label="Draft manifest JSON">
-                {JSON.stringify(manifest, null, 2)}
-              </pre>
-            </details>
-          )}
+          {states.map(stateCard)}
+          {details}
         </section>
         <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
       </div>

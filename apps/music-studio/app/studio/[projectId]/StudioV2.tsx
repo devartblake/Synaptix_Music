@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import { Button } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
@@ -65,8 +65,8 @@ export function StudioTransportBar(props: StudioTopbarProps & {
         ))}
       </div>
       <span className="transport-spacer" />
-      <Button className="generation-cta" onClick={props.onGenerate}>Generate</Button>
-      <Button onClick={props.onExport}>Export</Button>
+      <Button className="generation-cta" data-opens="generate" onClick={props.onGenerate}>Generate</Button>
+      <Button data-opens="export" onClick={props.onExport}>Export</Button>
       {props.layoutMenu}
       <div className="studio-status">
         <MasterMeter engine={engine} />
@@ -163,4 +163,34 @@ export function hintFor(target: EventTarget | null): string | null {
     ?? control.textContent;
   const text = labelled?.replace(/\s+/g, " ").trim();
   return text ? text.slice(0, 80) : null;
+}
+
+/** A right-hand drawer over the inspector, e.g. Generate; the timeline stays in view. Escape closes it. */
+export function StudioDrawer({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <aside className="studio-drawer" aria-label={label}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        event.preventDefault();
+        onClose();
+      }}>
+      {children}
+    </aside>
+  );
+}
+
+/** A modal dialog over the whole studio, e.g. Export. Escape closes it. */
+export function StudioDialog({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => dialog?.close();
+  }, []);
+  return (
+    <dialog ref={ref} className="studio-dialog" aria-label={label}
+      onCancel={(event) => { event.preventDefault(); onClose(); }}>
+      {children}
+    </dialog>
+  );
 }

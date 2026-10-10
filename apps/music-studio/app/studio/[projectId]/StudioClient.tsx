@@ -70,7 +70,7 @@ import { DeviceChain } from "./DeviceChain";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
 import { LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
-import { hintFor, SaveSyncStatus, StatusAccount, StudioDock, StudioStatusBar, StudioTransportBar } from "./StudioV2";
+import { hintFor, SaveSyncStatus, StatusAccount, StudioDialog, StudioDock, StudioDrawer, StudioStatusBar, StudioTransportBar } from "./StudioV2";
 import { StudioTopbar } from "./StudioTopbar";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
@@ -621,14 +621,17 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   function pause(): void { engine.pause(); setPlaying(false); }
   function stop(): void { engine.stop(); setPlaying(false); }
 
+  const v2 = panelLayout.v2;
   useEffect(() => {
-    if (workspace === "arrangement") return;
-    const heading = document.querySelector<HTMLElement>(".studio-workspace h2, .studio-v2-main h2");
+    if (workspace === "arrangement" || (v2 && workspace === "devices")) return;
+    // DAW layout: Generate is a drawer and Export a dialog; each takes focus to its heading.
+    const heading = document.querySelector<HTMLElement>(!v2 ? ".studio-workspace h2"
+      : workspace === "generation" ? ".studio-drawer h2" : workspace === "render" ? ".studio-dialog h2" : ".studio-v2-main h2");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
     if (workspace === "adaptive") { engine.stop(); setPlaying(false); }
-  }, [workspace, engine]);
+  }, [workspace, engine, v2]);
 
   // v2 dock: choosing the open tab collapses it; any other tab opens the dock on that tab.
   function chooseDockTab(tab: DockTab): void {
@@ -641,10 +644,19 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     panelLayout.update({ dockTab: "editor", dockOpen: true });
   }
   const [hint, setHint] = useState("Alt+1, Alt+2 and Alt+3 switch the dock · Alt+S switches Arrange and Adaptive states");
-  const v2 = panelLayout.v2;
+  /** DAW layout: closes the Generate drawer or Export dialog and returns focus to the button that opened it. */
+  function closeOverlay(opener: "generate" | "export"): void {
+    setWorkspace("arrangement");
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`.studio-transportbar [data-opens="${opener}"]`)?.focus());
+  }
   useEffect(() => {
     if (!v2) return;
     const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === "KeyE") {
+        event.preventDefault();
+        setWorkspace("render");
+        return;
+      }
       if (!event.altKey || event.ctrlKey || event.metaKey) return;
       const tab = ({ Digit1: "editor", Digit2: "devices", Digit3: "mixer" } as const)[event.code as "Digit1"];
       if (tab) { event.preventDefault(); chooseDockTab(tab); }
@@ -790,8 +802,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
           </aside>
           <div className="studio-v2-centre">
             <section className="studio-v2-main" aria-label="Project workspace">
-              {workspace === "arrangement" || workspace === "devices"
-                ? <>{conflictBanners}{timeline(openInDock, {
+              {workspace === "adaptive"
+                ? <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} variant="daw" />
+                : <>{conflictBanners}{timeline(openInDock, {
                   trackColor: dawTrackColor,
                   onSelect: setSelectedClip,
                   onDropInstrument: (deviceType, trackId) => void (trackId ? swapInstrument(trackId, deviceType) : addInstrument(deviceType)),
@@ -800,8 +813,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
                     <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>
                     <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add {instrumentDefinition(newInstrument)?.label ?? "instrument"} track</Button>
                   </div>
-                })}</>
-                : workspaces}
+                })}</>}
             </section>
             <StudioDock tab={dockTab} open={dockOpen} onTab={chooseDockTab}
               height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax}
@@ -827,7 +839,15 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               }} />
           </div>
           {inspector}
+          {workspace === "generation" && <StudioDrawer label="Generate" onClose={() => closeOverlay("generate")}>
+            <GenerationWorkspace project={builtinView} onAddDrone={addFrequencyDrone} onApply={applyGeneratedVariation}
+              onClose={() => closeOverlay("generate")} variant="drawer" />
+          </StudioDrawer>}
         </div>
+        {workspace === "render" && <StudioDialog label="Export" onClose={() => closeOverlay("export")}>
+          <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} variant="dialog"
+            onClose={() => closeOverlay("export")} onSync={async () => coordinatorRef.current?.drain()} />
+        </StudioDialog>}
         <StudioStatusBar hint={hint}
           facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span><StatusAccount /></>} />
       </main>

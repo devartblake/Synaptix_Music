@@ -484,6 +484,45 @@ test("the browser adds starter phrases and opens the project's clips", async ({ 
   await expect(page.getByRole("button", { name: /^Select Warm Pad Starter/ })).toHaveCount(0);
 });
 
+test("Generate opens a drawer beside the timeline and Export a dialog; Escape closes each and returns focus", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const generate = page.getByRole("button", { name: "Generate", exact: true });
+  const exportButton = page.getByRole("button", { name: "Export", exact: true });
+
+  // Generate: a drawer; the arrangement stays on screen and focus moves to the drawer's heading.
+  await generate.click();
+  const drawer = page.getByRole("complementary", { name: "Generate" });
+  await expect(drawer.getByRole("heading", { name: "Create a project variation" })).toBeFocused();
+  await expect(page.getByRole("region", { name: "Project workspace" }).getByText("Drums Generated Loop")).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await expect(generate).toBeFocused();
+  await generate.click();
+  await drawer.getByRole("button", { name: "Close" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(generate).toBeFocused();
+
+  // Export: Ctrl+E opens a modal dialog; Escape closes it and focus returns to Export.
+  await page.keyboard.press("Control+e");
+  const dialog = page.getByRole("dialog", { name: "Export" });
+  await expect(dialog.getByRole("heading", { name: "Render & export" })).toBeFocused();
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(exportButton).toBeFocused();
+  await exportButton.click();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(exportButton).toBeFocused();
+});
+
 test("the DAW layout matches its visual baseline", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
