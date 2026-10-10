@@ -751,6 +751,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   } : null;
   const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
     bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel} selection={selection}
+    publication={panelLayout.v2 ? { revisionId: project.revisionId, refreshKey: workspace, onOpenAdaptive: () => setWorkspace("adaptive") } : undefined}
     onOpenGenerator={() => setWorkspace("generation")} />;
 
   // DAW layout: a track takes its own colour, else its instrument family's (as the engine resolves it).

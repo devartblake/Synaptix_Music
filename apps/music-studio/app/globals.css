@@ -76,6 +76,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sx-active); box-shadow: 0 0 10px currentColor; }
 .status-dot.warning { background: var(--sx-warning); }
 .status-dot.danger { background: var(--sx-danger); }
+.status-dot.idle { background: var(--sx-text-muted); box-shadow: none; }
 
 .studio-grid { min-height: calc(100vh - 122px); display: grid; grid-template-columns: var(--studio-nav-width, 208px) minmax(0, 1fr) var(--studio-inspector-width, 272px); }
 .studio-sidebar, .studio-inspector { padding: 14px; background: var(--sx-surface); }
@@ -392,3 +393,6 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .envelope-fill { fill: rgb(39 215 196 / 14%); }
 .envelope-line { fill: none; stroke: var(--sx-active); stroke-width: 2; }
 .device-card[aria-label="Modulation"] .device-card-body { max-width: 240px; }
+/* The DAW inspector's SynaptixPlay card. */
+.publication-card .adaptive-row { color: var(--sx-text); }
+.publication-card button { width: 100%; margin-top: 10px; }
