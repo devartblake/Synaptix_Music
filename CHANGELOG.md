@@ -4,7 +4,7 @@
 
 ### Added
 
-- **The DAW piano roll's Edit and Rename menus float.** They open above everything else, below their button or above it when there's more room there, so the dock's height no longer cuts them off or hides them under the Browser. They stay open while you edit, so you can press +1 repeatedly and watch the notes move. The Edit actions are laid out three across.
+- **The DAW piano roll's Edit and Rename menus float.** They open above everything else, below their button or above it when there's more room there, so the dock's height no longer cuts them off or hides them under the Browser. They stay open while you edit, so you can press +1 repeatedly and watch the notes move. The Edit actions are laid out three across. Drag a menu's grip to move it anywhere on screen, or focus the grip and use the arrow keys (Shift for bigger steps). It reopens where you left it, and Home on the grip puts it back beside its button.
 - **Project cards show where the music came from.** Each local project on the home page is marked with its own colour, icon and label:
   - **Generated** (purple, ✦): made with the generator and not changed since.
   - **Edited** (teal, ✦+): generated, then changed by hand.

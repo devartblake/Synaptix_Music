@@ -355,6 +355,43 @@ test("the piano roll's Edit menu floats above the dock, fully visible, and stays
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
   await expect(roll.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
+
+  // The panel is movable: drag its grip, or use the arrow keys on it. It reopens where it was left,
+  // stays on screen, and Home puts it back beside its button.
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const grip = panel.getByRole("button", { name: "Move Edit panel" });
+  const start = (await panel.boundingBox())!;
+  const handle = (await grip.boundingBox())!;
+  await page.mouse.move(handle.x + 20, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 20 + 300, handle.y + handle.height / 2 - 120, { steps: 6 });
+  await page.mouse.up();
+  const dragged = (await panel.boundingBox())!;
+  expect(Math.round(dragged.x - start.x)).toBe(300);
+  expect(Math.round(dragged.y - start.y)).toBe(-120);
+  await grip.press("ArrowLeft");
+  await grip.press("Shift+ArrowDown");
+  const nudged = (await panel.boundingBox())!;
+  expect(Math.round(nudged.x - dragged.x)).toBe(-10);
+  expect(Math.round(nudged.y - dragged.y)).toBe(40);
+  // Dragging far off screen keeps it wholly visible.
+  const gripNow = (await grip.boundingBox())!;
+  await page.mouse.move(gripNow.x + 10, gripNow.y + gripNow.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(viewport.width + 500, -500, { steps: 4 });
+  await page.mouse.up();
+  const clamped = (await panel.boundingBox())!;
+  expect(clamped.x + clamped.width).toBeLessThanOrEqual(viewport.width);
+  expect(clamped.y).toBeGreaterThanOrEqual(0);
+  await page.keyboard.press("Escape");
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const reopened = (await panel.boundingBox())!;
+  expect(Math.round(reopened.x)).toBe(Math.round(clamped.x));
+  expect(Math.round(reopened.y)).toBe(Math.round(clamped.y));
+  await grip.press("Home");
+  const home = (await panel.boundingBox())!;
+  expect(Math.round(home.x)).toBe(Math.round(start.x));
+  expect(Math.round(home.y)).toBe(Math.round(start.y));
 });
 
 test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
