@@ -1,6 +1,6 @@
 # Studio UI v2: a DAW Layout
 
-**Status (2026-10-10):** Proposed. No v2 code exists yet; v1 ([Studio UI Modernization v1](studio-ui-modernization-v1.md)) is complete and is the current studio. The "before" screenshots and the problems this plan fixes are in the [Studio UI baseline](studio-ui-baseline-2026-10.md).
+**Status (2026-10-10):** In progress. Steps 1–8 are done and v2 sits behind Layout → "DAW layout (preview)"; step 9 (switch over) remains. v1 ([Studio UI Modernization v1](studio-ui-modernization-v1.md)) is still the default studio. The "before" screenshots and the problems this plan fixes are in the [Studio UI baseline](studio-ui-baseline-2026-10.md).
 
 **References:** FL Studio 2026 (2026.1.5, August 2026; [release page](https://www.image-line.com/fl-studio/release/2026)) and Ableton Live 12.4 (12.4.5, August 2026).
 
@@ -158,7 +158,11 @@ Each step is one PR with its own visual baselines and UI tests.
    - **Project:** the project's clips by track (choosing one opens it in the dock); Renders points to Export, which lists them.
    - **Inspector:** follows the timeline selection (else the clip being edited) with the clip's and its track's facts above the project facts.
    - **Tests:** the instrument-picker test is ported (catalog listed, search and description, Enter adds); new tests cover swap, drag, undo, starter phrases and the Project list. The classic picker and its test stay until step 9. The inspector is hidden at tablet width, so the test that uses it is desktop-only.
-8. **Adaptive states, Generate, Export.** A Session-style states grid with intensity and a transitions strip, built on the existing adaptive graph; Generate as a drawer; Export as a dialog. **Done when** the adaptive authoring, generation and render UI tests are ported.
+8. **Adaptive states, Generate, Export.** **Done.** All three are in the DAW layout only:
+   - **Adaptive states (Alt+S):** a Session-style grid (`table` "States grid"). Each row is a state: name, role and an intensity bar, then its render, loop, entry and exit cues, and the states it leads to. Below it, a transitions strip lists each transition (trigger and crossfade) and cue point. Choosing a row edits that state underneath, beside the render candidates and publication. The runtime preview lights the row that is playing.
+   - **Not like the mockup:** the mockup had a column per track with a clip slot in each. A state is a whole-mix master render, and the adaptive manifest has no per-track content, so those cells would always be empty. The grid's columns are the state's own data instead.
+   - **Generate** opens a right-hand drawer over the inspector, so the arrangement stays in view. **Export** (or Ctrl/Cmd+E) opens a modal dialog. Escape or Close shuts either one and returns focus to the button that opened it.
+   - **Tests:** the adaptive authoring, generation (including prototype audio) and export UI tests now run in both layouts (`tests/ui/layouts.ts`), and step 9 drops the classic runs. A new baseline covers the states grid on desktop and tablet; the graph editor is the same component in both layouts and keeps its classic baseline.
 9. **Switch over.** v2 becomes the default, v1 code and baselines are removed, and the README screenshots, baseline doc and changelog are updated.
 
 ## Risks
@@ -202,4 +206,5 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
+- 2026-10-10: step 8 done (states grid with transitions strip, Generate drawer, Export dialog). The grid's columns are the state's own data rather than the mockup's per-track clip slots, which have no data behind them.
 - 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).

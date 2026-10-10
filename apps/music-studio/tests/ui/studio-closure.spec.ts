@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { LAYOUTS, openWorkspace, titled } from "./layouts";
+
 async function prepareStudio(page: Page): Promise<void> {
   await page.route("**/api/platform/generation/jobs**", async (route) => {
     if (route.request().method() === "GET" && !/jobs\/.+/.test(route.request().url())) {
@@ -16,7 +18,8 @@ async function prepareStudio(page: Page): Promise<void> {
 test("studio shell preserves its desktop and tablet layout contract", async ({ page }, testInfo) => {
   await prepareStudio(page);
   const selectors = [".studio-topbar", ".studio-sidebar", ".studio-workspace", ".studio-inspector"];
-  const layout = await page.locator(selectors.join(",")).evaluateAll((elements) => elements.map((element) => {
+  // The layout hook narrows the tablet sidebar after hydration, so measure once the layout settles.
+  const measure = () => page.locator(selectors.join(",")).evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     return {
       className: element.className,
@@ -40,14 +43,21 @@ test("studio shell preserves its desktop and tablet layout contract", async ({ p
         { className: "studio-workspace", visible: true, x: 184, width: 840, right: 1024 },
         { className: "studio-inspector", visible: false, x: 0, width: 0, right: 0 }
       ];
-  expect(layout).toEqual(expected);
+  await expect.poll(measure).toEqual(expected);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test("generation workspace exposes a screen-reader-safe status and labeled controls", async ({ page }) => {
+for (const layout of LAYOUTS)
+test(titled("generation workspace exposes a screen-reader-safe status and labeled controls", layout), async ({ page }) => {
   await prepareStudio(page);
-  await page.locator(".studio-nav").getByRole("button", { name: /Generate/ }).click();
+  if (layout === "classic") await page.locator(".studio-nav").getByRole("button", { name: /Generate/ }).click();
+  else await openWorkspace(page, layout, "generation");
   await expect(page.getByRole("heading", { name: "Create a project variation" })).toBeVisible();
+  // The DAW layout opens Generate as a drawer beside the timeline, which stays on screen.
+  if (layout === "daw") {
+    await expect(page.getByRole("complementary", { name: "Generate" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Project workspace" }).locator("[data-track-id]").first()).toBeVisible();
+  }
   const preview = page.getByRole("region", { name: "Generated variation preview" });
   await expect(preview.getByRole("status")).toContainText("durable polling");
   await expect(page.getByLabel("Creative brief")).toBeVisible();
