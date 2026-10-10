@@ -30,6 +30,8 @@ test("home opens the demo and resumes an edited local project", async ({ page })
     .getByRole("link")
     .filter({ has: page.getByRole("heading", { name: "Synaptix Generated Arrangement" }) });
   await expect(project).toBeVisible();
+  // It doesn't sync, so its card has no cloud badge.
+  await expect(project.locator("[data-tone]")).toHaveCount(0);
   await project.click();
   await expect(page.getByRole("spinbutton", { name: "Tempo" })).toHaveValue("124");
 });
@@ -112,6 +114,12 @@ test("project cards show whether the music was generated, generated then edited,
     await expect(card(name)).toHaveAttribute("data-origin", origin);
     await expect(card(name)).toContainText(label);
     await expect(card(name)).toContainText(icon);
+  }
+  // Imported copies get platform IDs, so they sync: each card has a blue cloud beside its origin.
+  for (const [name] of expected) {
+    const badge = card(name).locator("[data-tone='synced']");
+    await expect(badge).toHaveText("Cloud");
+    expect(await badge.locator("svg").evaluate((element) => getComputedStyle(element).color)).toBe("rgb(99, 121, 255)");
   }
   // Each origin has its own colour: generated purple, edited teal, hand-composed blue.
   const edge = (name: string) => card(name).evaluate((element) => getComputedStyle(element).borderTopColor);

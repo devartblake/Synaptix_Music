@@ -7,7 +7,7 @@ import {
   parseVersionedMusicProject,
   type StoredProjectSummary
 } from "@synaptix/project-storage";
-import { IndexedDbProjectSyncQueue } from "@synaptix/project-storage/platform-sync";
+import { IndexedDbProjectSyncQueue, isPlatformProjectId } from "@synaptix/project-storage/platform-sync";
 import { createEmptyProject, type ProjectOrigin } from "@synaptix/project-model";
 import { z } from "zod";
 import styles from "./home.module.css";
@@ -29,6 +29,22 @@ const ORIGIN_BADGES: Record<ProjectOrigin, { icon: string; label: string; descri
   hand: { icon: "♫", label: "Hand-composed", description: "Composed by hand, without the generator" }
 };
 
+/**
+ * A cloud mark: white on the Cloud projects list (stored on the platform), blue on a local card
+ * whose project syncs there (platform projects use UUIDs; the demo stays in this browser).
+ */
+function CloudBadge({ tone }: { tone: "cloud" | "synced" }) {
+  return (
+    <span className={styles.cloudBadge} data-tone={tone}
+      title={tone === "cloud" ? "Stored in your SynaptixPlay cloud" : "Syncs to your SynaptixPlay cloud when you're signed in"}>
+      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false" fill="none"
+        stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+        <path d="M4.5 12.5h7a2.75 2.75 0 0 0 .4-5.47A4 4 0 0 0 4.2 6.6 3 3 0 0 0 4.5 12.5Z" />
+      </svg>
+      Cloud
+    </span>
+  );
+}
 
 /** Cards shown before "Show all"; the modal search reaches every project. */
 const RECENT_LIMIT = 6;
@@ -367,10 +383,10 @@ export function RecentProjects() {
                   .map((project) => (
                     <li key={project.projectId} className={styles.cloudProjectRow}>
                       {project.archived ? (
-                        <span>{project.name} · Archived</span>
+                        <span>{project.name} · Archived <CloudBadge tone="cloud" /></span>
                       ) : (
                         <a href={`/studio/${encodeURIComponent(project.projectId)}`}>
-                          {project.name} · Cloud
+                          {project.name} <CloudBadge tone="cloud" />
                         </a>
                       )}
                       {archiving === project.projectId ? (
@@ -471,6 +487,7 @@ export function RecentProjects() {
                     {ORIGIN_BADGES[project.origin].label}
                   </span>
                 )}
+                {isPlatformProjectId(project.projectId) && <CloudBadge tone="synced" />}
                 <span aria-hidden="true">↗</span>
               </span>
               <h3>{project.name}</h3>

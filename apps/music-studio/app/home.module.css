@@ -697,3 +697,26 @@
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+
+/* Cloud projects: a white cloud on the Cloud projects list, a blue one on local cards that sync. */
+.cloudBadge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--cloud) 50%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cloud) 14%, transparent);
+  color: color-mix(in srgb, var(--cloud) 55%, var(--sx-text));
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.cloudBadge[data-tone="cloud"] { --cloud: var(--sx-text); margin-left: 8px; }
+.cloudBadge[data-tone="synced"] { --cloud: var(--sx-track-blue); }
+.cloudBadge svg { color: var(--cloud); }
+/* Without an origin label, the badge takes its place at the right. */
+.projectIcon + .cloudBadge { margin-left: auto; }
