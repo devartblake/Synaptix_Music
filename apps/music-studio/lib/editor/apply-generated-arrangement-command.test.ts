@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEmptyProject } from "@synaptix/project-model";
-import { ApplyGeneratedArrangementEditorCommand } from "./apply-generated-arrangement-command.ts";
+import { ApplyGeneratedArrangementEditorCommand, projectKeyFromGeneration } from "./apply-generated-arrangement-command.ts";
 
 test("generated variations replace the arrangement and undo restores it", () => {
   const project = createEmptyProject("project-1");
@@ -24,6 +24,18 @@ test("generated variations replace the arrangement and undo restores it", () => 
   assert.deepEqual(generated.tracks.map((track) => track.id), ["track-0", "track-1", "track-2", "track-3"]);
   assert.equal(generated.generationMetadata?.seed, 9);
   assert.deepEqual(command.undo(generated).tracks.map((track) => track.id), ["old"]);
+  // The generator's key becomes the project's key, so it travels with the project; undo removes
+  // it again (the project had none).
+  assert.deepEqual(generated.key, { tonic: 2, mode: "minor" });
+  assert.equal("key" in command.undo(generated), false);
+});
+
+test("generator key names map to pitch classes, flats included, and unknown names map to nothing", () => {
+  assert.deepEqual(projectKeyFromGeneration("Eb harmonic minor"), { tonic: 3, mode: "harmonic minor" });
+  assert.deepEqual(projectKeyFromGeneration("F# lydian"), { tonic: 6, mode: "lydian" });
+  assert.deepEqual(projectKeyFromGeneration("B major"), { tonic: 11, mode: "major" });
+  assert.equal(projectKeyFromGeneration("H minor"), null);
+  assert.equal(projectKeyFromGeneration("C"), null);
 });
 
 test("generated mix hints and supporting layers become the project's tracks", () => {

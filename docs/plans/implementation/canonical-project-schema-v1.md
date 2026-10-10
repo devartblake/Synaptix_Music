@@ -1,6 +1,6 @@
 # Canonical Project Schema v1
 
-**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
+**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. A project key (`key: { tonic: 0–11, mode }`, optional and absent when unset so existing checksums don't change) was added to v1 and v2 on 2026-10-10; applying a generated arrangement sets it. Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
 
 ## Goal
 

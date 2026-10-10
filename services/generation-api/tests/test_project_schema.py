@@ -37,3 +37,17 @@ def test_invalid_midi_pitch_is_rejected() -> None:
 
     with pytest.raises(ValidationError):
         MusicProject.model_validate(payload)
+
+
+def test_project_key_is_optional_and_strictly_shaped() -> None:
+    # The key travels with the project: a pitch class 0-11 and one of the generator's seven modes.
+    fixture = load_fixture()
+    assert MusicProject.model_validate(fixture).key is None
+    keyed = {**fixture, "key": {"tonic": 9, "mode": "harmonic minor"}}
+    assert MusicProject.model_validate(keyed).key.tonic == 9
+    for bad in ({"tonic": 12, "mode": "minor"}, {"tonic": 0, "mode": "blues"}, {"tonic": 0}):
+        with pytest.raises(ValidationError):
+            MusicProject.model_validate({**fixture, "key": bad})
+    schema = json.loads((FIXTURE_PATH.parents[1] / "v1.json").read_text(encoding="utf-8"))
+    assert schema["properties"]["key"] == {"$ref": "#/$defs/musicalKey"}
+    assert schema["$defs"]["musicalKey"]["properties"]["tonic"]["maximum"] == 11

@@ -131,7 +131,11 @@ Each step is one PR with its own visual baselines and UI tests.
      - **Humanize:** a seeded, undoable nudge of timing and velocity (`HumanizeMidiNotesCommand`).
      - **Labels:** a toggle that writes each note's name on it.
      - FL Studio 2026's _renamable_ note labels would need a note field in the project schema, so they go with the key schema change below.
-   - **Project key, next (decided 2026-10-10):** the key becomes project data so it travels with the project. That means a schema field in TypeScript/Zod, JSON Schema and Python, a command with undo, and the piano roll reading it, with Auto kept as the fallback. It is scheduled after step 5.
+   - **Project key, done (decided 2026-10-10):** the key is project data and travels with the project.
+     - **Schema:** optional `key: { tonic: 0–11, mode }` in TypeScript/Zod, both JSON Schemas and both Pydantic models. It is absent when unset, so existing projects keep their checksums.
+     - **Editing:** `SetProjectKeyEditorCommand` sets or clears it with undo, and applying a generated arrangement sets it from the generator's key.
+     - **Piano roll:** choosing a key saves it to the project; Auto clears it and falls back to detection; Off stays a per-browser display choice.
+     - **Platform backend:** stores projects as opaque JSON, so it needed no change.
    - **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
 5. **Dock: Devices.** **Done.** The Devices tab shows one track's chain, left to right:
    - **Devices:** Instrument (icon, on/off), Filter, Envelope (with an ADSR drawing), Modulation (folded unless in use; shares the classic panel's fold state), Reverb send, then the track's plug-in inserts. Drone tracks show their drone controls.
@@ -181,3 +185,4 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: step 4a done (DAW piano roll: keyboard, one-row toolbar, scale shading, Chord Panel). The key is a view setting with auto-detect rather than project data.
 - 2026-10-10: step 4b done (tools, ghost notes, humanize, labels). The project owner decided the key should be project data; that work is scheduled after step 5.
 - 2026-10-10: step 5 done (device chain with knobs in the dock).
+- 2026-10-10: the project key is project data (schema, command, generator, piano roll).

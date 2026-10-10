@@ -20,7 +20,7 @@ import { Playhead } from "./TransportPosition";
 import { chordName, chordTimeline, detectKey, inScale, keyLabel, PITCH_NAMES, SCALES, type MusicalKey, type ScaleMode } from "../../../lib/editor/music-theory";
 import styles from "./editing.module.css";
 
-import type { EditorCommand } from "@synaptix/command-system/editor";
+import { SetProjectKeyEditorCommand, type EditorCommand } from "@synaptix/command-system/editor";
 import {
   AddMidiNoteCommand,
   AddMidiNotesCommand,
@@ -192,7 +192,17 @@ function PianoRollEditor({
   const daw = variant === "daw";
   // Scale shading and chords are for pitched clips; drum notes are drums, not a key.
   const tonal = daw && !noteLabel;
-  const [scaleSetting, setScaleSetting] = useScaleSetting(project.projectId);
+  // The key is project data (it travels with the project); hiding the shading is this browser's choice.
+  const [shadingOff, setShadingOff] = useShadingOff(project.projectId);
+  const projectKey = project.key ?? null;
+  const scaleSetting = shadingOff ? "off" : projectKey ? `${projectKey.tonic}:${projectKey.mode}` : "auto";
+  function chooseScale(value: string) {
+    setShadingOff(value === "off");
+    if (value === "off") return;
+    const next = value === "auto" ? undefined : parseKey(value) ?? undefined;
+    if ((next?.tonic ?? -1) === (projectKey?.tonic ?? -1) && next?.mode === projectKey?.mode) return;
+    void onExecute(new SetProjectKeyEditorCommand(projectKey ?? undefined, next));
+  }
   const [chordsShown, setChordsShown] = useState(true);
   // Draw adds a note with one click; Select (the default) drags out a marquee. B switches.
   const [tool, setTool] = useState<"select" | "draw">("select");
@@ -265,8 +275,7 @@ function PianoRollEditor({
   );
 
   const detectedKey = useMemo(() => detectKey(clip.notes), [clip.notes]);
-  const musicalKey: MusicalKey | null = !tonal || scaleSetting === "off" ? null
-    : scaleSetting === "auto" ? detectedKey : parseKey(scaleSetting);
+  const musicalKey: MusicalKey | null = !tonal || shadingOff ? null : projectKey ?? detectedKey;
   const chords = useMemo(
     () => tonal && chordsShown ? chordTimeline(clip.notes, project.transport.ticksPerQuarterNote / 2, clip.range.durationTicks) : [],
     [tonal, chordsShown, clip.notes, clip.range.durationTicks, project.transport.ticksPerQuarterNote]
@@ -568,9 +577,9 @@ function PianoRollEditor({
           </select>
         </label>
         <label><input type="checkbox" checked={snapEnabled} onChange={(event) => setSnapEnabled(event.target.checked)} /> Snap</label>
-        {tonal && <label title="Shades the rows in the scale. Auto reads the key from this clip's notes.">
+        {tonal && <label title="Shades the rows in the key. A chosen key is saved with the project; Auto reads it from this clip's notes.">
           Scale{" "}
-          <select value={scaleSetting} onChange={(event) => setScaleSetting(event.target.value)}>
+          <select value={scaleSetting} onChange={(event) => chooseScale(event.target.value)}>
             <option value="auto">Auto{detectedKey ? ` (${keyLabel(detectedKey)})` : ""}</option>
             <option value="off">Off</option>
             {PITCH_NAMES.flatMap((name, tonic) => (Object.keys(SCALES) as ScaleMode[]).map((mode) => (
@@ -1038,22 +1047,18 @@ function PianoRollEditor({
   );
 }
 
-const SCALE_KEY = (projectId: string) => `synaptix-music:piano-roll-scale:v1:${projectId}`;
+const SHADING_OFF_KEY = (projectId: string) => `synaptix-music:piano-roll-shading-off:v1:${projectId}`;
 
-/** "auto", "off" or "tonic:mode"; remembered per project in this browser (a view setting, not project data). */
-function useScaleSetting(projectId: string): [string, (value: string) => void] {
-  const [value, setValue] = useState("auto");
+/** Whether this browser hides the scale shading for a project (a view choice, unlike the key). */
+function useShadingOff(projectId: string): [boolean, (off: boolean) => void] {
+  const [off, setOff] = useState(false);
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SCALE_KEY(projectId));
-      if (stored && (stored === "auto" || stored === "off" || parseKey(stored))) setValue(stored);
-    } catch {
-      /* Without storage the scale starts at Auto. */
-    }
+    try { setOff(localStorage.getItem(SHADING_OFF_KEY(projectId)) === "true"); }
+    catch { /* Without storage the shading shows. */ }
   }, [projectId]);
-  return [value, (next) => {
-    setValue(next);
-    try { localStorage.setItem(SCALE_KEY(projectId), next); } catch { /* The choice lasts until reload. */ }
+  return [off, (next) => {
+    setOff(next);
+    try { localStorage.setItem(SHADING_OFF_KEY(projectId), String(next)); } catch { /* Lasts until reload. */ }
   }];
 }
 

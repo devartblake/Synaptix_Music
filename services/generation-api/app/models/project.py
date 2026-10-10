@@ -120,6 +120,11 @@ class TransportSettings(StrictModel):
     loopRange: MusicalRange | None
 
 
+class MusicalKey(StrictModel):
+    tonic: int = Field(ge=0, le=11)
+    mode: Literal["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"]
+
+
 class GenerationMetadata(StrictModel):
     generatorId: str = Field(min_length=1)
     generatorVersion: str = Field(min_length=1)
@@ -153,4 +158,5 @@ class MusicProject(StrictModel):
     assets: list[AssetReference]
     markers: list[Marker]
     mixer: Mixer | None = None
+    key: MusicalKey | None = None
     generationMetadata: GenerationMetadata | None = None
