@@ -168,7 +168,9 @@ export function DisclosureMenu({ label, children, floating = false }: { label: s
         }
       }}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        // Only when focus moves to another element: a control that disables itself while its edit
+        // saves blurs to nothing (newer browsers fire that blur), and outside clicks close it anyway.
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
       <Button ref={trigger} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>

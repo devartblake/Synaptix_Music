@@ -341,6 +341,11 @@ test("the piano roll's Edit menu floats above the dock, fully visible, and stays
   const moved = roll.locator(`[data-note-id="${id}"]`);
   await panel.getByRole("button", { name: "Transpose up" }).click();
   await expect(moved).toHaveAttribute("data-pitch", String(pitch + 1));
+  // Newer browsers blur a focused button that disables itself while its edit saves, with focus going
+  // nowhere; that must not close the panel. (Dispatched here so every browser exercises it.)
+  await panel.getByRole("button", { name: "Transpose up" }).evaluate((element) =>
+    element.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null })));
+  await expect(panel).toBeVisible();
   await panel.getByRole("button", { name: "Transpose up" }).click();
   await expect(moved).toHaveAttribute("data-pitch", String(pitch + 2));
   await expect(panel).toBeVisible();
