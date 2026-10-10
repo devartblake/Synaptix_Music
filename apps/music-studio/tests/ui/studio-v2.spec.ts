@@ -41,7 +41,8 @@ test("the DAW layout keeps the timeline in view while the dock edits, mixes and 
   await page.keyboard.press("Alt+3");
   await expect(dock.getByRole("tabpanel")).toHaveCount(0);
   await page.keyboard.press("Alt+2");
-  await expect(dock.getByRole("group", { name: "Bass", exact: true }).getByRole("slider", { name: "Attack", exact: true })).toBeVisible();
+  // Devices shows the edited clip's track as a device chain (step 5).
+  await expect(dock.getByRole("region", { name: "Lead Melody devices" }).getByRole("slider", { name: "Attack" })).toBeVisible();
 
   // Arrow keys move between dock tabs.
   await tab("Devices").press("ArrowRight");
@@ -248,6 +249,50 @@ test("piano roll tools: draw with one click, ghost another track, humanize and l
   // Labels write each note's name on it.
   await roll.getByRole("button", { name: "Labels" }).click();
   await expect(notes.first()).toContainText(/^[A-G]#?\d$/);
+});
+
+test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  const dock = page.getByRole("region", { name: "Dock" });
+
+  // The chain follows the clip being edited.
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  await page.keyboard.press("Alt+2");
+  await expect(dock.getByLabel("Track")).toHaveValue("track-4");
+  await dock.getByLabel("Track").selectOption({ label: "Bass" });
+  const chain = dock.getByRole("region", { name: "Bass devices" });
+
+  // Arrow keys move a knob; letting go commits one undo step.
+  const attack = chain.getByRole("slider", { name: "Attack" });
+  const before = await attack.getAttribute("aria-valuenow");
+  await attack.focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(attack).not.toHaveAttribute("aria-valuenow", before!);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(attack).toHaveAttribute("aria-valuenow", before!);
+
+  // Double-click returns a knob to the instrument's own default.
+  const cutoff = chain.getByRole("slider", { name: "Cutoff" });
+  const factory = await cutoff.getAttribute("aria-valuenow");
+  await cutoff.focus();
+  await page.keyboard.press("PageUp");
+  await expect(cutoff).not.toHaveAttribute("aria-valuenow", factory!);
+  await cutoff.dblclick();
+  await expect(cutoff).toHaveAttribute("aria-valuenow", factory!);
+
+  // The instrument's switch and the folded Modulation device.
+  await chain.getByRole("button", { name: "Bass device enabled" }).click();
+  await expect(chain.getByRole("button", { name: "Bass device enabled" })).toHaveAttribute("aria-pressed", "false");
+  const modulation = chain.getByRole("button", { name: /^Modulation/ });
+  await expect(modulation).toHaveAttribute("aria-expanded", "false");
+  await modulation.click();
+  await expect(chain.getByRole("slider", { name: "LFO rate" })).toBeVisible();
+
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
 });
 
 test("the DAW layout matches its visual baseline", async ({ page }) => {

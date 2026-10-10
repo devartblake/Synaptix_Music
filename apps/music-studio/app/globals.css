@@ -318,3 +318,31 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .timeline-empty { display: grid; justify-items: center; gap: 10px; margin: 24px; padding: 32px; border: 1px dashed var(--sx-line); border-radius: var(--sx-radius-md); color: var(--sx-text-muted); text-align: center; }
 .timeline-empty strong { color: var(--sx-text); font-size: 15px; }
 .transport-lcd b { color: var(--sx-active); font-size: 13px; font-weight: 600; }
+/* Studio UI v2 device chain (step 5). */
+.device-chain { display: grid; gap: 8px; }
+.device-chain-track { display: flex; align-items: center; gap: 8px; color: var(--sx-text-muted); font-size: 12px; }
+.device-chain-row { display: flex; align-items: stretch; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.device-card { display: grid; grid-template-rows: auto 1fr; flex: none; min-width: 120px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-sm); background: var(--sx-surface); }
+.device-card > header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--sx-line-soft); font-size: 12px; }
+.device-card[data-folded] { min-width: 0; }
+.device-card[data-folded] > header { border-bottom: 0; }
+.device-card-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 10px; }
+.device-card-inserts { min-width: 240px; }
+.device-power { width: 9px; height: 9px; border-radius: 50%; background: var(--sx-text-muted); }
+.device-power[data-on="true"] { background: var(--sx-active); box-shadow: 0 0 6px var(--sx-active); }
+.device-fold { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--sx-text); font-weight: 700; }
+.device-fold > span { color: var(--sx-text-muted); }
+.knob { display: grid; justify-items: center; gap: 2px; width: 64px; }
+.knob-dial { border-radius: 50%; cursor: ns-resize; touch-action: none; }
+.knob-dial:focus-visible { outline: 2px solid var(--sx-primary-strong); outline-offset: 2px; }
+.knob-dial[aria-disabled="true"] { cursor: default; opacity: .55; }
+.knob-track { fill: none; stroke: var(--sx-line); stroke-width: 4; stroke-linecap: round; }
+.knob-value { fill: none; stroke: var(--sx-primary-strong); stroke-width: 4; stroke-linecap: round; }
+.knob-pointer { stroke: var(--sx-text); stroke-width: 2; stroke-linecap: round; }
+.knob-label { color: var(--sx-text-muted); font-size: 10px; text-align: center; }
+.knob-readout { color: var(--sx-text); font-size: 10px; font-variant-numeric: tabular-nums; }
+.knob-error { color: var(--sx-danger); font-size: 10px; }
+.envelope-graph { flex: none; border-radius: 4px; background: var(--sx-canvas); }
+.envelope-fill { fill: rgb(39 215 196 / 14%); }
+.envelope-line { fill: none; stroke: var(--sx-active); stroke-width: 2; }
+.device-card[aria-label="Modulation"] .device-card-body { max-width: 240px; }
