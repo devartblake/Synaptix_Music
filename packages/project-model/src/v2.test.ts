@@ -119,3 +119,18 @@ test("mixer settings survive the v1 to v2 migration", () => {
   assert.equal(v2.tracks[0]?.reverbSend, 0.17);
   assert.deepEqual(v2.mixer, v1.mixer);
 });
+
+test("the project key is optional, strictly shaped, survives migration, and is in both JSON schemas", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const project = createEmptyProject("keyed", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  assert.equal("key" in MusicProjectSchema.parse(project), false);
+  const keyed = MusicProjectSchema.parse({ ...project, key: { tonic: 2, mode: "dorian" } });
+  assert.deepEqual(migrateProjectV1ToV2(keyed).key, { tonic: 2, mode: "dorian" });
+  assert.equal(MusicProjectSchema.safeParse({ ...project, key: { tonic: 12, mode: "minor" } }).success, false);
+  assert.equal(MusicProjectSchema.safeParse({ ...project, key: { tonic: 0, mode: "blues" } }).success, false);
+  for (const version of ["v1", "v2"]) {
+    const schema = JSON.parse(await readFile(new URL(`../../../schemas/project/${version}.json`, import.meta.url), "utf8"));
+    assert.deepEqual(schema.properties.key, { $ref: "#/$defs/musicalKey" }, version);
+    assert.deepEqual(schema.$defs.musicalKey.properties.mode.enum, ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"], version);
+  }
+});

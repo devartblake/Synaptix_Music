@@ -135,3 +135,25 @@ test("marker edits are one undo step each and refuse duplicate ids or blank name
   assert.throws(() => new SetMarkersEditorCommand([], [drop, { ...drop }]), /unique/);
   assert.throws(() => new SetMarkersEditorCommand([], [{ ...drop, name: "  " }]), /name/);
 });
+
+test("the project key is set and cleared as undo steps, and clearing restores the original checksum", async () => {
+  const { SetProjectKeyEditorCommand } = await import("./editor.ts");
+  const { computeProjectChecksum } = await import("./index.ts");
+  const { migrateProjectV1ToV2 } = await import("@synaptix/project-model/v2");
+  const project = createEmptyProject("project-key", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  const original = await computeProjectChecksum(project);
+  const history = new EditorCommandHistory();
+  const keyed = await history.execute(project, new SetProjectKeyEditorCommand(undefined, { tonic: 9, mode: "minor" }));
+  assert.deepEqual(keyed.project.key, { tonic: 9, mode: "minor" });
+  assert.notEqual(await computeProjectChecksum(keyed.project), original);
+  const undone = (await history.undo(keyed.project))!.project;
+  assert.equal("key" in undone, false);
+  // The history stamps revisions, so check the checksum on the command alone: clearing removes the
+  // field, leaving the project byte-identical to one that never had a key.
+  const command = new SetProjectKeyEditorCommand(undefined, { tonic: 9, mode: "minor" });
+  assert.equal(await computeProjectChecksum(command.undo(command.execute(project))), original);
+  // v2 projects carry the key too.
+  const v2 = new SetProjectKeyEditorCommand(undefined, { tonic: 3, mode: "dorian" }).execute(migrateProjectV1ToV2(project));
+  assert.deepEqual(v2.key, { tonic: 3, mode: "dorian" });
+  assert.throws(() => new SetProjectKeyEditorCommand(undefined, { tonic: 12, mode: "major" }), /pitch class/);
+});

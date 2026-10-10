@@ -104,6 +104,14 @@ export const MarkerSchema = z.object({
   kind: z.enum(["section", "cue", "loop-start", "loop-end"])
 });
 
+/** The project's key: tonic as a pitch class (0 = C … 11 = B) and one of the generator's seven modes. */
+export const MUSICAL_KEY_MODES = ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"] as const;
+export const MusicalKeySchema = z.object({
+  tonic: z.number().int().min(0).max(11),
+  mode: z.enum(MUSICAL_KEY_MODES)
+});
+export type MusicalKey = z.infer<typeof MusicalKeySchema>;
+
 export const GenerationMetadataSchema = z.object({
   generatorId: IdSchema,
   generatorVersion: z.string().min(1),
@@ -151,6 +159,8 @@ export const MusicProjectSchema = z.object({
   mixer: MixerSchema.optional(),
   assets: z.array(AssetReferenceSchema).default([]),
   markers: z.array(MarkerSchema).default([]),
+  // Optional, and absent when unset, so projects without a key keep their canonical checksum.
+  key: MusicalKeySchema.optional(),
   generationMetadata: GenerationMetadataSchema.optional()
 });
 

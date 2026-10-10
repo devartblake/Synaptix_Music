@@ -10,6 +10,7 @@ from app.models.project import (
     GenerationMetadata,
     Marker,
     Mixer,
+    MusicalKey,
     MusicProject,
     ProjectMetadata,
     StrictModel,
@@ -103,6 +104,7 @@ class MusicProjectV2(StrictModel):
     assets: list[AssetReference]
     markers: list[Marker]
     mixer: Mixer | None = None
+    key: MusicalKey | None = None
     generationMetadata: GenerationMetadata | None = None
 
 

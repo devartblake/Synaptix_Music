@@ -36,10 +36,20 @@
     "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
     "markers": { "type": "array", "items": { "$ref": "#/$defs/marker" } },
     "mixer": { "$ref": "#/$defs/mixer" },
+    "key": { "$ref": "#/$defs/musicalKey" },
     "generationMetadata": { "$ref": "#/$defs/generationMetadata" }
   },
   "$defs": {
     "id": { "type": "string", "minLength": 1 },
+    "musicalKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tonic", "mode"],
+      "properties": {
+        "tonic": { "type": "integer", "minimum": 0, "maximum": 11 },
+        "mode": { "enum": ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"] }
+      }
+    },
     "position": {
       "type": "object",
       "additionalProperties": false,

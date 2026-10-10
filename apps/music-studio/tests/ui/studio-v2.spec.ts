@@ -194,8 +194,12 @@ test("the docked piano roll names chords, shades the scale and keeps rarer edits
   await roll.getByRole("button", { name: /^G4, tick 0,/ }).click({ modifiers: ["Shift"] });
   await expect(roll.getByRole("status", { name: "Note selection" })).toHaveText("3 selected · C");
 
-  // Scale: Auto reads C major from the notes; a chosen key is remembered for the project.
+  // Scale: Auto reads C major from the notes. Choosing a key saves it in the project (it travels
+  // with the project and undoes like any edit).
   const scale = roll.getByLabel("Scale");
+  await expect(scale.locator("option:checked")).toHaveText("Auto (C major)");
+  await scale.selectOption({ label: "D dorian" });
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(scale.locator("option:checked")).toHaveText("Auto (C major)");
   await scale.selectOption({ label: "A minor" });
   await page.reload();

@@ -1,20 +1,33 @@
-import type { GenerationProposal } from "@synaptix/generator-contracts";
-import { MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
+import { KEY_TONICS, type GenerationProposal } from "@synaptix/generator-contracts";
+import { MUSICAL_KEY_MODES, MusicProjectSchema, type MusicProject } from "@synaptix/project-model";
 import type { EditorCommand } from "@synaptix/command-system/editor";
 
-type ArrangementSnapshot = Pick<MusicProject, "tracks" | "tempoMap" | "markers" | "generationMetadata">;
+type ArrangementSnapshot = Pick<MusicProject, "tracks" | "tempoMap" | "markers" | "key" | "generationMetadata">;
 
 function snapshot(project: MusicProject): ArrangementSnapshot {
   return structuredClone({
     tracks: project.tracks,
     tempoMap: project.tempoMap,
     markers: project.markers,
+    key: project.key,
     generationMetadata: project.generationMetadata
   });
 }
 
 function restore(project: MusicProject, value: ArrangementSnapshot): MusicProject {
-  return MusicProjectSchema.parse({ ...structuredClone(project), ...structuredClone(value) });
+  const next = { ...structuredClone(project), ...structuredClone(value) };
+  // An absent key stays absent (not `key: undefined`), so a keyless project keeps its checksum.
+  if (!next.key) delete next.key;
+  return MusicProjectSchema.parse(next);
+}
+
+/** "Eb minor" → { tonic: 3, mode: "minor" }; null for anything else. */
+export function projectKeyFromGeneration(key: string): MusicProject["key"] | null {
+  const space = key.indexOf(" ");
+  const tonic = (KEY_TONICS as readonly string[]).indexOf(key.slice(0, space));
+  const mode = key.slice(space + 1);
+  return space > 0 && tonic >= 0 && (MUSICAL_KEY_MODES as readonly string[]).includes(mode)
+    ? { tonic, mode: mode as NonNullable<MusicProject["key"]>["mode"] } : null;
 }
 
 export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
@@ -46,6 +59,8 @@ export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
     return restore(project, {
       tracks,
       tempoMap: [{ id: "tempo-generated-1", position: { bar: 0, beat: 0, tick: 0 }, bpm: this.proposal.tempo }],
+      // The generator picked a key: the project now carries it (undo restores the previous one).
+      key: projectKeyFromGeneration(this.proposal.key) ?? project.key,
       markers: this.proposal.sections.map((section) => ({ id: section.id, name: section.name, position: { bar: section.startBar, beat: 0, tick: 0 }, kind: "section" as const })),
       generationMetadata: {
         generatorId: this.proposal.provenance.generatorId,

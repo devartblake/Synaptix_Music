@@ -169,6 +169,38 @@ export class RenameProjectEditorCommand {
   undo<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.previousName); }
 }
 
+export type ProjectKey = NonNullable<MusicProject["key"]>;
+
+/**
+ * Sets or clears the project's key, as one undo step; it works on v1 and v2 projects. Clearing
+ * removes the field, so the project's checksum is what it was before any key was set.
+ */
+export class SetProjectKeyEditorCommand {
+  readonly id: string;
+  readonly kind = "set-project-key";
+
+  constructor(
+    readonly previous: ProjectKey | undefined,
+    readonly next: ProjectKey | undefined,
+    options: CommandOptions = {}
+  ) {
+    if (next && !(Number.isInteger(next.tonic) && next.tonic >= 0 && next.tonic <= 11)) {
+      throw new RangeError("A key's tonic must be a pitch class from 0 to 11.");
+    }
+    this.id = commandId(options);
+  }
+
+  private write<P extends VersionedMusicProject>(project: P, key: ProjectKey | undefined): P {
+    const next = clone(project);
+    if (key) next.key = { ...key };
+    else delete next.key;
+    return next;
+  }
+
+  execute<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.next); }
+  undo<P extends VersionedMusicProject>(project: P): P { return this.write(project, this.previous); }
+}
+
 export class SetLoopEnabledEditorCommand implements EditorCommand {
   readonly id: string;
   readonly kind = "set-loop-enabled";
