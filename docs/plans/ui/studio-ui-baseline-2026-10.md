@@ -1,6 +1,6 @@
 # Studio UI Baseline (October 2026)
 
-**Status (2026-10-10):** Reference. These screenshots show the studio as it stands before the DAW-style redesign. Use them as the "before" for that work. The completed [Studio UI Modernization v1](studio-ui-modernization-v1.md) built this shell.
+**Status (2026-10-10):** Reference. These screenshots show the studio as it stands before the DAW-style redesign. Use them as the "before" for that work. The completed [Studio UI Modernization v1](studio-ui-modernization-v1.md) built this shell. The redesign that follows it is [Studio UI v2](studio-ui-v2.md).
 
 ## How the screenshots were made
 
