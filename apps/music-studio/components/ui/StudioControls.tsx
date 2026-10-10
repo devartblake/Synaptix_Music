@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import styles from "./studio-controls.module.css";
 
 export function Button({
@@ -82,13 +82,57 @@ export function ViewTabs({
   );
 }
 
-/** A disclosure for form controls; deliberately not an ARIA application menu. */
-export function DisclosureMenu({ label, children }: { label: string; children: ReactNode }) {
+const FLOATING_GAP = 6;
+const FLOATING_MARGIN = 8;
+
+/** Where a floating panel goes: under the trigger, or above it when there is more room there. */
+function floatingPosition(trigger: DOMRect, panel: { width: number; height: number }, viewport: { width: number; height: number }): { left: number; top: number; maxHeight: number } {
+  const below = viewport.height - trigger.bottom - FLOATING_GAP - FLOATING_MARGIN;
+  const above = trigger.top - FLOATING_GAP - FLOATING_MARGIN;
+  const placeAbove = panel.height > below && above > below;
+  const maxHeight = Math.max(120, placeAbove ? above : below);
+  const height = Math.min(panel.height, maxHeight);
+  // Right-aligned to the trigger, like the in-flow menu, and kept on screen.
+  const left = Math.max(FLOATING_MARGIN, Math.min(trigger.right - panel.width, viewport.width - panel.width - FLOATING_MARGIN));
+  return {
+    left,
+    top: placeAbove ? trigger.top - FLOATING_GAP - height : trigger.bottom + FLOATING_GAP,
+    maxHeight
+  };
+}
+
+/**
+ * A disclosure for form controls; deliberately not an ARIA application menu. `floating` shows the
+ * panel in the browser's top layer, positioned from the trigger, so a short or scrolling container
+ * (like the DAW dock) can't clip or cover it, and what's behind it stays in view.
+ */
+export function DisclosureMenu({ label, children, floating = false }: { label: string; children: ReactNode; floating?: boolean }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const panel = content.current;
+    if (!floating || !open || !panel || !trigger.current) return;
+    if (!panel.matches(":popover-open")) panel.showPopover?.();
+    // Placed directly on the element (before paint, so it never shows in the wrong spot or hidden,
+    // which would stop the first control taking focus). Natural height = content plus borders.
+    const place = () => {
+      if (!trigger.current) return;
+      const height = panel.scrollHeight + panel.offsetHeight - panel.clientHeight;
+      const { left, top, maxHeight } = floatingPosition(trigger.current.getBoundingClientRect(),
+        { width: panel.offsetWidth, height }, { width: innerWidth, height: innerHeight });
+      Object.assign(panel.style, { left: `${left}px`, top: `${top}px`, maxHeight: `${maxHeight}px` });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [floating, open]);
   useEffect(() => {
     if (!open) return;
     content.current
@@ -97,8 +141,20 @@ export function DisclosureMenu({ label, children }: { label: string; children: R
     const dismiss = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
+    // A control that disables itself while its edit saves drops focus to the body, out of reach
+    // of the root's key handler; Escape still closes the menu then.
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.target !== document.body) return;
+      event.preventDefault();
+      setOpen(false);
+      trigger.current?.focus();
+    };
     document.addEventListener("pointerdown", dismiss);
-    return () => document.removeEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
   }, [open]);
   return (
     <div
@@ -122,9 +178,10 @@ export function DisclosureMenu({ label, children }: { label: string; children: R
         <div
           id={id}
           ref={content}
-          className={styles.menuContent}
+          className={floating ? `${styles.menuContent} ${styles.menuFloating}` : styles.menuContent}
           role="group"
           aria-label={`${label} controls`}
+          popover={floating ? "manual" : undefined}
         >
           {children}
         </div>

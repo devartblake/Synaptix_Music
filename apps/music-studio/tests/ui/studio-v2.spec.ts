@@ -308,6 +308,50 @@ test("selected notes are renamed and cleared as undoable edits, and their labels
   ).toEqual([]);
 });
 
+test("the piano roll's Edit menu floats above the dock, fully visible, and stays open for repeated edits", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
+  const note = roll.getByRole("group", { name: "MIDI notes" }).locator("[data-note-id]").first();
+  const id = await note.getAttribute("data-note-id");
+  const pitch = Number(await note.getAttribute("data-pitch"));
+  await note.click();
+
+  // At the default dock height the panel is taller than the dock: it must still be wholly on screen,
+  // and nothing (the dock edge, the Browser) may cover its controls.
+  await roll.getByRole("button", { name: "Edit", exact: true }).click();
+  const panel = page.getByRole("group", { name: "Edit controls" });
+  const box = (await panel.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  for (const name of ["Duplicate", "Delete", "Stop sound"]) {
+    const control = panel.getByRole("button", { name, exact: true });
+    expect(await control.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    }), `${name} is covered`).toBe(true);
+  }
+
+  // The notes stay in view and the panel stays open, so +1 can be pressed again and again.
+  const moved = roll.locator(`[data-note-id="${id}"]`);
+  await panel.getByRole("button", { name: "Transpose up" }).click();
+  await expect(moved).toHaveAttribute("data-pitch", String(pitch + 1));
+  await panel.getByRole("button", { name: "Transpose up" }).click();
+  await expect(moved).toHaveAttribute("data-pitch", String(pitch + 2));
+  await expect(panel).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(roll.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
+});
+
 test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
