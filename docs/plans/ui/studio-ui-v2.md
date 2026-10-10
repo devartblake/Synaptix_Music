@@ -2,7 +2,7 @@
 
 **Status (2026-10-10):** Proposed. No v2 code exists yet; v1 ([Studio UI Modernization v1](studio-ui-modernization-v1.md)) is complete and is the current studio. The "before" screenshots and the problems this plan fixes are in the [Studio UI baseline](studio-ui-baseline-2026-10.md).
 
-**References:** FL Studio 2026 (2026.1.5, August 2026) and Ableton Live 12.4 (12.4.5, August 2026).
+**References:** FL Studio 2026 (2026.1.5, August 2026; [release page](https://www.image-line.com/fl-studio/release/2026)) and Ableton Live 12.4 (12.4.5, August 2026).
 
 ## Goal
 
@@ -111,10 +111,10 @@ New for v2:
 
 Each step is one PR with its own visual baselines and UI tests.
 
-1. **Split `StudioClient.tsx`.** It is 982 lines with large inline JSX. Move the transport, sidebar, workspaces and inspector into components with no visual change, and add `layout: "v1" | "v2"` to `use-studio-layout`. **Done when** all current UI tests and baselines pass unchanged.
-2. **v2 shell.** Behind the switch: the CSS grid (transport, browser, timeline, dock, inspector, status bar). The dock hosts the existing editors as they are, and the transport bar takes over the Workspace dropdown and sidebar navigation. This also fixes the glyph-and-label run-on ("AArrangement"). **Done when** every v1 workspace is reachable in v2 by mouse and keyboard, and axe is clean.
+1. **Split `StudioClient.tsx`.** **Done.** It was 982 lines with large inline JSX. The top bar, banners, view bar, sidebar, inspector and device controls are now components (`StudioTopbar`, `StudioBanners`, `StudioViewbar`/`StudioSidebar`, `StudioInspector`, `DeviceControls`/`DevicesWorkspace`), with no visual change. `StudioClient.tsx` is down to 734 lines. The `layout: "v1" | "v2"` switch moves to step 2, which is the first step to use it.
+2. **v2 shell.** Add `layout: "v1" | "v2"` to `use-studio-layout`, then build behind it: the CSS grid (transport, browser, timeline, dock, inspector, status bar). The dock hosts the existing editors as they are, and the transport bar takes over the Workspace dropdown and sidebar navigation. This also fixes the glyph-and-label run-on ("AArrangement"). **Done when** every v1 workspace is reachable in v2 by mouse and keyboard, and axe is clean.
 3. **Timeline.** Family-coloured track headers with mini fader, meter, mute/solo and arm; coloured clips; the loop brace (drag to set it, L to loop the selection); a section-marker lane; and the bars.beats/time counters. The empty project shows a "drag an instrument here" target and a first-beat walkthrough link. **Done when** loop and markers are commands with undo, and meters animate during playback.
-4. **Dock: Piano roll.** Real keys; a one-row toolbar (Draw, Select, Slice, grid, snap, scale, chords, quantize, humanize, zoom); scale shading from the project key; ghost notes from one chosen track. The step sequencer opens automatically for drum clips. The "New note pitch/tick" form fields go away, since drawing replaces them. **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
+4. **Dock: Piano roll.** Real keys; a one-row toolbar (Draw, Select, Slice, grid, snap, scale, chords, quantize, humanize, zoom); scale shading from the project key; ghost notes from one chosen track. The step sequencer opens automatically for drum clips. The "New note pitch/tick" form fields go away, since drawing replaces them. From FL Studio 2026: a Chord Panel toggled from the toolbar that names the chord under the playhead or selection, and optional note labels. **Done when** current piano-roll tests pass, and new ones cover the scale and chord tools.
 5. **Dock: Devices.** A left-to-right chain with knobs (arrow keys, double-click to reset) and foldable devices; Modulation folds as a device. The Devices workspace is removed. **Done when** every current parameter is reachable and the device-panel tests are ported.
 6. **Dock: Mixer.** Channel strips with vertical faders, live meters, insert slots (the existing chain shown as slots), pan and reverb-send knobs, mute/solo and routing. Master shows loudness and peak. The mixer drawer is removed. **Done when** mixer tests are ported, and meters show peak and RMS per strip.
 7. **Browser and inspector.** Search; family groups; drag to add or swap a track; Patterns (starter phrases and generator output); Project (clips, renders). The inspector follows the selection. **Done when** dragging has a keyboard equivalent (Enter adds a track, Shift+Enter swaps), and the instrument-picker tests are ported.
@@ -142,3 +142,4 @@ Each step is one PR with its own visual baselines and UI tests.
 ## Revision
 
 - 2026-10-10: first version, with an HTML mockup and four rendered variants.
+- 2026-10-10: step 1 done. Added the FL Studio 2026 Chord Panel and note labels to step 4, and moved the layout switch to step 2.

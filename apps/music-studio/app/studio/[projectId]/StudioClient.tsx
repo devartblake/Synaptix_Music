@@ -1,14 +1,13 @@
 "use client";
 
-import { Badge, Button, DisclosureMenu, ViewTabs } from "../../../components/ui/StudioControls";
-import { ResizeHandle } from "../../../components/ui/ResizeHandle";
+import { Badge, Button, ViewTabs } from "../../../components/ui/StudioControls";
 import { useStudioLayout } from "../../../lib/editor/use-studio-layout";
-import { PlatformAccount, PLATFORM_SESSION_EVENT } from "../../../components/PlatformAccount";
+import { PLATFORM_SESSION_EVENT } from "../../../components/PlatformAccount";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectRevision } from "@synaptix/command-system";
-import { SetDeviceEnabledEditorCommand, SetDeviceParameterEditorCommand } from "@synaptix/command-system/device";
+import { SetDeviceParameterEditorCommand } from "@synaptix/command-system/device";
 import { AddTrackEditorCommand } from "@synaptix/command-system/track";
 import {
   EditorCommandHistory,
@@ -16,7 +15,6 @@ import {
   SetLoopEnabledEditorCommand,
   SetTempoEditorCommand,
   SetTrackPanEditorCommand,
-  SetTrackSendEditorCommand,
   SetTrackVolumeEditorCommand,
   type EditorCommand
 } from "@synaptix/command-system/editor";
@@ -28,27 +26,6 @@ import {
   builtinProjectView,
   createFrequencyDroneTrack,
   createInstrumentTrack,
-  instrumentDefinition,
-  resolveInstrumentDefinition,
-  DEVICE_PARAMETER_DEFINITIONS,
-  type DeviceParameterUnit,
-  FREQUENCY_DRONE_DEVICE_TYPE,
-  resolveFrequencyDroneDevice,
-  ENVELOPE_ATTACK_PARAMETER,
-  ENVELOPE_DECAY_PARAMETER,
-  ENVELOPE_RELEASE_PARAMETER,
-  ENVELOPE_SUSTAIN_PARAMETER,
-  FILTER_FREQUENCY_PARAMETER,
-  FILTER_RESONANCE_PARAMETER,
-  FILTER_ENV_AMOUNT_PARAMETER,
-  FILTER_ENV_DECAY_PARAMETER,
-  LFO_CUTOFF_PARAMETER,
-  LFO_RATE_PARAMETER,
-  TREMOLO_PARAMETER,
-  VIBRATO_PARAMETER,
-  primaryDevice,
-  resolveEffectiveInstrumentSettings,
-  REVERB_SEND_PARAMETER,
   type PluginRuntimeStatus
 } from "@synaptix/daw-engine";
 import type { GenerationProposal } from "@synaptix/generator-contracts";
@@ -80,16 +57,17 @@ import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-pr
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
 import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
-import { InstrumentIcon } from "./InstrumentIcon";
-import { InstrumentPicker } from "./InstrumentPicker";
-import { MasterMeter } from "./MasterMeter";
 import { MixerDrawer } from "./MixerDrawer";
+import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
+import { StudioBanners } from "./StudioBanners";
+import { StudioInspector } from "./StudioInspector";
+import { StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
+import { StudioTopbar } from "./StudioTopbar";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack } from "./PluginRack";
 import { createFreezeManifest, FreezeError, freezeReference, storedRevision } from "../../../lib/platform/plugin-freeze-model";
 import { createPlatformFrozenAudioSource } from "../../../lib/platform/frozen-audio-source";
-import { ProjectTitle } from "./ProjectTitle";
 import { studioStartTick } from "../../../lib/player/playback-model";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
@@ -104,7 +82,6 @@ import {
   readRecovery,
   type RecoveryEntry
 } from "../../../lib/editor/recovery-journal";
-import { editorKindForTrack, findEditorClip, type EditorKind } from "../../../lib/editor/editor-clip-target";
 import {
   bindBeforeUnload,
   EditorSessionCoordinator,
@@ -179,41 +156,8 @@ function createStarterProjectV1(projectId: string, options: CreateEmptyProjectOp
   return project;
 }
 
-type NumericSettingsKey =
-  | "filterFrequency" | "resonance" | "attack" | "decay" | "sustain" | "release" | "reverbSend"
-  | "lfoRate" | "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves" | "filterEnvDecay";
-
-const PARAMETER_SETTINGS_KEY: Record<string, NumericSettingsKey> = {
-  [FILTER_FREQUENCY_PARAMETER]: "filterFrequency",
-  [FILTER_RESONANCE_PARAMETER]: "resonance",
-  [LFO_RATE_PARAMETER]: "lfoRate",
-  [VIBRATO_PARAMETER]: "vibratoCents",
-  [LFO_CUTOFF_PARAMETER]: "lfoCutoffOctaves",
-  [TREMOLO_PARAMETER]: "tremolo",
-  [FILTER_ENV_AMOUNT_PARAMETER]: "filterEnvOctaves",
-  [FILTER_ENV_DECAY_PARAMETER]: "filterEnvDecay",
-  [ENVELOPE_ATTACK_PARAMETER]: "attack",
-  [ENVELOPE_DECAY_PARAMETER]: "decay",
-  [ENVELOPE_SUSTAIN_PARAMETER]: "sustain",
-  [ENVELOPE_RELEASE_PARAMETER]: "release",
-  [REVERB_SEND_PARAMETER]: "reverbSend"
-};
-
-// Shown in the device panel's collapsible Modulation section.
-const MODULATION_PARAMETERS = new Set([
-  FILTER_ENV_AMOUNT_PARAMETER, FILTER_ENV_DECAY_PARAMETER, LFO_RATE_PARAMETER,
-  VIBRATO_PARAMETER, LFO_CUTOFF_PARAMETER, TREMOLO_PARAMETER
-]);
-
-/** Whether any modulation is audible: rates and decay times do nothing while every depth is 0. */
-function modulationInUse(settings: Pick<Record<NumericSettingsKey, number>, "vibratoCents" | "lfoCutoffOctaves" | "tremolo" | "filterEnvOctaves">): boolean {
-  return settings.vibratoCents > 0 || settings.lfoCutoffOctaves > 0 || settings.tremolo > 0 || settings.filterEnvOctaves !== 0;
-}
-
 const INITIAL_SYNC: ProjectSyncSnapshot = { state: "idle", lastSyncedAt: null, conflicts: [], error: null };
 type DeviceGesture = { trackId: string; deviceId: string; parameterId: string; initial: number };
-type ActiveClip = { trackId: string; clipId: string };
-type Workspace = "arrangement" | "generation" | "adaptive" | "render" | "devices";
 
 export default function StudioClient({ projectId }: { projectId: string }) {
   // Browser-only projects (such as the local demo) are saved locally and never uploaded.
@@ -644,57 +588,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     await execute(new SetDeviceParameterEditorCommand(trackId, deviceId, parameterId, gesture.initial, next));
   }
 
-  function formatParameterValue(unit: DeviceParameterUnit, value: number): string {
-    if (unit === "count") return String(Math.round(value));
-    // Slow rates (an LFO) need their decimals; audio frequencies don't.
-    if (unit === "hz") return value < 100 ? `${value.toFixed(2)} Hz` : `${Math.round(value)} Hz`;
-    if (unit === "cents") return `${Math.round(value)} ct`;
-    if (unit === "octaves") return `${value.toFixed(2)} oct`;
-    if (unit === "seconds") return `${value.toFixed(3)} s`;
-    return value.toFixed(2);
-  }
-
-  function renderDeviceControls(track: Track): React.ReactNode {
-    const device = primaryDevice(track) ?? track.devices[0];
-    if (!device) return null;
-    const isDrone = device.deviceType === FREQUENCY_DRONE_DEVICE_TYPE;
-    const settings = isDrone ? resolveFrequencyDroneDevice(device) : resolveEffectiveInstrumentSettings({ ...track, devices: [{ ...device, enabled: true }] });
-
-    return (
-      <div style={{ display: "grid", gap: 6, borderTop: "1px solid #2a2f38", paddingTop: 8, marginTop: 4 }}>
-        <Button aria-label={`${track.name} device enabled`} aria-pressed={device.enabled} onClick={() => void execute(new SetDeviceEnabledEditorCommand(track.id, device.id, device.enabled, !device.enabled))}>
-          Device {device.enabled ? "On" : "Off"}
-        </Button>
-        {(() => {
-          const definitions = DEVICE_PARAMETER_DEFINITIONS.filter((definition) => isDrone ? definition.id.startsWith("drone") : !definition.id.startsWith("drone"));
-          const renderSlider = (definition: (typeof definitions)[number]) => {
-          const droneKeys: Record<string, keyof ReturnType<typeof resolveFrequencyDroneDevice>> = { droneFrequencyHz:"frequencyHz", droneGain:"gain", droneHarmonics:"harmonics", droneModulationRateHz:"modulationRateHz", droneModulationDepth:"modulationDepth", droneFilterHz:"filterHz", droneStereoOffsetHz:"stereoOffsetHz" };
-          const value = isDrone ? settings[droneKeys[definition.id] as keyof typeof settings] as number : settings[PARAMETER_SETTINGS_KEY[definition.id] as keyof typeof settings] as number;
-          const step = definition.unit === "count" || definition.unit === "cents" ? 1 : definition.unit === "hz" ? (definition.id === "droneFrequencyHz" ? 0.1 : definition.maximum <= 20 ? 0.05 : 10) : definition.unit === "ratio" || definition.unit === "octaves" ? 0.01 : 0.001;
-          return (
-            <CommitSlider key={definition.id} label={definition.label} value={value}
-              min={definition.minimum} max={definition.maximum} step={step} disabled={!hydrated}
-              format={(next) => formatParameterValue(definition.unit, next)}
-              onCommit={(next) => execute(definition.id === REVERB_SEND_PARAMETER
-                ? liftEditorCommandToV2(new SetTrackSendEditorCommand(track.id, track.reverbSend, next))
-                : new SetDeviceParameterEditorCommand(track.id, device.id, definition.id, value, next))} />
-          );
-          };
-          if (isDrone) return definitions.map(renderSlider);
-          const modulation = definitions.filter((definition) => MODULATION_PARAMETERS.has(definition.id));
-          const inUse = modulationInUse(settings as ReturnType<typeof resolveEffectiveInstrumentSettings>);
-          return <>
-            {definitions.filter((definition) => !MODULATION_PARAMETERS.has(definition.id)).map(renderSlider)}
-            <details className="device-modulation" open={modulationOpen[track.id] ?? inUse}
-              onToggle={(event) => { const open = event.currentTarget.open; setModulationOpen((current) => current[track.id] === open ? current : { ...current, [track.id]: open }); }}>
-              <summary>Modulation{inUse && <span className="device-modulation-state"> · in use</span>}</summary>
-              <div className="device-modulation-controls">{modulation.map(renderSlider)}</div>
-            </details>
-          </>;
-        })()}
-      </div>
-    );
-  }
+  const toggleModulation = (trackId: string, open: boolean) =>
+    setModulationOpen((current) => current[trackId] === open ? current : { ...current, [trackId]: open });
+  const deviceControls = { hydrated, onExecute: execute, modulationOpen, onModulationToggle: toggleModulation };
 
   async function play(): Promise<void> { await engine.play(); setPlaying(true); }
   function pause(): void { engine.pause(); setPlaying(false); }
@@ -733,156 +629,32 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   return (
     <main className={`studio-shell${mixerOpen ? " studio-shell-mixer-open" : ""}`}
       style={{ "--studio-mixer-height": `${panelLayout.mixerHeight}px` } as React.CSSProperties}>
-      <header className="studio-topbar">
-        <div className="studio-brand">
-          <a className="studio-home" href="/" aria-label="Back to projects"><span className="studio-mark" aria-hidden="true">S</span><span>Projects</span></a>
-          <div className="studio-title">
-            <ProjectTitle name={project.metadata.name} disabled={!hydrated || session.readOnly}
-              onRename={(next) => execute(new RenameProjectEditorCommand(project.metadata.name, next))} />
-            <small>{project.tempoMap[0]?.bpm ?? 120} BPM · {storageStatus}</small>
-          </div>
-        </div>
-        <div className="transport" aria-label="Transport controls">
-          <Button className="transport-primary" onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</Button>
-          <Button onClick={stop}>Stop</Button>
-          <Button disabled={!history.canUndo} onClick={() => void undo()}>Undo</Button>
-          <Button disabled={!history.canRedo} onClick={() => void redo()}>Redo</Button>
-          <Button onClick={() => void executeV1(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}>
-            Loop: {project.transport.loopEnabled ? "On" : "Off"}
-          </Button>
-          <label>Tempo <input type="number" min={20} max={300} value={project.tempoMap[0]?.bpm ?? 120}
-            onChange={(event) => {
-              const raw = event.currentTarget.value;
-              const next = event.currentTarget.valueAsNumber;
-              const current = project.tempoMap[0]?.bpm ?? 120;
-              if (raw === "" || !Number.isFinite(next) || next < 20 || next > 300 || next === current) return;
-              void executeV1(new SetTempoEditorCommand(current, next));
-            }} style={{ width: 64 }} /></label>
-          <Button onClick={() => void syncNow()}>Sync now</Button>
-        </div>
-        <div className="studio-status">
-          <span className="status-pill" role="status" aria-label="Save state">
-            <span className={`status-dot ${session.state === "failed" ? "danger" : session.state === "saving" ? "warning" : ""}`} />
-            {session.readOnly ? "Read-only" : session.state === "saving" ? "Saving…" : session.state === "failed" ? "Not saved" : session.state === "unsaved" ? "Unsaved" : "Saved"}
-          </span>
-          <span className="status-pill"><span className={`status-dot ${syncTone}`} />{syncLabel}</span>
-          <MasterMeter engine={engine} />
-          <PlatformAccount compact />
-        </div>
-      </header>
+      <StudioTopbar engine={engine} name={project.metadata.name} bpm={project.tempoMap[0]?.bpm ?? 120}
+        storageStatus={storageStatus} renameDisabled={!hydrated || session.readOnly}
+        onRename={(next) => execute(new RenameProjectEditorCommand(project.metadata.name, next))}
+        playing={playing} onPlay={() => void play()} onPause={pause} onStop={stop}
+        canUndo={history.canUndo} canRedo={history.canRedo} onUndo={() => void undo()} onRedo={() => void redo()}
+        loopEnabled={project.transport.loopEnabled}
+        onToggleLoop={() => void executeV1(new SetLoopEnabledEditorCommand(project.transport.loopEnabled, !project.transport.loopEnabled))}
+        onTempo={(next) => void executeV1(new SetTempoEditorCommand(project.tempoMap[0]?.bpm ?? 120, next))}
+        onSyncNow={() => void syncNow()} saveState={session} syncLabel={syncLabel} syncTone={syncTone} />
 
-      {recovery && !session.readOnly && (
-        <section className="conflict-banner" role="status">
-          <strong>Unsaved changes were recovered</strong>
-          <p style={{ margin: "6px 0" }}>
-            Edits from {new Date(recovery.journaledAt).toLocaleString()} didn’t finish saving before
-            the studio closed. Restore them to continue from there, or discard them to keep the
-            project as it was last saved.
-          </p>
-          <Button onClick={() => void restoreRecovery(recovery)}>Restore changes</Button>{" "}
-          <Button onClick={discardRecovery}>Discard</Button>
-        </section>
-      )}
-      {session.state === "failed" && (
-        <section className="conflict-banner" role="alert">
-          <strong>Your latest changes aren’t saved</strong>
-          <p style={{ margin: "6px 0" }}>
-            {session.error ?? "Browser storage refused the save."} Keep this tab open, then retry.
-            Your edits are still here.
-          </p>
-          <Button onClick={() => void retrySave()}>Retry save</Button>
-        </section>
-      )}
-      {(storageHealth.level === "warning" || storageHealth.level === "critical") && session.state !== "failed" && (
-        <section className="conflict-banner" role="status">
-          <strong>{storageHealth.level === "critical" ? "Browser storage is almost full" : "Browser storage is getting full"}</strong>
-          <p style={{ margin: "6px 0" }}>
-            New edits may stop saving. From the project list, export projects you want to keep and
-            delete ones you no longer need.
-          </p>
-        </section>
-      )}
-      {session.readOnly && (
-        <section className="conflict-banner" role="status">
-          <strong>This project is open in another tab</strong>
-          <p style={{ margin: "6px 0" }}>
-            Editing is paused here so the two tabs can’t overwrite each other. Close the other
-            tab to keep editing in this one.
-          </p>
-        </section>
-      )}
+      <StudioBanners recovery={recovery} readOnly={session.readOnly} saveFailed={session.state === "failed"}
+        saveError={session.error} storageLevel={storageHealth.level}
+        onRestore={(entry) => void restoreRecovery(entry)} onDiscard={discardRecovery} onRetrySave={() => void retrySave()} />
 
-      <div className="studio-viewbar" aria-label="Workspace and panels">
-        <label>Workspace <select value={workspace} onChange={(event) => setWorkspace(event.target.value as Workspace)}>
-          <option value="arrangement">Arrangement</option>
-          <option value="generation">Generate</option>
-          <option value="adaptive">Adaptive states</option>
-          <option value="render">Render / export</option>
-          <option value="devices">Devices & effects</option>
-        </select></label>
-        <div className="studio-view-actions">
-        <DisclosureMenu label="Layout">
-          <Button aria-pressed={panelLayout.navigationVisible} disabled={panelLayout.mobile}
-            onClick={() => panelLayout.update({ navigationOpen: !panelLayout.layout.navigationOpen })}>Navigation panel</Button>
-          <Button aria-pressed={panelLayout.inspectorVisible} disabled={panelLayout.narrow}
-            onClick={() => panelLayout.update({ inspectorOpen: !panelLayout.layout.inspectorOpen })}>Inspector panel</Button>
-          {panelLayout.narrow && <p>Side panels hide on smaller screens to keep the editor usable. Your desktop layout is remembered.</p>}
-          <Button onClick={() => { panelLayout.reset(); changeMixerOpen(false); }}>Reset layout</Button>
-          <p>Drag a panel edge to resize, or focus it and use the arrow keys.</p>
-        </DisclosureMenu>
-        <Button ref={mixerToggleRef} aria-expanded={mixerOpen} aria-controls="studio-mixer"
-          onClick={() => changeMixerOpen(!mixerOpen)}>Mixer</Button>
-        </div>
-      </div>
+      <StudioViewbar ref={mixerToggleRef} workspace={workspace} onWorkspace={setWorkspace} panelLayout={panelLayout}
+        mixerOpen={mixerOpen} onMixerOpen={changeMixerOpen} />
 
       <div className="studio-grid" style={{
         "--studio-nav-width": panelLayout.navigationVisible ? `${panelLayout.navigationWidth}px` : "0px",
         "--studio-inspector-width": panelLayout.inspectorVisible ? `${panelLayout.layout.inspectorWidth}px` : "0px"
       } as React.CSSProperties}>
-        <aside id="studio-navigation" className="studio-sidebar" aria-label="Studio navigation" hidden={!panelLayout.navigationVisible}>
-          <ResizeHandle label="Navigation panel size" controls="studio-navigation" orientation="vertical"
-            value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />
-          <div className="studio-sidebar-scroll">
-          <p className="panel-label">Workspace</p>
-          <nav className="studio-nav">
-            <Button aria-current={workspace === "arrangement" && !activeClip ? "page" : undefined} onClick={() => { setWorkspace("arrangement"); setActiveClip(null); }}><span><span className="nav-glyph">A</span>Arrangement</span></Button>
-            {([
-              ["piano-roll", "P", "Piano roll", "Add a melodic instrument track with a clip to use the piano roll"],
-              ["drum-sequencer", "D", "Drum sequencer", "Add a drum track with a clip to use the drum sequencer"]
-            ] as const).map(([kind, glyph, label, unavailable]) => {
-              const target = findEditorClip(builtinView, kind as EditorKind, activeClip);
-              const open = workspace === "arrangement" && activeClip !== null
-                && editorKindForTrack(builtinView, activeClip.trackId) === kind;
-              return (
-                <Button key={kind} disabled={!target} title={target ? undefined : unavailable}
-                  aria-current={open ? "page" : undefined}
-                  onClick={() => { if (target) { setWorkspace("arrangement"); setActiveClip(target); } }}>
-                  <span><span className="nav-glyph">{glyph}</span>{label}</span>
-                </Button>
-              );
-            })}
-            <Button aria-expanded={mixerOpen} aria-controls="studio-mixer" onClick={() => changeMixerOpen(!mixerOpen)}><span><span className="nav-glyph">M</span>Mixer</span></Button>
-          </nav>
-          <p className="panel-label" style={{ marginTop: 22 }}>SynaptixPlay</p>
-          <nav className="studio-nav">
-            <Button aria-current={workspace === "generation" ? "page" : undefined} onClick={() => setWorkspace("generation")}><span><span className="nav-glyph">G</span>Generate</span><span className="nav-badge">AI</span></Button>
-            <Button aria-current={workspace === "adaptive" ? "page" : undefined} onClick={() => setWorkspace("adaptive")}><span><span className="nav-glyph">S</span>Adaptive states</span><span className="nav-badge">13</span></Button>
-            <Button aria-current={workspace === "render" ? "page" : undefined} onClick={() => setWorkspace("render")}><span><span className="nav-glyph" aria-hidden="true">R</span>Render / export</span></Button>
-            <Button aria-current={workspace === "devices" ? "page" : undefined} onClick={() => setWorkspace("devices")}>Devices & effects</Button>
-          </nav>
-          <section className="sidebar-card" aria-label="Add instrument">
-            <strong>Instruments</strong>
-            <InstrumentPicker value={newInstrument} onChange={setNewInstrument} />
-            <p>{instrumentDefinition(newInstrument)?.description}</p>
-            <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add instrument track</Button>
-          </section>
-          <section className="sidebar-card" aria-label="Adaptive audio preview">
-            <strong>Runtime preview</strong>
-            <p>Audition rendered states, loops, and transitions with runtime events.</p>
-            <Button onClick={() => { stop(); setWorkspace("adaptive"); }}>Open package preview</Button>
-          </section>
-          </div>
-        </aside>
+        <StudioSidebar project={builtinView} panelLayout={panelLayout} workspace={workspace} onWorkspace={setWorkspace}
+          activeClip={activeClip} onActiveClip={setActiveClip} mixerOpen={mixerOpen} onMixerOpen={changeMixerOpen}
+          newInstrument={newInstrument} onNewInstrument={setNewInstrument}
+          onAddInstrument={(deviceType) => void addInstrument(deviceType)} addDisabled={!hydrated}
+          onOpenPreview={() => { stop(); setWorkspace("adaptive"); }} />
 
         <section className="studio-workspace" aria-label="Project workspace">
           {workspace === "arrangement" && <div className="workspace-tabs">
@@ -914,7 +686,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
               format={(value) => `${value} dB`} onCommit={(value) => executeV1(new SetTrackVolumeEditorCommand(track.id, track.volumeDb, value))} />
             <CommitSlider label="Pan" value={track.pan} min={-1} max={1} step={0.1} disabled={!hydrated}
               format={(value) => value.toFixed(1)} onCommit={(value) => executeV1(new SetTrackPanEditorCommand(track.id, track.pan, value))} />
-            {renderDeviceControls(track)}
+            <DeviceControls track={track} {...deviceControls} />
             {pluginTrack && <PluginRack track={pluginTrack}
               statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
               onExecute={(command) => void execute(command)}
@@ -946,33 +718,13 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         onClose={() => setWorkspace("arrangement")}
       />}
       {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={() => setWorkspace("arrangement")} onSync={async () => coordinatorRef.current?.drain()} />}
-      {workspace === "devices" && <section aria-label="Devices and effects" className="device-workspace"><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p>{project.tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} deviceType={definition.deviceType} size={28} />{definition.label}</p>; })()}{renderDeviceControls(track)}</fieldset>)}<Button onClick={() => setWorkspace("arrangement")}>Back to arrangement</Button></section>}
+      {workspace === "devices" && <DevicesWorkspace tracks={project.tracks} {...deviceControls} onClose={() => setWorkspace("arrangement")} />}
       {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={() => setWorkspace("arrangement")} />}
         </section>
 
-        <aside id="studio-inspector" className="studio-inspector" aria-label="Project inspector" hidden={!panelLayout.inspectorVisible}>
-          <div className="inspector-resize-edge"><ResizeHandle label="Inspector panel size" controls="studio-inspector" orientation="vertical"
-            value={panelLayout.layout.inspectorWidth} min={220} max={400} direction={-1}
-            onChange={(inspectorWidth) => panelLayout.update({ inspectorWidth })} /></div>
-          <div className="inspector-heading"><h2>Project inspector</h2><span className="inspector-chip">Live</span></div>
-          <dl className="property-list">
-            <div className="property-row"><dt>Project</dt><dd>{project.projectId}</dd></div>
-            <div className="property-row"><dt>Tracks</dt><dd>{project.tracks.length}</dd></div>
-            <div className="property-row"><dt>Length</dt><dd>{arrangementBars(builtinView)} bars</dd></div>
-            <div className="property-row"><dt>Tempo</dt><dd>{project.tempoMap[0]?.bpm ?? 120} BPM</dd></div>
-            <div className="property-row"><dt>Sync</dt><dd>{syncLabel}</dd></div>
-          </dl>
-          <section className="inspector-card">
-            <strong>AI generation</strong>
-            <p>Create a variation from the active project while preserving its canonical revision history.</p>
-            <Button className="generation-cta" onClick={() => setWorkspace("generation")}>Open generator</Button>
-          </section>
-          <section className="inspector-card">
-            <strong>Publication readiness</strong>
-            <div className="adaptive-row"><span className="adaptive-orb" />Stage 12 artifacts supported</div>
-            <p>Certification evidence and immutable adaptive-package publication remain visible gates.</p>
-          </section>
-        </aside>
+        <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
+          bars={arrangementBars(builtinView)} bpm={project.tempoMap[0]?.bpm ?? 120} syncLabel={syncLabel}
+          onOpenGenerator={() => setWorkspace("generation")} />
       </div>
       {mixerOpen && <MixerDrawer project={builtinView} engine={engine} storageStatus={storageStatus}
         height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
