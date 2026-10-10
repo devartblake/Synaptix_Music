@@ -30,9 +30,10 @@ import {
   QuantizeMidiNotesCommand,
   RemoveMidiNotesCommand,
   ResizeMidiNotesCommand,
+  SetMidiNoteLabelCommand,
   SetMidiVelocityCommand
 } from "@synaptix/command-system/midi";
-import type { MusicProject } from "@synaptix/project-model";
+import { MIDI_NOTE_LABEL_MAX_LENGTH, type MusicProject } from "@synaptix/project-model";
 
 import { drumNoteName, isDrumTrack } from "../../../lib/editor/drum-step-sequencer-model";
 import {
@@ -273,6 +274,23 @@ function PianoRollEditor({
     () => clip.notes.filter((note) => selected.has(note.id)).map((note) => note.id),
     [selected, clip.notes]
   );
+  // The rename field starts from the selection's shared label, if every selected note has the same one.
+  const sharedLabel = useMemo(() => {
+    const labels = new Set(clip.notes.filter((note) => selected.has(note.id)).map((note) => note.label ?? ""));
+    return labels.size === 1 ? [...labels][0]! : "";
+  }, [selected, clip.notes]);
+  const [labelDraft, setLabelDraft] = useState("");
+  useEffect(() => setLabelDraft(sharedLabel), [sharedLabel, selectedIds.length]);
+  async function renameSelected(label: string): Promise<void> {
+    if (!selectedIds.length) return;
+    const next = label.trim();
+    if (clip.notes.every((note) => !selected.has(note.id) || (note.label ?? "") === next)) return;
+    // Back to the notes, which closes the Rename menu. Do it first: the menu's controls are disabled
+    // while the edit saves, and a disabled control loses focus without the blur that closes it.
+    gridRef.current?.focus();
+    await onExecute(new SetMidiNoteLabelCommand(trackId, clip.id, selectedIds, next));
+    setLabelsShown(true);
+  }
 
   const detectedKey = useMemo(() => detectKey(clip.notes), [clip.notes]);
   const musicalKey: MusicalKey | null = !tonal || shadingOff ? null : projectKey ?? detectedKey;
@@ -558,6 +576,21 @@ function PianoRollEditor({
     <Button title="Silence every sounding note" onClick={() => engine.allNotesOff()}>Stop sound</Button>
   </>;
 
+  // FL Studio-style note labels: the name replaces the pitch when Labels is on.
+  const labelForm = (
+    <form className={styles.labelForm} onSubmit={(event) => { event.preventDefault(); void renameSelected(labelDraft); }}>
+      <label>
+        Note label{" "}
+        <input value={labelDraft} maxLength={MIDI_NOTE_LABEL_MAX_LENGTH} placeholder="e.g. Hook" disabled={!selectedIds.length || pending}
+          onChange={(event) => setLabelDraft(event.target.value)} />
+      </label>
+      <Button type="submit" disabled={!selectedIds.length || pending}>Apply</Button>
+      <Button disabled={!selectedIds.length || pending || !clip.notes.some((note) => selected.has(note.id) && note.label)}
+        onClick={() => void renameSelected("")}>Clear label</Button>
+      {!selectedIds.length && <p>Select notes to name them.</p>}
+    </form>
+  );
+
   return (
     <Panel aria-label="Piano roll editor" data-variant={daw ? "daw" : undefined}>
       {daw && <Toolbar>
@@ -601,7 +634,8 @@ function PianoRollEditor({
             {ghostCandidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
           </select>
         </label>}
-        <Button aria-pressed={labelsShown} onClick={() => setLabelsShown(!labelsShown)} title="Write each note's name on it">Labels</Button>
+        <Button aria-pressed={labelsShown} onClick={() => setLabelsShown(!labelsShown)} title="Write each note's label, or its pitch, on it">Labels</Button>
+        <DisclosureMenu label="Rename">{labelForm}</DisclosureMenu>
         <label className={styles.compactZoom}>H{" "}
           <input type="range" aria-label="Horizontal zoom" min={0.5} max={4} step={0.25} value={horizontalZoom}
             onChange={(event) => setHorizontalZoom(clampZoom(Number(event.target.value)))} />
@@ -803,7 +837,9 @@ function PianoRollEditor({
             )}
           </div>
           {tonal && chordsShown && (
-            <div className={styles.chordLane} style={{ marginLeft: 64 }} role="list" aria-label="Chords">
+            <div className={styles.chordLane} style={{ marginLeft: 64 }}
+              // A list needs list items; with no chords it only holds the hint.
+              role={chords.length ? "list" : "group"} aria-label="Chords">
               {chords.length === 0 && <span className={styles.chordEmpty}>No chords: three or more notes at once are named here.</span>}
               {chords.map((chord) => (
                 <span key={chord.startTick} role="listitem" className={styles.chord}
@@ -888,7 +924,7 @@ function PianoRollEditor({
                   data-start={note.startTick}
                   data-duration={note.durationTicks}
                   data-velocity={note.velocity}
-                  aria-label={`${describe(note.pitch)}, tick ${note.startTick}, duration ${note.durationTicks}, velocity ${note.velocity}`}
+                  aria-label={`${note.label ? `${note.label}, ` : ""}${describe(note.pitch)}, tick ${note.startTick}, duration ${note.durationTicks}, velocity ${note.velocity}`}
                   aria-pressed={selected.has(note.id)}
                   tabIndex={
                     selectedIds[0] === note.id || (!selectedIds.length && index === 0) ? 0 : -1
@@ -919,7 +955,7 @@ function PianoRollEditor({
                     height: rowHeight - 4
                   }}
                 >
-                  {daw && labelsShown && <span className={styles.noteLabel} aria-hidden="true">{noteLabel?.(note.pitch) ?? noteName(note.pitch)}</span>}
+                  {daw && labelsShown && <span className={styles.noteLabel} aria-hidden="true">{note.label ?? noteLabel?.(note.pitch) ?? noteName(note.pitch)}</span>}
                   <span
                     className={styles.noteResize}
                     aria-hidden="true"

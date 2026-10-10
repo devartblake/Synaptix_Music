@@ -1,6 +1,6 @@
 # Canonical Project Schema v1
 
-**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. A project key (`key: { tonic: 0–11, mode }`, optional and absent when unset so existing checksums don't change) was added to v1 and v2 on 2026-10-10; applying a generated arrangement sets it. Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
+**Status (2026-09-27):** Complete for v1; superseded for plug-in projects by Project Schema v2 (`project-schema-v2-cutover.md`). From the deferred list, plug-in state blobs and automation lanes now exist in v2, and per-track sends, output buses and a project mixer were added to v1. A project key (`key: { tonic: 0–11, mode }`, optional and absent when unset so existing checksums don't change) was added to v1 and v2 on 2026-10-10; applying a generated arrangement sets it. MIDI notes got an optional `label` (1–32 characters, absent when unset, so checksums don't change) the same day, for renamable note labels in the piano roll. Still deferred: warp markers/time-stretch, collaboration metadata, video sync, notation.
 
 ## Goal
 
@@ -17,7 +17,7 @@ Schema v1 defines:
 - Tempo and time-signature maps
 - Instrument, audio, and bus tracks
 - MIDI and audio clips
-- MIDI notes
+- MIDI notes, each with an optional label
 - Versioned devices and numeric parameters
 - External asset references with SHA-256 integrity metadata
 - Section and cue markers

@@ -1,4 +1,4 @@
-import type { Clip, MusicProject } from "@synaptix/project-model";
+import { MIDI_NOTE_LABEL_MAX_LENGTH, type Clip, type MusicProject } from "@synaptix/project-model";
 
 import type { EditorCommand } from "./editor";
 
@@ -42,6 +42,9 @@ function validateNote(note: MidiNote, clip: MidiClip): void {
   }
   if (note.startTick + note.durationTicks > clip.range.durationTicks) {
     throw new RangeError("MIDI note must remain inside the clip duration.");
+  }
+  if (note.label !== undefined && (note.label.length === 0 || note.label.length > MIDI_NOTE_LABEL_MAX_LENGTH)) {
+    throw new RangeError(`A MIDI note label must be 1 to ${MIDI_NOTE_LABEL_MAX_LENGTH} characters.`);
   }
 }
 
@@ -252,6 +255,37 @@ export class HumanizeMidiNotesCommand extends MidiNotesCommand {
         velocity: Math.max(1, Math.min(127, velocity))
       };
     });
+  }
+}
+
+/**
+ * Names the selected notes (FL Studio's renamable note labels), or clears their names when the label
+ * is blank. The label is trimmed; clearing removes the field, so the notes are as if never named.
+ */
+export class SetMidiNoteLabelCommand extends MidiNotesCommand {
+  readonly kind = "set-midi-note-label";
+  readonly noteIds: ReadonlySet<string>;
+  readonly label: string | undefined;
+  constructor(trackId: string, clipId: string, noteIds: readonly string[], label: string | undefined, options: MidiCommandOptions = {}) {
+    if (noteIds.length === 0) throw new Error("At least one MIDI note ID is required.");
+    const trimmed = label?.trim() || undefined;
+    if (trimmed && trimmed.length > MIDI_NOTE_LABEL_MAX_LENGTH) {
+      throw new RangeError(`A MIDI note label must be 1 to ${MIDI_NOTE_LABEL_MAX_LENGTH} characters.`);
+    }
+    super(trackId, clipId, options);
+    this.noteIds = new Set(noteIds);
+    this.label = trimmed;
+  }
+  protected mutate(notes: MidiNote[]): MidiNote[] {
+    let changed = false;
+    const next = notes.map((note) => {
+      if (!this.noteIds.has(note.id)) return note;
+      changed = true;
+      const { label: _previous, ...rest } = note;
+      return this.label ? { ...rest, label: this.label } : rest;
+    });
+    if (!changed) throw new Error("None of the requested MIDI notes were found.");
+    return next;
   }
 }
 

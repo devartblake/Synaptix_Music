@@ -38,6 +38,7 @@ class MidiNote(StrictModel):
     velocity: int = Field(ge=1, le=127)
     startTick: int = Field(ge=0)
     durationTicks: int = Field(gt=0)
+    label: str | None = Field(default=None, min_length=1, max_length=32)
 
 
 class MidiClip(StrictModel):

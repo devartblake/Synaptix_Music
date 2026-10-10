@@ -578,6 +578,19 @@
   background: rgb(244 247 252 / 8%);
   pointer-events: none;
 }
+.labelForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.labelForm label,
+.labelForm p {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  color: var(--sx-text-muted);
+  font-size: 11px;
+}
 .noteLabel {
   position: absolute;
   left: 4px;

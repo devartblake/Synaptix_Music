@@ -106,3 +106,22 @@ def test_json_schema_and_pydantic_reject_the_same_invalid_plugin_data(name: str)
     assert list(JSON_SCHEMA.iter_errors(payload)) != []
     with pytest.raises(ValidationError):
         MusicProjectV2.model_validate(payload)
+
+
+def test_note_labels_survive_migration_and_match_the_v2_json_schema() -> None:
+    v1 = load(V1_FIXTURE)
+    v1["tracks"][0]["clips"][0]["notes"][0]["label"] = "Hook"  # type: ignore[index]
+    migrated = migrate_project_v1_to_v2(MusicProject.model_validate(v1))
+    dumped = migrated.model_dump(mode="json", exclude_unset=True)
+    assert dumped["tracks"][0]["clips"][0]["notes"][0]["label"] == "Hook"
+    schema = json.loads((ROOT / "schemas" / "project" / "v2.json").read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    for label, valid in (("Hook", True), ("", False), ("x" * 33, False)):
+        payload = load(V2_FIXTURE)
+        payload["tracks"][0]["clips"][0]["notes"][0]["label"] = label  # type: ignore[index]
+        assert validator.is_valid(payload) is valid, label
+        if valid:
+            MusicProjectV2.model_validate(payload)
+        else:
+            with pytest.raises(ValidationError):
+                MusicProjectV2.model_validate(payload)

@@ -16,7 +16,7 @@ New studio features should add **editor commands**.
 | Import                            | Contents                                                                                                    |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `@synaptix/command-system/editor` | `EditorCommandHistory`, plus track mute/solo/volume/pan/output/send, mixer channel, loop and tempo commands |
-| `@synaptix/command-system/midi`   | Note add/remove/move/resize/velocity/transpose/quantize/duplicate, drum step toggle/clear, clip loop        |
+| `@synaptix/command-system/midi`   | Note add/remove/move/resize/velocity/transpose/quantize/humanize/duplicate/label, drum step toggle/clear, clip loop        |
 | `@synaptix/command-system/device` | Device enable and parameter commands                                                                        |
 | `@synaptix/command-system/track`  | `AddTrackEditorCommand`, `RemoveTrackEditorCommand`, `AddClipEditorCommand`                                 |
 | `@synaptix/command-system`        | `StudioCommand`s, `CommandTransaction`, `CommandHistory`, `ProjectRevision`, `canonicalizeProject`          |

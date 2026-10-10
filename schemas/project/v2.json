@@ -276,6 +276,11 @@
         "durationTicks": {
           "type": "integer",
           "minimum": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
         }
       }
     },
