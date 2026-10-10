@@ -14,6 +14,24 @@ export type Workspace = "arrangement" | "generation" | "adaptive" | "render" | "
 export type ActiveClip = { trackId: string; clipId: string };
 type PanelLayout = ReturnType<typeof useStudioLayout>;
 
+/** Panel toggles, reset, and the DAW layout preview switch; shared by both shells. */
+export function LayoutMenu({ panelLayout, onReset }: { panelLayout: PanelLayout; onReset: () => void }) {
+  const v2 = panelLayout.layout.shell === "v2";
+  return (
+    <DisclosureMenu label="Layout">
+      <Button aria-pressed={panelLayout.navigationVisible} disabled={panelLayout.mobile}
+        onClick={() => panelLayout.update({ navigationOpen: !panelLayout.layout.navigationOpen })}>{v2 ? "Browser panel" : "Navigation panel"}</Button>
+      <Button aria-pressed={panelLayout.inspectorVisible} disabled={panelLayout.narrow}
+        onClick={() => panelLayout.update({ inspectorOpen: !panelLayout.layout.inspectorOpen })}>Inspector panel</Button>
+      {panelLayout.narrow && <p>Side panels hide on smaller screens to keep the editor usable. Your desktop layout is remembered.</p>}
+      <Button onClick={() => { panelLayout.reset(); onReset(); }}>Reset layout</Button>
+      <p>Drag a panel edge to resize, or focus it and use the arrow keys.</p>
+      <Button aria-pressed={v2} disabled={panelLayout.mobile}
+        onClick={() => panelLayout.update({ shell: v2 ? "v1" : "v2" })}>DAW layout (preview)</Button>
+    </DisclosureMenu>
+  );
+}
+
 /** Workspace picker, layout menu and mixer toggle under the top bar. */
 export const StudioViewbar = forwardRef<HTMLButtonElement, {
   workspace: Workspace;
@@ -32,21 +50,30 @@ export const StudioViewbar = forwardRef<HTMLButtonElement, {
         <option value="devices">Devices & effects</option>
       </select></label>
       <div className="studio-view-actions">
-      <DisclosureMenu label="Layout">
-        <Button aria-pressed={panelLayout.navigationVisible} disabled={panelLayout.mobile}
-          onClick={() => panelLayout.update({ navigationOpen: !panelLayout.layout.navigationOpen })}>Navigation panel</Button>
-        <Button aria-pressed={panelLayout.inspectorVisible} disabled={panelLayout.narrow}
-          onClick={() => panelLayout.update({ inspectorOpen: !panelLayout.layout.inspectorOpen })}>Inspector panel</Button>
-        {panelLayout.narrow && <p>Side panels hide on smaller screens to keep the editor usable. Your desktop layout is remembered.</p>}
-        <Button onClick={() => { panelLayout.reset(); onMixerOpen(false); }}>Reset layout</Button>
-        <p>Drag a panel edge to resize, or focus it and use the arrow keys.</p>
-      </DisclosureMenu>
+      <LayoutMenu panelLayout={panelLayout} onReset={() => onMixerOpen(false)} />
       <Button ref={mixerToggleRef} aria-expanded={mixerOpen} aria-controls="studio-mixer"
         onClick={() => onMixerOpen(!mixerOpen)}>Mixer</Button>
       </div>
     </div>
   );
 });
+
+/** Instrument picker and "Add instrument track"; in the v1 sidebar and the v2 browser. */
+export function InstrumentAdder({ newInstrument, onNewInstrument, onAddInstrument, addDisabled }: {
+  newInstrument: string;
+  onNewInstrument: (deviceType: string) => void;
+  onAddInstrument: (deviceType: string) => void;
+  addDisabled: boolean;
+}) {
+  return (
+    <section className="sidebar-card" aria-label="Add instrument">
+      <strong>Instruments</strong>
+      <InstrumentPicker value={newInstrument} onChange={onNewInstrument} />
+      <p>{instrumentDefinition(newInstrument)?.description}</p>
+      <Button disabled={addDisabled} onClick={() => onAddInstrument(newInstrument)}>Add instrument track</Button>
+    </section>
+  );
+}
 
 /** Left navigation: workspaces, editors, instrument picker and runtime preview. */
 export function StudioSidebar({ project, panelLayout, workspace, onWorkspace, activeClip, onActiveClip, mixerOpen, onMixerOpen, newInstrument, onNewInstrument, onAddInstrument, addDisabled, onOpenPreview }: {
@@ -96,12 +123,7 @@ export function StudioSidebar({ project, panelLayout, workspace, onWorkspace, ac
         <Button aria-current={workspace === "render" ? "page" : undefined} onClick={() => onWorkspace("render")}><span><span className="nav-glyph" aria-hidden="true">R</span>Render / export</span></Button>
         <Button aria-current={workspace === "devices" ? "page" : undefined} onClick={() => onWorkspace("devices")}>Devices & effects</Button>
       </nav>
-      <section className="sidebar-card" aria-label="Add instrument">
-        <strong>Instruments</strong>
-        <InstrumentPicker value={newInstrument} onChange={onNewInstrument} />
-        <p>{instrumentDefinition(newInstrument)?.description}</p>
-        <Button disabled={addDisabled} onClick={() => onAddInstrument(newInstrument)}>Add instrument track</Button>
-      </section>
+      <InstrumentAdder newInstrument={newInstrument} onNewInstrument={onNewInstrument} onAddInstrument={onAddInstrument} addDisabled={addDisabled} />
       <section className="sidebar-card" aria-label="Adaptive audio preview">
         <strong>Runtime preview</strong>
         <p>Audition rendered states, loops, and transitions with runtime events.</p>

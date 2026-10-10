@@ -8,8 +8,15 @@ const DEFAULT = {
   inspectorOpen: true,
   navigationWidth: null as number | null,
   inspectorWidth: 272,
-  mixerHeight: 320
+  mixerHeight: 320,
+  /** "v2" is the DAW layout preview (docs/plans/ui/studio-ui-v2.md); phones always use v1. */
+  shell: "v1" as "v1" | "v2",
+  dockHeight: 320,
+  dockTab: "editor" as DockTab,
+  dockOpen: true
 };
+export type DockTab = "editor" | "devices" | "mixer";
+const DOCK_TABS: readonly DockTab[] = ["editor", "devices", "mixer"];
 type StudioLayout = typeof DEFAULT;
 const size = (value: unknown, min: number, max: number, fallback: number) =>
   typeof value === "number" && Number.isFinite(value)
@@ -32,7 +39,11 @@ export function useStudioLayout() {
           navigationWidth:
             data.navigationWidth == null ? null : size(data.navigationWidth, 160, 320, 208),
           inspectorWidth: size(data.inspectorWidth, 220, 400, 272),
-          mixerHeight: size(data.mixerHeight, 180, 640, 320)
+          mixerHeight: size(data.mixerHeight, 180, 640, 320),
+          shell: data.shell === "v2" ? "v2" : "v1",
+          dockHeight: size(data.dockHeight, 180, 640, 320),
+          dockTab: DOCK_TABS.includes(data.dockTab as DockTab) ? (data.dockTab as DockTab) : "editor",
+          dockOpen: typeof data.dockOpen === "boolean" ? data.dockOpen : true
         });
       }
     } catch {
@@ -58,15 +69,20 @@ export function useStudioLayout() {
   const narrow = viewport.width <= 1120;
   const navigationWidth = layout.navigationWidth ?? (narrow ? 184 : 208);
   const mixerMax = Math.max(180, Math.min(640, viewport.height - 220));
+  const dockMax = Math.max(180, Math.min(640, viewport.height - 260));
   return {
     layout,
     update: (patch: Partial<StudioLayout>) => setLayout((current) => ({ ...current, ...patch })),
-    reset: () => setLayout(DEFAULT),
+    // Panel sizes only: resetting doesn't switch shells.
+    reset: () => setLayout((current) => ({ ...DEFAULT, shell: current.shell })),
     navigationWidth,
     navigationVisible: layout.navigationOpen && !mobile,
     inspectorVisible: layout.inspectorOpen && !narrow,
     mixerHeight: Math.min(layout.mixerHeight, mixerMax),
     mixerMax,
+    v2: layout.shell === "v2" && !mobile,
+    dockHeight: Math.min(layout.dockHeight, dockMax),
+    dockMax,
     mobile,
     narrow
   };

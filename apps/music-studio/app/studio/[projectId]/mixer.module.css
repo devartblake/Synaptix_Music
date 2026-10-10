@@ -10,6 +10,11 @@
   border-top: 1px solid var(--sx-primary);
   box-shadow: 0 -12px 40px rgb(0 0 0 / 35%);
 }
+.docked {
+  height: 100%;
+  overflow: auto;
+  background: var(--sx-surface);
+}
 .header {
   display: flex;
   align-items: center;

@@ -4,6 +4,14 @@
 
 ### Added
 
+- **DAW layout preview (Studio UI v2, step 2).** Turn it on from Layout → "DAW layout (preview)"; the classic layout stays the default. Its parts:
+  - **Transport bar:** playback, position, tempo, undo/redo, an Arrange / Adaptive states switch (Alt+S), Generate, Export, the master meter and your account.
+  - **Browser:** the instrument picker.
+  - **Timeline and dock:** the timeline stays in view above a resizable, collapsible dock. The dock's tabs are Editor, Devices and Mixer (Alt+1/2/3, or arrow keys between tabs); editing a clip opens it in the dock instead of replacing the timeline.
+  - **Inspector.**
+  - **Status bar:** names the control under the pointer or focus, and shows save and sync state with Sync now.
+
+  The layout choice, dock tab, height and open state are remembered. Reset layout keeps the layout choice, and phones keep the classic layout. Also fixed: the classic sidebar's letter glyphs ran into their labels ("AArrangement"). See [the plan](docs/plans/ui/studio-ui-v2.md).
 - **The generator can use the new instruments.** Every instrument added since the original twelve is now offered for the roles it suits. Examples: Drum Kit for drums; 808, Acid, Wobble, Reese and Chip Triangle for bass; FM Marimba for arpeggios and sparkle; NES Pulse, Supersaw and Chiptune leads for melody. Composed plans can request them. Role defaults and the procedural ensemble are unchanged, so existing requests sound the same. Riser and Downsweep FX are left out because no role plays one-shot transitions. A test now fails if a playable catalog instrument isn't offered by any role.
 - **NES Pulse** and **Chip Triangle** (slice 3, step 4, the NES pack): two new kernel oscillators. **pulse-12** is a band-limited 12.5% pulse, the thinnest NES duty, for a buzzy lead. **chip-triangle** is the NES triangle channel's 4-bit, 32-step staircase. It is deliberately not band-limited, because its steps are the sound, and suits basslines. Each has its own icon, both are in the generation API's instrument list, and existing instruments render byte-identical.
 - **FM Marimba** and **FM Vibraphone** (slice 3, step 3): two new two-operator FM presets in the kernel (codes `fm-marimba` and `fm-vibraphone`), both at a 4:1 ratio like a tuned bar's first overtone. The marimba's brightness dies in tens of milliseconds, giving a woody knock. The vibraphone fades more gently and its preset adds a 5 Hz tremolo for the vibraphone's shimmer. Each has its own icon, both are in the generation API's instrument list, and existing instruments render byte-identical.
