@@ -18,7 +18,8 @@ More screens, and notes on the current layout, are in the [studio UI baseline](d
 
 The repository currently provides:
 
-- A Next.js/React browser studio with arrangement, piano-roll, and drum-step-sequencer workflows
+- A Next.js/React browser studio with arrangement, piano-roll, and drum-step-sequencer workflows, and a DAW layout preview (Studio UI v2) with a bottom dock, coloured timeline, section markers and a loop brace
+- A 32-instrument catalog synthesized by a Rust kernel (compiled to WebAssembly) in both the render worker and the studio preview: band-limited oscillators, supersaw, Karplus–Strong, FM, drum kit, 808, noise and chip voices, with a resonant filter, modulation and stereo spread
 - Command-backed mixer, transport, MIDI-note, quantization, transposition, duplication, and drum-step editing
 - Bounded browser undo/redo, keyboard shortcuts, persistence recovery, and multi-tab editing protection
 - Tone.js MIDI scheduling, device-aware synthesis, note audition, panic/all-notes-off, and authoritative transport ticks

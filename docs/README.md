@@ -14,6 +14,8 @@ This directory contains the durable architecture, implementation, development, o
 - [Architecture decision records](architecture/decisions/README.md)
 - [Local development guide](development/local-development.md)
 - [Implementation-stage index](plans/implementation/README.md)
+- [Instrument catalog roadmap](plans/implementation/instrument-catalog-roadmap-v1.md)
+- [Studio UI v2 (DAW layout) plan and mockup](plans/ui/studio-ui-v2.md) and the [studio UI baseline screenshots](plans/ui/studio-ui-baseline-2026-10.md)
 - [Stage 12 deployment certification](operations/stage-12-deployment-certification.md)
 - [Stage 13 adaptive audio certification and rollout](operations/stage-13-adaptive-audio-certification.md)
 - [Stage 13 execution plan](plans/implementation/stage-13-execution-plan-v1.md)

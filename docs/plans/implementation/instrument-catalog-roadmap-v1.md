@@ -147,6 +147,8 @@ Decided order: settings-only instruments, then Riser and Sweep FX, then FM Marim
 Vibraphone, then the NES Pack. Alongside: let the generator use the new instruments, and tidy the
 device panel.
 
+All four steps are done (#74–#77). Alongside them, the generator now offers the new instruments (#78), and the device panel's modulation controls are in a collapsible section (#79).
+
 - Step 1, settings only: **done.** **Wobble Bass** (`synaptix-wobble`), **Reese Bass**
   (`synaptix-reese`), **Ensemble Strings** (`synaptix-ensemble`) and **Trance Pluck**
   (`synaptix-uplift`), built from the existing oscillators, resonant filter, LFO and filter envelope.

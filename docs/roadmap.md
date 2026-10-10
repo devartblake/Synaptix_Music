@@ -1,6 +1,6 @@
 # Synaptix Music Roadmap and Current Status
 
-**Revision date:** 2026-09-27
+**Revision date:** 2026-10-10
 
 ## Executive Summary
 
@@ -12,6 +12,8 @@ Current estimated completion:
 - Stage 12: complete. Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.
 - Stage 13: approximately 90% implementation-complete (2026-10-09). Slice 13.1 (verified publication) has met its exit; the Flutter loader, scheduler, stem/intensity mixer and stingers are implemented and await on-device listening tests; the platform now ingests runtime telemetry with a dashboard and alerts (13.6; thresholds need staging data); the device matrix and soak (13.7) need staging and physical devices.
 - Project Schema v2 plug-in cutover: steps A-F done (plug-in projects sync as v2; first-party plug-ins can be frozen, and freezes play in renders and in the browser); retiring v1 writes (G) remains
+- Studio instruments: 32 in the catalog, all synthesized by the Rust kernel in both the render worker and the studio preview. Instrument slices 1–3 are done (slice 1 and 2 merged; slice 3 is in review).
+- Studio UI v2 (DAW layout): steps 1–3 of 9 implemented behind a preview switch, in review (#82–#85).
 - Full planned DAW roadmap: 52-56% complete
 
 The percentages represent planned functional scope. They do not represent production-readiness, security certification, load certification, or legal clearance.
@@ -42,9 +44,11 @@ The percentages represent planned functional scope. They do not represent produc
 
 ### Browser DAW
 
-- Four-track arrangement
-- Piano roll with snapping, marquee selection, zoom, velocity, move, resize, and duplication
+- Multi-track arrangement (add instrument tracks from a 32-instrument catalog, each with its own icon and a starter phrase)
+- Piano roll with snapping, marquee selection, zoom, velocity, move, resize, and duplication; Drum Kit tracks show drum names
 - Device-aware drum step sequencer
+- Per-device controls: filter with resonance, ADSR, reverb send, and a collapsible Modulation section (LFO to pitch, cutoff and level; filter envelope)
+- DAW layout preview (Studio UI v2): transport bar, browser, bottom dock (Editor / Devices / Mixer), family-coloured timeline with header meters, section markers and a loop brace
 - MIDI scheduling, audition, panic, and authoritative transport position
 - Local autosave, persistence recovery, and multi-tab leases
 
@@ -59,7 +63,7 @@ The percentages represent planned functional scope. They do not represent produc
 ### AI-assisted composition
 
 - Switchable composers: procedural, Claude (Anthropic API) and a local open-weight model on the GPU, with automatic procedural fallback
-- 12 keys x 7 modes, 60-200 BPM, and orchestration across all 12 studio instruments with per-section layers and mix hints
+- 12 keys x 7 modes, 60-200 BPM, and orchestration across every playable catalog instrument (role defaults unchanged; Riser and Downsweep FX excluded) with per-section layers and mix hints
 - Prototype text-to-audio with MusicGen on the local GPU (non-commercial weights; outputs are prototype-only and never published)
 
 ### Plug-ins and Project Schema v2
@@ -106,6 +110,10 @@ The percentages represent planned functional scope. They do not represent produc
 ### Stage 12 — Production Audio and Rendering
 
 Implementation is complete. The control plane, deterministic renderer/master effects, worker loop, fail-closed platform loader, master/stem WAV output, deterministic MP3/OGG derivatives, bounded previews, artifact manifests, MinIO storage, signed delivery, production image, storage policy, and certification harness are implemented and tested. Stage 12 closes operationally only after backend PR #525 is deployed, secrets are provisioned by an authorized operator, and the staging certification runbook passes. A local rehearsal of the complete runbook passed on 2026-09-26 (`docs/operations/evidence/stage-12-local-2026-09-26/`); the release owner decides whether to accept it or repeat it in staging. **Stage 12 evidence: Accepted by the release owner on 2026-09-26 on the basis of the local certification run (`docs/operations/evidence/stage-12-local-2026-09-26-1702/`); a staging run with the same commands is recommended before production but no longer gates Stage 13.**
+
+### Studio UI v2 — DAW layout (active)
+
+A DAW-style studio drawing on FL Studio 2026 and Ableton Live 12.4. Plan, mockup and status are in `docs/plans/ui/studio-ui-v2.md`, and the "before" screenshots are in `docs/plans/ui/studio-ui-baseline-2026-10.md`. Steps 1–3 are implemented behind Layout → "DAW layout (preview)": the component split, the shell with its dock, the coloured timeline, markers and the loop brace. Step 4, the piano roll in the dock, is next.
 
 ### Stage 13 — Adaptive Game Audio and SynaptixPlay Runtime Integration (active)
 
@@ -192,6 +200,13 @@ Profiled 2026-10-09 (`docs/development/dsp-profiling.md`): no such bottleneck. S
 The instruments a Rust synthesis kernel would enable, and the decided first slice (PolyBLEP oscillators, supersaw, Karplus–Strong pluck, 2-operator FM), are in `docs/plans/implementation/instrument-catalog-roadmap-v1.md`.
 
 Started 2026-10-09: the render worker and the studio preview (AudioWorklet) now synthesize instrument notes with the same Rust kernel (`crates/dsp` → `packages/dsp-kernel`), with band-limited saw and square waves.
+
+Kernel status, 2026-10-10 (noise, the FM mallet presets, the 12.5% pulse and the chip triangle are in review, #75–#77):
+
+- **Oscillators:** PolyBLEP saw, square and 25%/12.5% pulses; supersaw; Karplus–Strong; four 2-operator FM presets; Drum Kit; 808; noise; and a stepped chip triangle.
+- **Shaping:** a resonant filter, an LFO and filter-envelope modulation, and a stereo voice path.
+- **Engine version:** the render worker stamps its engine version (`RENDER_ENGINE_VERSION` 1.2.0).
+- **Tests:** golden checksums pin every catalog instrument's output.
 
 ## Deferred or Later-Phase Work
 
