@@ -187,3 +187,42 @@ test("humanize nudges timing and velocity within bounds, the same way every time
   }
   assert.throws(() => new HumanizeMidiNotesCommand("t", "c", [], { timingTicks: 1, velocity: 1, seed: 1 }), /At least one/);
 });
+
+test("note labels are set, renamed and cleared as undo steps, and clearing restores the checksum", async () => {
+  const { SetMidiNoteLabelCommand } = await import("./midi.ts");
+  const { computeProjectChecksum } = await import("./index.ts");
+  const { liftEditorCommandToV2 } = await import("./plugin.ts");
+  const { migrateProjectV1ToV2, MusicProjectV2Schema } = await import("@synaptix/project-model/v2");
+  const original = project();
+  const checksum = await computeProjectChecksum(original);
+
+  // The label is trimmed and written to every selected note, and only those.
+  const name = new SetMidiNoteLabelCommand("track-1", "clip-1", ["note-1", "note-2"], "  Hook ");
+  const named = name.execute(original);
+  assert.deepEqual(notes(named).map((note) => note.label), ["Hook", "Hook"]);
+  assert.notEqual(await computeProjectChecksum(named), checksum);
+  const rename = new SetMidiNoteLabelCommand("track-1", "clip-1", ["note-2"], "Snare");
+  const renamed = rename.execute(named);
+  assert.deepEqual(notes(renamed).map((note) => note.label), ["Hook", "Snare"]);
+  assert.deepEqual(rename.undo(renamed), named);
+
+  // A blank label clears the field, so the project is byte-identical to one never labelled.
+  const clear = new SetMidiNoteLabelCommand("track-1", "clip-1", ["note-1", "note-2"], " ");
+  const cleared = clear.execute(named);
+  assert.equal(notes(cleared).some((note) => "label" in note), false);
+  assert.equal(await computeProjectChecksum(cleared), checksum);
+  assert.deepEqual(clear.undo(cleared), named);
+  assert.equal(await computeProjectChecksum(name.undo(named)), checksum);
+
+  // v2 projects take the same command through the v1 lift, and the label survives v2 parsing.
+  const lifted = liftEditorCommandToV2(new SetMidiNoteLabelCommand("track-1", "clip-1", ["note-1"], "Kick"));
+  const v2 = migrateProjectV1ToV2(original);
+  const v2Named = lifted.execute(v2);
+  const v2Note = (MusicProjectV2Schema.parse(v2Named).tracks[0]!.clips[0] as { notes: { label?: string }[] }).notes[0];
+  assert.equal(v2Note?.label, "Kick");
+  assert.deepEqual(lifted.undo(v2Named), v2);
+
+  assert.throws(() => new SetMidiNoteLabelCommand("track-1", "clip-1", [], "x"), /At least one/);
+  assert.throws(() => new SetMidiNoteLabelCommand("track-1", "clip-1", ["note-1"], "x".repeat(33)), /1 to 32/);
+  assert.throws(() => new SetMidiNoteLabelCommand("track-1", "clip-1", ["missing"], "x").execute(original), /None of/);
+});

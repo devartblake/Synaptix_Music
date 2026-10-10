@@ -254,6 +254,60 @@ test("piano roll tools: draw with one click, ghost another track, humanize and l
   await expect(notes.first()).toContainText(/^[A-G]#?\d$/);
 });
 
+test("selected notes are renamed and cleared as undoable edits, and their labels survive a reload", async ({ page }) => {
+  await openStudio(page);
+  await switchToV2(page);
+  await page.getByRole("button", { name: "Layout", exact: true }).press("Escape");
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
+  const notes = roll.getByRole("group", { name: "MIDI notes" }).locator("[data-note-id]");
+  const first = notes.first();
+  const second = notes.nth(1);
+  const firstId = await first.getAttribute("data-note-id");
+  const pitchName = /^[A-G]#?\d$/;
+
+  // Name the first two notes from the Rename menu; the labels show on the notes.
+  await first.click();
+  await second.click({ modifiers: ["Shift"] });
+  await roll.getByRole("button", { name: "Rename", exact: true }).click();
+  await roll.getByLabel("Note label").fill("Hook");
+  await roll.getByLabel("Note label").press("Enter");
+  await expect(roll.getByRole("button", { name: "Labels" })).toHaveAttribute("aria-pressed", "true");
+  await expect(first).toHaveText("Hook");
+  await expect(second).toHaveText("Hook");
+  await expect(notes.nth(2)).toHaveText(pitchName);
+  await expect(first).toHaveAttribute("aria-label", /^Hook, /);
+
+  // Renaming one of them is its own undo step.
+  await second.click();
+  await roll.getByRole("button", { name: "Rename", exact: true }).click();
+  await expect(roll.getByLabel("Note label")).toHaveValue("Hook");
+  await roll.getByLabel("Note label").fill("Answer");
+  await roll.getByRole("button", { name: "Apply" }).click();
+  await expect(second).toHaveText("Answer");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(second).toHaveText("Hook");
+
+  // Clearing a label shows the pitch name again, and undoes in one step too.
+  await roll.getByRole("button", { name: "Rename", exact: true }).click();
+  await roll.getByRole("button", { name: "Clear label" }).click();
+  await expect(second).toHaveText(pitchName);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(second).toHaveText("Hook");
+
+  // Labels are project data: they survive a reload.
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await page.getByRole("button", { name: "Edit", exact: true }).nth(3).click();
+  await roll.getByRole("button", { name: "Labels" }).click();
+  await expect(roll.locator(`[data-note-id="${firstId}"]`)).toHaveText("Hook");
+
+  expect(
+    (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations
+  ).toEqual([]);
+});
+
 test("the device chain shows one track's devices as knobs that edit, undo and reset", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);

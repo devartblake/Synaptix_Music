@@ -147,7 +147,10 @@ Each step is one PR with its own visual baselines and UI tests.
    - **Buses:** Music, Drums and the Reverb return, each with a fader, meter and mute. **Master** shows peak and RMS, with a fader and mute.
    - **Edits:** each gesture is one command, the same ones the classic drawer sends.
    - The drawer's in-dock mode is removed; the drawer itself stays for the classic layout until step 9. The step-6 UI test covers what `mixer.spec` covers for the drawer (fader undo, pan, mute/solo, routing, master, axe).
-   - **Next follow-up, after step 7 (requested 2026-10-10):** FL Studio 2026's renamable note labels. This needs an optional per-note `label` in the schema (TypeScript/Zod, both JSON Schemas, both Pydantic models; absent when unset), a rename command with undo, and a way to rename notes in the piano roll.
+   - **Renamable note labels, done after step 7 (requested 2026-10-10):** FL Studio 2026's note labels.
+     - **Schema:** an optional per-note `label` (1–32 characters) in TypeScript/Zod, both JSON Schemas and both Pydantic models. It is absent when unset, so existing projects keep their checksums.
+     - **Editing:** `SetMidiNoteLabelCommand` names or clears the selected notes as one undo step; v2 projects run it through `liftEditorCommandToV2`. Copy and paste keep a note's label.
+     - **Piano roll (DAW only):** a **Rename** menu next to **Labels** names the selected notes (a blank name or **Clear label** removes it). With **Labels** on, a note shows its label, else its pitch.
 7. **Browser and inspector.** **Done.** The DAW layout's Browser (`StudioBrowser.tsx`) has three tabs:
    - **Instruments:** search (name, description or family) over the whole catalog, grouped by family. Click chooses; **Enter** or double-click adds a track; **Shift+Enter** swaps the selected clip's track. Drag onto a track to swap it, or elsewhere on the timeline to add one. Add and Swap buttons do the same.
    - **Swap** is a new undoable command (`SwapInstrumentEditorCommand`): the sounding device becomes the new instrument with default settings and a new device id. A track still named after its instrument takes the new name.
@@ -199,3 +202,4 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: the project key is project data (schema, command, generator, piano roll).
 - 2026-10-10: step 6 done (mixer channel strips in the dock). Renamable note labels are scheduled after step 7.
 - 2026-10-10: step 7 done (Browser with search, families, add/swap/drag, Patterns and Project tabs; the inspector follows the selection). Renamable note labels are next.
+- 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).

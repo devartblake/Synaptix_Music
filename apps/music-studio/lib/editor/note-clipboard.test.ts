@@ -37,6 +37,13 @@ test("paste near the clip end drops and trims notes to fit", () => {
   assert.deepEqual(pasteNotes(copied, 3840, 4000), []);
 });
 
+test("copy and paste keep a note's label, and add none to unlabelled notes", () => {
+  const labelled = [{ ...notes[0]!, label: "Hook" }, notes[1]!];
+  const pasted = pasteNotes(copyNotes(labelled, ["a", "b"])!, 7680, 0, () => "n");
+  assert.equal(pasted[0]!.label, "Hook");
+  assert.equal("label" in pasted[1]!, false);
+});
+
 test("the clipboard is shared for the session", () => {
   writeNoteClipboard(copyNotes(notes, ["c"]));
   assert.equal(readNoteClipboard()?.notes[0]?.pitch, 67);

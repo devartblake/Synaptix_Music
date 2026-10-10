@@ -29,12 +29,17 @@ export const TimeSignatureEventSchema = z.object({
   denominator: z.union([z.literal(1), z.literal(2), z.literal(4), z.literal(8), z.literal(16), z.literal(32)])
 });
 
+export const MIDI_NOTE_LABEL_MAX_LENGTH = 32;
+
 export const MidiNoteSchema = z.object({
   id: IdSchema,
   pitch: z.number().int().min(0).max(127),
   velocity: z.number().int().min(1).max(127),
   startTick: z.number().int().nonnegative(),
-  durationTicks: z.number().int().positive()
+  durationTicks: z.number().int().positive(),
+  // A user-chosen name shown on the note (FL Studio's note labels). Optional, and absent when unset,
+  // so projects without labels keep their canonical checksum.
+  label: z.string().min(1).max(MIDI_NOTE_LABEL_MAX_LENGTH).optional()
 });
 
 export const MidiClipSchema = z.object({

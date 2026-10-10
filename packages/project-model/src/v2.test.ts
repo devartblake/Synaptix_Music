@@ -134,3 +134,25 @@ test("the project key is optional, strictly shaped, survives migration, and is i
     assert.deepEqual(schema.$defs.musicalKey.properties.mode.enum, ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"], version);
   }
 });
+
+test("a note label is optional, 1 to 32 characters, survives migration, and is in both JSON schemas", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const project = createEmptyProject("labelled", { revisionId: "r1", now: "2026-10-10T00:00:00.000Z" });
+  const note = { id: "n1", pitch: 60, velocity: 100, startTick: 0, durationTicks: 240 };
+  const withNote = (extra: object) => ({
+    ...project,
+    tracks: [{ id: "t", name: "T", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, devices: [],
+      clips: [{ id: "c", kind: "midi", name: "C", loop: false, range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: 960 },
+        notes: [{ ...note, ...extra }] }] }]
+  });
+  const noteOf = (value: { tracks: { clips: unknown[] }[] }) => (value.tracks[0]!.clips[0] as { notes: Record<string, unknown>[] }).notes[0]!;
+  assert.equal("label" in noteOf(MusicProjectSchema.parse(withNote({}))), false);
+  const labelled = MusicProjectSchema.parse(withNote({ label: "Hook" }));
+  assert.equal(noteOf(migrateProjectV1ToV2(labelled)).label, "Hook");
+  assert.equal(MusicProjectSchema.safeParse(withNote({ label: "" })).success, false);
+  assert.equal(MusicProjectSchema.safeParse(withNote({ label: "x".repeat(33) })).success, false);
+  for (const version of ["v1", "v2"]) {
+    const schema = JSON.parse(await readFile(new URL(`../../../schemas/project/${version}.json`, import.meta.url), "utf8"));
+    assert.deepEqual(schema.$defs.midiNote.properties.label, { type: "string", minLength: 1, maxLength: 32 }, version);
+  }
+});

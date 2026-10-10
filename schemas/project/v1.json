@@ -99,7 +99,8 @@
         "pitch": { "type": "integer", "minimum": 0, "maximum": 127 },
         "velocity": { "type": "integer", "minimum": 1, "maximum": 127 },
         "startTick": { "type": "integer", "minimum": 0 },
-        "durationTicks": { "type": "integer", "minimum": 1 }
+        "durationTicks": { "type": "integer", "minimum": 1 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 32 }
       }
     },
     "clip": {

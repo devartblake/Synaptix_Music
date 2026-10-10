@@ -51,3 +51,28 @@ def test_project_key_is_optional_and_strictly_shaped() -> None:
     schema = json.loads((FIXTURE_PATH.parents[1] / "v1.json").read_text(encoding="utf-8"))
     assert schema["properties"]["key"] == {"$ref": "#/$defs/musicalKey"}
     assert schema["$defs"]["musicalKey"]["properties"]["tonic"]["maximum"] == 11
+
+
+def test_note_label_is_optional_and_bounded() -> None:
+    # Renamable note labels: absent unless set, 1-32 characters.
+    fixture = load_fixture()
+    project = MusicProject.model_validate(fixture)
+    assert project.tracks[0].clips[0].notes[0].label is None  # type: ignore[union-attr]
+    dumped = project.model_dump(mode="json", exclude_unset=True)
+    assert "label" not in dumped["tracks"][0]["clips"][0]["notes"][0]
+    cases = (("Kick", True), ("x" * 32, True), ("", False), ("x" * 33, False), (5, False))
+    for label, valid in cases:
+        payload = load_fixture()
+        payload["tracks"][0]["clips"][0]["notes"][0]["label"] = label  # type: ignore[index]
+        if valid:
+            labelled = MusicProject.model_validate(payload)
+            assert labelled.tracks[0].clips[0].notes[0].label == label  # type: ignore[union-attr]
+        else:
+            with pytest.raises(ValidationError):
+                MusicProject.model_validate(payload)
+    schema = json.loads((FIXTURE_PATH.parents[1] / "v1.json").read_text(encoding="utf-8"))
+    assert schema["$defs"]["midiNote"]["properties"]["label"] == {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 32,
+    }

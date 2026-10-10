@@ -4,7 +4,7 @@ type MidiNote = Extract<Clip, { kind: "midi" }>["notes"][number];
 
 /** Copied notes, positioned relative to the earliest copied note. */
 export interface NoteClipboard {
-  notes: { pitch: number; velocity: number; offsetTicks: number; durationTicks: number }[];
+  notes: { pitch: number; velocity: number; offsetTicks: number; durationTicks: number; label?: string }[];
   spanTicks: number;
 }
 
@@ -30,7 +30,8 @@ export function copyNotes(notes: readonly MidiNote[], ids: readonly string[]): N
       pitch: note.pitch,
       velocity: note.velocity,
       offsetTicks: note.startTick - start,
-      durationTicks: note.durationTicks
+      durationTicks: note.durationTicks,
+      ...(note.label ? { label: note.label } : {})
     })),
     spanTicks: end - start
   };
@@ -55,6 +56,7 @@ export function pasteNotes(
       pitch: note.pitch,
       velocity: note.velocity,
       startTick: note.startTick,
-      durationTicks: Math.max(1, Math.min(note.durationTicks, clipDurationTicks - note.startTick))
+      durationTicks: Math.max(1, Math.min(note.durationTicks, clipDurationTicks - note.startTick)),
+      ...(note.label ? { label: note.label } : {})
     }));
 }

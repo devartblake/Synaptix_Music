@@ -4,6 +4,9 @@
 
 ### Added
 
+- **Renamable note labels (from FL Studio 2026).** Notes can carry a name, such as "Hook" or "Kick", that the DAW piano roll shows in place of the pitch.
+  - **Editing:** select notes, open **Rename** next to **Labels**, type a name and press Enter. A blank name or **Clear label** removes it. Each rename is one undo step, and copy and paste keep the labels.
+  - **Schema:** an optional `label` (1–32 characters) on MIDI notes in TypeScript/Zod, both JSON Schemas and both Python models. Projects without labels are unchanged, including their checksums.
 - **The project key travels with the project.** Projects now store an optional key: a tonic pitch class and one of the generator's seven modes.
   - **Schema:** the field is in TypeScript/Zod, both JSON Schemas and both Python models. Projects without a key are unchanged, including their checksums.
   - **Editing:** choosing a key in the piano roll's **Scale** menu saves it to the project as an undoable edit, and **Auto** clears it and detects the key from the clip's notes. Hiding the shading (**Off**) stays a per-browser choice.
@@ -330,6 +333,7 @@
 
 ### Fixed
 
+- The DAW piano roll's Chord lane no longer fails the accessibility check when a clip has no chords: it was a list with no list items, and is now a plain group holding the hint.
 - The Drum Kit's starter beat now has a closed hat on every eighth note; it skipped beat 3 (#67).
 - The generation API's instrument list now includes the ten new studio instruments (#72), so its catalog-parity test passes again. PR CI only runs the Python job when Python files change, so the PRs that added the instruments didn't catch the gap; `main`'s full run did. Generated arrangements don't use them yet: each role's suitable instruments are unchanged, and the plan still swaps an unsuitable choice for the role's default.
 - Fixed studio sign-in being refused by the platform, which requires a product registration on its game sign-in route: the studio now signs in through the platform's studio routes instead. Before, every sign-in showed "That email and password don't match".
