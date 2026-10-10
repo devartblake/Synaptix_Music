@@ -162,7 +162,7 @@ Each step is one PR with its own visual baselines and UI tests.
    - **Adaptive states (Alt+S):** a Session-style grid (`table` "States grid"). Each row is a state: name, role and an intensity bar, then its render, loop, entry and exit cues, and the states it leads to. Below it, a transitions strip lists each transition (trigger and crossfade) and cue point. Choosing a row edits that state underneath, beside the render candidates and publication. The runtime preview lights the row that is playing.
    - **Not like the mockup:** the mockup had a column per track with a clip slot in each. A state is a whole-mix master render, and the adaptive manifest has no per-track content, so those cells would always be empty. The grid's columns are the state's own data instead.
    - **Generate** opens a right-hand drawer over the inspector, so the arrangement stays in view. **Export** (or Ctrl/Cmd+E) opens a modal dialog. Escape or Close shuts either one and returns focus to the button that opened it.
-   - **Tests:** the adaptive authoring, generation (including prototype audio) and export UI tests now run in both layouts (`tests/ui/layouts.ts`), and step 9 drops the classic runs. New baselines cover the states grid and the DAW graph editor, on desktop and tablet.
+   - **Tests:** the adaptive authoring, generation (including prototype audio) and export UI tests now run in both layouts (`tests/ui/layouts.ts`), and step 9 drops the classic runs. A new baseline covers the states grid on desktop and tablet; the graph editor is the same component in both layouts and keeps its classic baseline.
 9. **Switch over.** v2 becomes the default, v1 code and baselines are removed, and the README screenshots, baseline doc and changelog are updated.
 
 ## Risks

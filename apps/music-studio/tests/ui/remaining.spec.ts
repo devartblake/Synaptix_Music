@@ -240,13 +240,17 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
     .fill("0.5");
   await expect(page.getByRole("img", { name: "exploration to combat, immediate" })).toBeVisible();
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; } .studio-topbar { position: static !important; }" });
-  await expect(
-    page.getByRole("region", { name: "Transitions and cues", exact: true })
-  ).toHaveScreenshot(daw ? "adaptive-graph-daw.png" : "adaptive-graph.png", {
-    animations: "disabled",
-    stylePath: resolve("tests/ui/visual.css"),
-    maxDiffPixelRatio: 0.002
-  });
+  // The graph editor is the same component in both layouts. The DAW layout's centre scrolls inside a
+  // fixed-height shell, so an element screenshot there would capture the bars around it; its new
+  // surface, the states grid, has its own baseline below.
+  if (!daw)
+    await expect(
+      page.getByRole("region", { name: "Transitions and cues", exact: true })
+    ).toHaveScreenshot("adaptive-graph.png", {
+      animations: "disabled",
+      stylePath: resolve("tests/ui/visual.css"),
+      maxDiffPixelRatio: 0.002
+    });
   if (daw) {
     // The grid has a row per state: its intensity, render, loop, cues and where it leads; transitions below.
     await expect(grid.locator("tbody tr")).toHaveCount(2);
