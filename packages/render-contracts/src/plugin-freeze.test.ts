@@ -57,7 +57,7 @@ async function freeze(value: MusicProjectV2): Promise<MusicProjectV2> {
   const target = value.tracks[0]!.devices.find((candidate) => candidate.id === "device-drive")!;
   target.frozen = {
     renderId: RENDER_ID, artifactId: ARTIFACT_ID, sourceProjectId: value.projectId, sourceRevisionId: value.revisionId,
-    sourceProjectChecksumSha256: PROJECT_CHECKSUM, sourceDeviceId: target.id,
+    sourceProjectChecksumSha256: PROJECT_CHECKSUM, sourceTrackId: value.tracks[0]!.id, sourceDeviceId: target.id,
     sourcePluginStateChecksumSha256: await computePluginStateChecksum(target),
     sourceSignalChainChecksumSha256: await computeSignalChainChecksum(value, target.id),
     artifactChecksumSha256: ARTIFACT_CHECKSUM, engineVersion: ENGINE, frozenAt: "2026-09-22T00:00:00Z"
@@ -87,6 +87,9 @@ test("frozen references verify against the Stage 12 manifest they point to", asy
   assert.ok(verifyFrozenArtifactAgainstManifest(reference, manifest({ revisionId: "revision-9" })).length > 0);
   assert.ok(verifyFrozenArtifactAgainstManifest(reference, manifest({ projectChecksumSha256: "e".repeat(64) })).length > 0);
   assert.ok(verifyFrozenArtifactAgainstManifest(reference, manifest({ engineVersion: "other" })).length > 0);
+  const wrongTrack = manifest();
+  wrongTrack.artifacts[0]!.trackId = "track-2";
+  assert.ok(verifyFrozenArtifactAgainstManifest(reference, wrongTrack).includes("Artifact belongs to a different source track."));
   const tampered = manifest();
   tampered.artifacts[0]!.checksumSha256 = "f".repeat(64);
   assert.ok(verifyFrozenArtifactAgainstManifest(reference, tampered).length > 0);
