@@ -37,6 +37,7 @@ export const FrozenPluginArtifactReferenceSchema = z.object({
   sourceProjectId: IdSchema,
   sourceRevisionId: IdSchema,
   sourceProjectChecksumSha256: ChecksumSchema,
+  sourceTrackId: IdSchema,
   sourceDeviceId: IdSchema,
   sourcePluginStateChecksumSha256: ChecksumSchema,
   sourceSignalChainChecksumSha256: ChecksumSchema,
