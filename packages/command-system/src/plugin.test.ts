@@ -116,7 +116,7 @@ test("frozen evidence attachment is reversible and bound to its device", () => {
   const reference = {
     renderId: "7f7b8f0e-7f55-4a41-9d4e-3b1f8f3f7a10", artifactId: "0c3f3f0e-1a55-4a41-9d4e-3b1f8f3f7a11",
     sourceProjectId: "project-1", sourceRevisionId: "revision-1", sourceProjectChecksumSha256: "c".repeat(64),
-    sourceDeviceId: "device-drive", sourcePluginStateChecksumSha256: "a".repeat(64),
+    sourceTrackId: "track-1", sourceDeviceId: "device-drive", sourcePluginStateChecksumSha256: "a".repeat(64),
     sourceSignalChainChecksumSha256: "b".repeat(64), artifactChecksumSha256: "d".repeat(64),
     engineVersion: "render-worker@1.0.0", frozenAt: "2026-09-22T00:00:00Z"
   };
