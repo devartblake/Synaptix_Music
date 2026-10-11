@@ -145,6 +145,7 @@ async function frozenProject(): Promise<MusicProjectV2> {
     sourceProjectId: source.projectId,
     sourceRevisionId: source.revisionId,
     sourceProjectChecksumSha256: "c".repeat(64),
+    sourceTrackId: "track-1",
     sourceDeviceId: device.id,
     sourcePluginStateChecksumSha256: await computePluginStateChecksum(device),
     sourceSignalChainChecksumSha256: await computeSignalChainChecksum(source, device.id),
