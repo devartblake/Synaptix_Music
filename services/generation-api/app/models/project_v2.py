@@ -43,6 +43,7 @@ class FrozenPluginArtifactReference(StrictModel):
     sourceProjectId: str = Field(min_length=1)
     sourceRevisionId: str = Field(min_length=1)
     sourceProjectChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
+    sourceTrackId: str = Field(min_length=1)
     sourceDeviceId: str = Field(min_length=1)
     sourcePluginStateChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
     sourceSignalChainChecksumSha256: str = Field(pattern=CHECKSUM_PATTERN)
