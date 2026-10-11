@@ -309,7 +309,7 @@ export async function evaluateFrozenPluginEvidence(
 
   const reasons: string[] = [];
   if (reference.sourceProjectId !== project.projectId) reasons.push("Frozen artifact belongs to a different project.");
-  if (reference.sourceDeviceId !== device.id) reasons.push("Frozen artifact belongs to a different device.");
+  if (reference.sourceTrackId !== located.track.id) reasons.push("Frozen artifact belongs to a different track.");\n  if (reference.sourceDeviceId !== device.id) reasons.push("Frozen artifact belongs to a different device.");
   if (reference.sourcePluginStateChecksumSha256 !== (await computePluginStateChecksum(device))) {
     reasons.push("Plug-in identity, parameters, state, or automation changed after freezing.");
   }
