@@ -690,6 +690,7 @@
         "sourceProjectId",
         "sourceRevisionId",
         "sourceProjectChecksumSha256",
+        "sourceTrackId",
         "sourceDeviceId",
         "sourcePluginStateChecksumSha256",
         "sourceSignalChainChecksumSha256",
@@ -732,6 +733,9 @@
         "frozenAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "sourceTrackId": {
+          "$ref": "#/$defs/id"
         }
       }
     },
