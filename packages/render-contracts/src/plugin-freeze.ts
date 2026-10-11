@@ -31,7 +31,10 @@ export function verifyFrozenArtifactAgainstManifest(
   if (manifest.engineVersion !== reference.engineVersion) issues.push("Manifest engine version does not match.");
   const artifact = manifest.artifacts.find((candidate) => candidate.artifactId === reference.artifactId);
   if (!artifact) issues.push("Referenced artifact is not part of the manifest.");
-  else if (artifact.checksumSha256 !== reference.artifactChecksumSha256) issues.push("Artifact checksum does not match.");
+  else {
+    if (artifact.trackId !== reference.sourceTrackId) issues.push("Artifact belongs to a different source track.");
+    if (artifact.checksumSha256 !== reference.artifactChecksumSha256) issues.push("Artifact checksum does not match.");
+  }
   return issues;
 }
 
