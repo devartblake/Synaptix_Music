@@ -153,7 +153,8 @@
             "sourceSignalChainChecksumSha256": "21d4cf43eafd700982e4b661b972ca08db6a20fc7ad58186c3876df5702a4a05",
             "artifactChecksumSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
             "engineVersion": "render-worker@1.0.0",
-            "frozenAt": "2026-09-22T00:00:00Z"
+            "frozenAt": "2026-09-22T00:00:00Z",
+            "sourceTrackId": "track-1"
           }
         }
       ],
@@ -184,4 +185,4 @@
       ]
     }
   ]
-}
+}\n
