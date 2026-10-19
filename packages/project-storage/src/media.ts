@@ -18,6 +18,8 @@ export interface ProjectArtworkRecord {
   width: number;
   height: number;
   updatedAt: string;
+  /** SHA-256 of the platform's copy once the cover is synced; absent while it is only local. */
+  sha256?: string;
 }
 
 export interface CachedRenderRecord {

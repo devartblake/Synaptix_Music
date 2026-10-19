@@ -21,6 +21,7 @@ import {
 import { PLATFORM_SESSION_EVENT } from "../components/PlatformAccount";
 import { formatBytes } from "../lib/editor/storage-health";
 import { useStorageHealth } from "../lib/editor/use-storage-health";
+import { syncProjectCover } from "../lib/player/covers";
 
 /** How a project card shows where its music came from (the colours are in home.module.css). */
 const ORIGIN_BADGES: Record<ProjectOrigin, { icon: string; label: string; description: string }> = {
@@ -173,9 +174,14 @@ export function RecentProjects() {
             : "Cloud projects are unavailable. Try again."
         );
       const values = z
-        .array(z.object({ projectId: z.string().min(1), name: z.string(), archived: z.boolean() }))
+        .array(z.object({
+          projectId: z.string().min(1), name: z.string(), archived: z.boolean(),
+          coverSha256: z.string().nullish()
+        }))
         .parse(await response.json());
       setCloud(values);
+      // Covers follow the project across devices; failures leave this browser's cover as it is.
+      for (const project of values) void syncProjectCover(project.projectId, project.coverSha256 ?? null).catch(() => undefined);
       setCloudLoaded(true);
       setCloudMessage("Cloud projects loaded.");
     } catch (cause) {
