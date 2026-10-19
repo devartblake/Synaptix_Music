@@ -754,7 +754,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       <Button onClick={() => void keepMine(conflict)}>Keep mine</Button>
     </section>
   ));
-  const timeline = (onEdit: (clip: ActiveClip) => void, daw?: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState" | "onSelect" | "onDropInstrument" | "trackAccessory">) => (
+  const timeline = (onEdit: (clip: ActiveClip) => void, daw: Pick<Parameters<typeof ArrangementTimeline>[0], "trackColor" | "emptyState" | "onSelect" | "onDropInstrument" | "trackAccessory">) => (
     <ArrangementTimeline project={builtinView} engine={engine} onExecute={executeV1} onEdit={onEdit} {...daw}
       renderControls={(track) => {
         const pluginTrack = project.tracks.find((candidate) => candidate.id === track.id);
@@ -776,14 +776,13 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </>;
       }} />
   );
-  const pianoRoll = (variant?: "daw") => activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine} variant={variant}
+  const pianoRoll = () => activeClip && <PianoRoll key={`${activeClip.trackId}:${activeClip.clipId}`} engine={engine}
     project={builtinView}
     trackId={activeClip.trackId}
     clipId={activeClip.clipId}
     onExecute={executeV1}
     onClose={() => setActiveClip(null)}
   />;
-  const toArrangement = () => setWorkspace("arrangement");
   // DAW layout: the inspector and Browser follow the timeline selection, else the clip being edited.
   const inspectedClip = selectedClip ?? activeClip;
   const inspectedTrack = (inspectedClip && builtinView.tracks.find((track) => track.id === inspectedClip.trackId)) ?? null;
@@ -866,7 +865,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         <div className="studio-v2-centre">
           <section className="studio-v2-main" aria-label="Project workspace">
             {workspace === "adaptive"
-              ? <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} variant="daw" />
+              ? <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} />
               : <>{conflictBanners}{timeline(openInDock, {
                 trackColor: dawTrackColor,
                 onSelect: setSelectedClip,
@@ -886,7 +885,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
             onResize={(dockHeight) => panelLayout.update({ dockHeight })}
             context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Device chain" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
             panels={{
-              editor: pianoRoll("daw") || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
+              editor: pianoRoll() || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
               devices: <DeviceChain tracks={project.tracks} trackId={deviceTrackId ?? activeClip?.trackId ?? null}
                 onTrack={setDeviceTrackId} {...deviceControls}
                 inserts={(chainTrack) => { const track = project.tracks.find((candidate) => candidate.id === chainTrack.id); return track && <PluginRack track={track}
@@ -907,7 +906,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         {inspector}
         {workspace === "generation" && <StudioDrawer label="Generate" onClose={() => closeOverlay("generate")}>
           <GenerationWorkspace project={builtinView} onAddDrone={addFrequencyDrone} onApply={applyGeneratedVariation}
-            onClose={() => closeOverlay("generate")} variant="drawer" />
+            onClose={() => closeOverlay("generate")} />
         </StudioDrawer>}
         {notebookVisible && <StudioDrawer label="Notebook" onClose={() => closeOverlay("notebook")}>
           <NotebookPanel pages={project.notebook ?? []} disabled={!hydrated}
@@ -915,7 +914,7 @@ export default function StudioClient({ projectId }: { projectId: string }) {
         </StudioDrawer>}
       </div>
       {workspace === "render" && <StudioDialog label="Export" onClose={() => closeOverlay("export")}>
-        <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} variant="dialog"
+        <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project}
           onClose={() => closeOverlay("export")} onSync={async () => coordinatorRef.current?.drain()} />
       </StudioDialog>}
       {settingsOpen && <StudioDialog label="Settings" onClose={() => closeOverlay("settings")}>

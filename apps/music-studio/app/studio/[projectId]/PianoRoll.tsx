@@ -70,8 +70,6 @@ export interface PianoRollProps {
   clipId: string;
   onExecute(command: EditorCommand): Promise<void>;
   onClose(): void;
-  /** The DAW layout (Studio UI v2): one-row toolbar, scale shading, Chord Panel, real keys. */
-  variant?: "daw";
 }
 
 function noteName(pitch: number): string {
@@ -85,8 +83,7 @@ export function PianoRoll({
   trackId,
   clipId,
   onExecute,
-  onClose,
-  variant
+  onClose
 }: PianoRollProps) {
   const track = project.tracks.find((value) => value.id === trackId);
   const clip = track?.clips.find((value) => value.id === clipId);
@@ -100,7 +97,6 @@ export function PianoRoll({
         clip={clip}
         onExecute={onExecute}
         onClose={onClose}
-        variant={variant}
       />
     );
   }
@@ -112,7 +108,6 @@ export function PianoRoll({
       clip={clip}
       onExecute={onExecute}
       onClose={onClose}
-      variant={variant}
     />
   );
 }
@@ -127,8 +122,7 @@ function DrumEditor({
   track,
   clip,
   onExecute,
-  onClose,
-  variant
+  onClose
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -136,7 +130,6 @@ function DrumEditor({
   clip: MidiClip;
   onExecute(command: EditorCommand): Promise<void>;
   onClose(): void;
-  variant?: "daw";
 }) {
   const [view, setView] = useState<"steps" | "piano-roll">("steps");
   if (view === "steps") {
@@ -162,7 +155,6 @@ function DrumEditor({
       onClose={onClose}
       noteLabel={(pitch) => drumNoteName(track, pitch)}
       onOpenSteps={() => setView("steps")}
-      variant={variant}
     />
   );
 }
@@ -175,8 +167,7 @@ function PianoRollEditor({
   onExecute: executeCommand,
   onClose,
   noteLabel,
-  onOpenSteps,
-  variant
+  onOpenSteps
 }: {
   project: MusicProject;
   engine: AudioTransport;
@@ -188,11 +179,9 @@ function PianoRollEditor({
   noteLabel?(pitch: number): string | null;
   /** Drum tracks: back to the step sequencer. */
   onOpenSteps?(): void;
-  variant?: "daw";
 }) {
-  const daw = variant === "daw";
   // Scale shading and chords are for pitched clips; drum notes are drums, not a key.
-  const tonal = daw && !noteLabel;
+  const tonal = !noteLabel;
   // The key is project data (it travels with the project); hiding the shading is this browser's choice.
   const [shadingOff, setShadingOff] = useShadingOff(project.projectId);
   const projectKey = project.key ?? null;
@@ -303,7 +292,7 @@ function PianoRollEditor({
 
   // Ghost notes: another track's notes under this clip's time span, drawn faintly for reference.
   const clipStart = barTicks(project) * clip.range.start.bar + project.transport.ticksPerQuarterNote * clip.range.start.beat + clip.range.start.tick;
-  const ghostCandidates = daw ? project.tracks.filter((candidate) => candidate.id !== trackId && candidate.clips.some((c) => c.kind === "midi")) : [];
+  const ghostCandidates = project.tracks.filter((candidate) => candidate.id !== trackId && candidate.clips.some((c) => c.kind === "midi"));
   const ghostNotes = useMemo(() => {
     const ghost = project.tracks.find((candidate) => candidate.id === ghostTrackId);
     if (!ghost) return [];
@@ -392,7 +381,7 @@ function PianoRollEditor({
 
   function beginMarquee(event: React.PointerEvent<HTMLDivElement>): void {
     if (event.target !== event.currentTarget) return;
-    if (daw && tool === "draw" && event.button === 0) {
+    if (tool === "draw" && event.button === 0) {
       void addNote(event);
       return;
     }
@@ -488,7 +477,7 @@ function PianoRollEditor({
   function keyboard(event: React.KeyboardEvent, noteId?: string) {
     const ids = noteId && !selected.has(noteId) ? [noteId] : selectedIds;
     const modifier = event.ctrlKey || event.metaKey;
-    if (daw && !modifier && !event.altKey && event.key.toLowerCase() === "b") {
+    if (!modifier && !event.altKey && event.key.toLowerCase() === "b") {
       event.preventDefault();
       setTool((current) => current === "draw" ? "select" : "draw");
       return;
@@ -647,8 +636,8 @@ function PianoRollEditor({
   );
 
   return (
-    <Panel aria-label="Piano roll editor" data-variant={daw ? "daw" : undefined}>
-      {daw && <Toolbar>
+    <Panel aria-label="Piano roll editor" data-variant="daw">
+      <Toolbar>
         <strong>{clip.name}</strong>
         {onOpenSteps && <Button onClick={onOpenSteps}>Steps</Button>}
         <span className={styles.toolGroup} role="group" aria-label="Tool">
@@ -702,108 +691,8 @@ function PianoRollEditor({
         <span role="status" aria-label="Note selection">
           {selectedIds.length} selected{selectedChord ? ` · ${selectedChord}` : ""}
         </span>
-      </Toolbar>}
-      {!daw && <Toolbar>
-        <strong>{clip.name}</strong>
-        <Button onClick={onClose}>Arrangement</Button>
-        {onOpenSteps && <Button onClick={onOpenSteps}>Steps</Button>}
-        <label title="Play notes as you add, select, move, or press piano keys">
-          <input
-            type="checkbox"
-            checked={preview.enabled}
-            onChange={(event) => preview.setEnabled(event.target.checked)}
-          />{" "}
-          Preview
-        </label>
-        <label>
-          Grid{" "}
-          <select value={gridRatio} onChange={(event) => setGridRatio(Number(event.target.value))}>
-            {PIANO_ROLL_GRIDS.map((item) => (
-              <option key={item.label} value={item.ticks / 960}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={snapEnabled}
-            onChange={(event) => setSnapEnabled(event.target.checked)}
-          />{" "}
-          Snap
-        </label>
-        <Button
-          disabled={!selectedIds.length || pending}
-          onClick={() =>
-            void onExecute(new QuantizeMidiNotesCommand(trackId, clip.id, selectedIds, gridTicks))
-          }
-        >
-          Quantize
-        </Button>
-        <Button
-          disabled={!selectedIds.length || pending}
-          onClick={() => void duplicate(selectedIds)}
-        >
-          Duplicate
-        </Button>
-        <Button
-          aria-label="Transpose down"
-          disabled={!selectedIds.length || pending}
-          onClick={() => void moveNotes(selectedIds, 0, -1)}
-        >
-          −1
-        </Button>
-        <Button
-          aria-label="Transpose up"
-          disabled={!selectedIds.length || pending}
-          onClick={() => void moveNotes(selectedIds, 0, 1)}
-        >
-          +1
-        </Button>
-        <Button disabled={!selectedIds.length} onClick={() => copySelection(selectedIds)}>
-          Copy
-        </Button>
-        <Button disabled={!selectedIds.length || pending} onClick={() => void cutSelection(selectedIds)}>
-          Cut
-        </Button>
-        <Button disabled={!clipboardReady || pending} onClick={() => void paste()}>
-          Paste
-        </Button>
-        <Button title="Silence every sounding note" onClick={() => engine.allNotesOff()}>
-          Stop sound
-        </Button>
-        <Button disabled={!selectedIds.length || pending} onClick={() => void removeSelected()}>
-          Delete
-        </Button>
-        <label>
-          H zoom{" "}
-          <input
-            type="range"
-            min={0.5}
-            max={4}
-            step={0.25}
-            value={horizontalZoom}
-            onChange={(event) => setHorizontalZoom(clampZoom(Number(event.target.value)))}
-          />
-        </label>
-        <label>
-          V zoom{" "}
-          <input
-            type="range"
-            min={0.5}
-            max={3}
-            step={0.25}
-            value={verticalZoom}
-            onChange={(event) => setVerticalZoom(clampZoom(Number(event.target.value), 0.5, 3))}
-          />
-        </label>
-        <span role="status" aria-label="Note selection">
-          {selectedIds.length} selected
-        </span>
-      </Toolbar>}
-      {!daw && <Toolbar aria-label="Insert MIDI note">{insertFields}</Toolbar>}
-      <p className={daw ? "visually-hidden" : styles.hint} id="note-keyboard-help">
+      </Toolbar>
+      <p className="visually-hidden" id="note-keyboard-help">
         Space selects · Shift-click adds to selection · Arrows move · Shift + left/right resizes ·
         Shift + up/down moves an octave · Alt + left/right focuses notes · Ctrl/Cmd+A selects all ·
         Ctrl/Cmd+D duplicates · Ctrl/Cmd+C, X, V copy, cut and paste · Delete removes · Escape clears
@@ -867,7 +756,7 @@ function PianoRollEditor({
                     title={describe(pitch)}
                     onPointerDown={() => preview.audition(pitch, velocity)}
                   >
-                    {noteLabel?.(pitch) ?? (daw && pitch % 12 !== 0 ? "" : noteName(pitch))}
+                    {noteLabel?.(pitch) ?? (pitch % 12 !== 0 ? "" : noteName(pitch))}
                   </div>
                 );
               })}
@@ -875,7 +764,7 @@ function PianoRollEditor({
             <div
               ref={gridRef}
               className={styles.pianoGrid}
-              data-tool={daw ? tool : undefined}
+              data-tool={tool}
               role="group"
               aria-label="MIDI notes"
               aria-describedby="note-keyboard-help"
@@ -959,7 +848,7 @@ function PianoRollEditor({
                     height: rowHeight - 4
                   }}
                 >
-                  {daw && labelsShown && <span className={styles.noteLabel} aria-hidden="true">{note.label ?? noteLabel?.(note.pitch) ?? noteName(note.pitch)}</span>}
+                  {labelsShown && <span className={styles.noteLabel} aria-hidden="true">{note.label ?? noteLabel?.(note.pitch) ?? noteName(note.pitch)}</span>}
                   <span
                     className={styles.noteResize}
                     aria-hidden="true"

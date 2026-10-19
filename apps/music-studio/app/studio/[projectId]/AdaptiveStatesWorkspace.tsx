@@ -63,16 +63,12 @@ const DraftSchema = z.object({
 });
 
 export function AdaptiveStatesWorkspace({
-  project,
-  onClose,
-  variant
+  project
 }: {
   project: MusicProject;
-  onClose(): void;
-  /** DAW layout: a Session-style grid of states, a transitions strip, then the selected state's editor. */
-  variant?: "daw";
 }) {
-  // DAW layout: the state being edited, and the one the runtime preview is playing.
+  // A Session-style grid of states, a transitions strip, then the selected state's editor:
+  // the state being edited, and the one the runtime preview is playing.
   const [selectedStateIndex, setSelectedStateIndex] = useState(0);
   const [liveStateId, setLiveStateId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<RenderJob[]>([]);
@@ -529,103 +525,78 @@ export function AdaptiveStatesWorkspace({
     </>
   );
 
-  if (variant === "daw") {
-    const selectedIndex = Math.min(selectedStateIndex, states.length - 1);
-    const selectedState = states[selectedIndex];
-    const nameOf = (stateId: string) => states.find((state) => state.stateId === stateId)?.displayName ?? stateId;
-    return (
-      <section className="adaptive-workspace adaptive-daw" aria-label="Adaptive States authoring workspace">
-        <header className="adaptive-daw-header">
-          <h2>Author adaptive states</h2>
-          <p>Each state is a completed master render of this project. Choose a state to edit it; the runtime preview lights the one playing.</p>
-        </header>
-        <div className="adaptive-grid-scroll">
-          <table className="adaptive-grid" aria-label="States grid">
-            <thead>
-              <tr>
-                <th scope="col">State</th>
-                <th scope="col">Render</th>
-                <th scope="col">Loop</th>
-                <th scope="col">Entry · exit</th>
-                <th scope="col">Leads to</th>
-              </tr>
-            </thead>
-            <tbody>
-              {states.map((state, index) => {
-                const job = jobs.find((candidate) => candidate.jobId === state.jobId);
-                const master = job?.result?.artifacts.find((artifact) => artifact.trackId === null && artifact.mediaType.startsWith("audio/") && !artifact.fileName.startsWith("preview."));
-                const role = adaptiveStateRole(state.tags);
-                const outgoing = configuration.transitions.filter((item) => item.fromStateId === state.stateId);
-                return (
-                  <tr key={state.jobId} data-live={liveStateId === state.stateId ? "" : undefined}>
-                    <th scope="row">
-                      <button type="button" className="adaptive-scene" aria-pressed={index === selectedIndex} onClick={() => setSelectedStateIndex(index)}>
-                        <strong>{state.displayName}</strong>
-                        <small>{role.kind === "music" ? "Music state" : `Stinger: ${ADAPTIVE_STINGER_CUES.find((item) => item.cue === role.cue)?.label}`}{liveStateId === state.stateId ? " · Playing" : ""}</small>
-                        <span className="adaptive-intensity" aria-hidden="true"><i style={{ width: `${Math.round(state.intensity * 100)}%` }} /></span>
-                        <small>Intensity {Math.round(state.intensity * 100)}%</small>
-                      </button>
-                    </th>
-                    <td>{master ? `${master.durationSeconds.toFixed(1)} s` : "—"}<small>{job ? `Revision ${job.manifest.revisionId.slice(0, 8)}` : "Render not loaded"}</small></td>
-                    <td>{role.kind === "music" ? `${(state.loopStartSeconds ?? 0).toFixed(1)}–${(state.loopEndSeconds ?? 0).toFixed(1)} s` : "One-shot"}</td>
-                    <td>{(state.entryCueSeconds ?? 0).toFixed(1)} s · {state.exitCueSeconds == null ? "end" : `${state.exitCueSeconds.toFixed(1)} s`}</td>
-                    <td>{outgoing.length ? outgoing.map((item) => `${nameOf(item.toStateId)} (${item.trigger})`).join(", ") : "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {states.length === 0 && <p className="adaptive-grid-empty">No states yet. Add one from a render candidate.</p>}
-        </div>
-        <section className="adaptive-transitions-strip" aria-label="Transitions strip">
-          <strong>Transitions</strong>
-          {configuration.transitions.length === 0 && <span className="adaptive-strip-empty">None yet: add one in State intensity &amp; transitions.</span>}
-          <ul>
-            {configuration.transitions.map((item) => (
-              <li key={item.transitionId}>
-                {nameOf(item.fromStateId)} → {nameOf(item.toStateId)} · {item.trigger} · {item.crossfadeMilliseconds} ms crossfade
-              </li>
-            ))}
-            {configuration.cuePoints.map((cue) => (
-              <li key={cue.cuePointId}>Cue {cue.cuePointId} · {nameOf(cue.stateId)} at {cue.positionSeconds} s</li>
-            ))}
-          </ul>
-        </section>
-        <div className="adaptive-daw-panes">
-          <section className="adaptive-state-editor" aria-labelledby="adaptive-states-title">
-            <h3 id="adaptive-states-title">Selected state</h3>
-            <p role="status">{draftStatus}</p>
-            {selectedState ? stateCard(selectedState, selectedIndex) : <p>Choose or add a state to edit its name, role, intensity and loop.</p>}
-            {details}
-          </section>
-          <div className="adaptive-daw-side">
-            {candidates}
-            <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
+  const selectedIndex = Math.min(selectedStateIndex, states.length - 1);
+  const selectedState = states[selectedIndex];
+  const nameOf = (stateId: string) => states.find((state) => state.stateId === stateId)?.displayName ?? stateId;
   return (
-    <section className="adaptive-workspace" aria-label="Adaptive States authoring workspace">
-      <header className="generation-header">
-        <div>
-          <span className="eyebrow">SynaptixPlay adaptive audio</span>
-          <h2>Author adaptive states</h2>
-          <p>Compose runtime states from immutable completed render candidates.</p>
-        </div>
-        <Button onClick={onClose}>Back to arrangement</Button>
+    <section className="adaptive-workspace adaptive-daw" aria-label="Adaptive States authoring workspace">
+      <header className="adaptive-daw-header">
+        <h2>Author adaptive states</h2>
+        <p>Each state is a completed master render of this project. Choose a state to edit it; the runtime preview lights the one playing.</p>
       </header>
-      <div className="adaptive-authoring-grid">
-        {candidates}
+      <div className="adaptive-grid-scroll">
+        <table className="adaptive-grid" aria-label="States grid">
+          <thead>
+            <tr>
+              <th scope="col">State</th>
+              <th scope="col">Render</th>
+              <th scope="col">Loop</th>
+              <th scope="col">Entry · exit</th>
+              <th scope="col">Leads to</th>
+            </tr>
+          </thead>
+          <tbody>
+            {states.map((state, index) => {
+              const job = jobs.find((candidate) => candidate.jobId === state.jobId);
+              const master = job?.result?.artifacts.find((artifact) => artifact.trackId === null && artifact.mediaType.startsWith("audio/") && !artifact.fileName.startsWith("preview."));
+              const role = adaptiveStateRole(state.tags);
+              const outgoing = configuration.transitions.filter((item) => item.fromStateId === state.stateId);
+              return (
+                <tr key={state.jobId} data-live={liveStateId === state.stateId ? "" : undefined}>
+                  <th scope="row">
+                    <button type="button" className="adaptive-scene" aria-pressed={index === selectedIndex} onClick={() => setSelectedStateIndex(index)}>
+                      <strong>{state.displayName}</strong>
+                      <small>{role.kind === "music" ? "Music state" : `Stinger: ${ADAPTIVE_STINGER_CUES.find((item) => item.cue === role.cue)?.label}`}{liveStateId === state.stateId ? " · Playing" : ""}</small>
+                      <span className="adaptive-intensity" aria-hidden="true"><i style={{ width: `${Math.round(state.intensity * 100)}%` }} /></span>
+                      <small>Intensity {Math.round(state.intensity * 100)}%</small>
+                    </button>
+                  </th>
+                  <td>{master ? `${master.durationSeconds.toFixed(1)} s` : "—"}<small>{job ? `Revision ${job.manifest.revisionId.slice(0, 8)}` : "Render not loaded"}</small></td>
+                  <td>{role.kind === "music" ? `${(state.loopStartSeconds ?? 0).toFixed(1)}–${(state.loopEndSeconds ?? 0).toFixed(1)} s` : "One-shot"}</td>
+                  <td>{(state.entryCueSeconds ?? 0).toFixed(1)} s · {state.exitCueSeconds == null ? "end" : `${state.exitCueSeconds.toFixed(1)} s`}</td>
+                  <td>{outgoing.length ? outgoing.map((item) => `${nameOf(item.toStateId)} (${item.trigger})`).join(", ") : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {states.length === 0 && <p className="adaptive-grid-empty">No states yet. Add one from a render candidate.</p>}
+      </div>
+      <section className="adaptive-transitions-strip" aria-label="Transitions strip">
+        <strong>Transitions</strong>
+        {configuration.transitions.length === 0 && <span className="adaptive-strip-empty">None yet: add one in State intensity &amp; transitions.</span>}
+        <ul>
+          {configuration.transitions.map((item) => (
+            <li key={item.transitionId}>
+              {nameOf(item.fromStateId)} → {nameOf(item.toStateId)} · {item.trigger} · {item.crossfadeMilliseconds} ms crossfade
+            </li>
+          ))}
+          {configuration.cuePoints.map((cue) => (
+            <li key={cue.cuePointId}>Cue {cue.cuePointId} · {nameOf(cue.stateId)} at {cue.positionSeconds} s</li>
+          ))}
+        </ul>
+      </section>
+      <div className="adaptive-daw-panes">
         <section className="adaptive-state-editor" aria-labelledby="adaptive-states-title">
-          <h3 id="adaptive-states-title">Package states</h3>
+          <h3 id="adaptive-states-title">Selected state</h3>
           <p role="status">{draftStatus}</p>
-          {states.map(stateCard)}
+          {selectedState ? stateCard(selectedState, selectedIndex) : <p>Choose or add a state to edit its name, role, intensity and loop.</p>}
           {details}
         </section>
-        <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
+        <div className="adaptive-daw-side">
+          {candidates}
+          <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
+        </div>
       </div>
     </section>
   );
