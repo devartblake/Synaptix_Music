@@ -22,11 +22,14 @@ import { Button } from "../../../components/ui/StudioControls";
 export function AdaptivePublication({
   manifest,
   jobs,
-  packageId
+  packageId,
+  licenceIssue
 }: {
   manifest: AdaptiveGameAudioManifest | null;
   jobs: RenderJob[];
   packageId: string;
+  /** Why the licence rules refuse this package (publication-rules-v1), checked before uploading. */
+  licenceIssue: string | null;
 }) {
   const [name, setName] = useState("Adaptive music");
   const [evidence, setEvidence] = useState<VerifiedEvidence[]>([]);
@@ -203,8 +206,9 @@ export function AdaptivePublication({
         <input value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
       </label>
       <p>{gate}</p>
+      {manifest && licenceIssue && <p role="alert" className="licence-issue">{licenceIssue}</p>}
       <Button
-        disabled={busy || !payload}
+        disabled={busy || !payload || Boolean(licenceIssue)}
         onClick={() =>
           void run(async () => {
             if (!payload) return;

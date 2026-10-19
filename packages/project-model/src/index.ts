@@ -376,3 +376,53 @@ export function projectOrigin(project: ArrangementSource): ProjectOrigin {
   if (!generation.arrangementFingerprint) return "generated";
   return arrangementFingerprint(project) === generation.arrangementFingerprint ? "generated" : "edited";
 }
+
+/**
+ * The provenance record a published package carries (publication-rules-v1, phase 1): where the
+ * music came from, its licence and how much a person changed. Built by `packageProvenance`.
+ */
+export const PackageProvenanceSchema = z.object({
+  origin: z.enum(["generated", "edited", "hand"]),
+  generatorId: IdSchema.optional(),
+  generatorVersion: z.string().min(1).optional(),
+  generatedAt: IsoDateSchema.optional(),
+  model: z.string().min(1).optional(),
+  licence: z.string().min(1).optional(),
+  commercialUse: z.enum(COMMERCIAL_USE).optional(),
+  planSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+  credits: z.array(z.string().min(1)).optional(),
+  /** 0 (as generated) to 1; absent when there is no generated-notes record. */
+  editShare: z.number().min(0).max(1).optional()
+}).strict();
+export type PackageProvenance = z.infer<typeof PackageProvenanceSchema>;
+
+/** The provenance record for publishing a project as it stands. */
+export function packageProvenance(project: ArrangementSource): PackageProvenance {
+  const generation = project.generationMetadata;
+  const origin = projectOrigin(project);
+  if (!generation) return { origin };
+  const share = editShare(project);
+  return {
+    origin,
+    generatorId: generation.generatorId,
+    generatorVersion: generation.generatorVersion,
+    generatedAt: generation.createdAt,
+    ...(generation.provenance ?? {}),
+    ...(share === null ? {} : { editShare: share })
+  };
+}
+
+/**
+ * Why publishing must refuse a package, or null when its licence allows it. Hand-composed music is
+ * always fine; generated music needs a licence record that doesn't say `not-allowed`. The platform
+ * enforces the same rule on its own copy of the revision; this is the studio's early check.
+ */
+export function licenceRefusal(record: PackageProvenance | undefined): string | null {
+  if (!record) return "This package has no provenance record, so its licence can't be checked.";
+  if (record.origin === "hand") return null;
+  if (!record.commercialUse)
+    return "This music was generated before licence records were kept, so it can't be published. Generate it again.";
+  if (record.commercialUse === "not-allowed")
+    return `This music was made with ${record.model ?? record.generatorId ?? "a generator"}, whose licence (${record.licence ?? "unknown"}) doesn't allow commercial use, so it can't be published.`;
+  return null;
+}

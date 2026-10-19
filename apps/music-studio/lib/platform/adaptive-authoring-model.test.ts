@@ -187,3 +187,16 @@ test("stinger drafts reject missing music, duplicate cues, and stinger transitio
     /cannot be part of transitions/
   );
 });
+
+test("the package's provenance record is attached only to renders of the revision it describes", () => {
+  // Publication rules v1: the record describes the project as it stands, so it must not be claimed
+  // for renders of an older revision (the platform recomputes it from the stored revision anyway).
+  const state = [{ jobId: job.jobId, stateId: "exploration", displayName: "Exploration", intensity: 0.35, tags: ["gameplay"] }];
+  const record = { origin: "hand" as const };
+  const current = buildAdaptiveDraft("10000000-0000-4000-8000-000000000004", "project-1", state, [job], undefined, undefined, undefined,
+    { revisionId: "revision-1", record });
+  assert.deepEqual(current.provenance, record);
+  const older = buildAdaptiveDraft("10000000-0000-4000-8000-000000000004", "project-1", state, [job], undefined, undefined, undefined,
+    { revisionId: "revision-2", record });
+  assert.equal(older.provenance, undefined);
+});
