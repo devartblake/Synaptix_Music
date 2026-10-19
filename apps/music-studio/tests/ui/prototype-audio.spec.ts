@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { LAYOUTS, openWorkspace, titled, type StudioLayout } from "./layouts";
+import { openWorkspace } from "./layouts";
 
 /** A valid 0.1 s silent 16-bit mono WAV. */
 function silentWav(): Buffer {
@@ -35,7 +35,7 @@ interface Mocks {
   polls: unknown[];
 }
 
-async function openGenerate(page: Page, enabled: boolean, mocks: Mocks = { events: null, polls: [COMPLETED] }, layout: StudioLayout = "classic") {
+async function openGenerate(page: Page, enabled: boolean, mocks: Mocks = { events: null, polls: [COMPLETED] }) {
   await page.route("**/api/platform/**", (route) => route.fulfill({ status: 503, json: { message: "Platform unavailable" } }));
   const posts: unknown[] = [];
   const deletes: string[] = [];
@@ -78,23 +78,22 @@ async function openGenerate(page: Page, enabled: boolean, mocks: Mocks = { event
   }));
   await page.goto(`/studio/prototype-${Date.now()}`);
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
-  await openWorkspace(page, layout, "generation");
+  await openWorkspace(page, "generation");
   return { posts, deletes };
 }
 
-// Generation runs in both layouts until step 9; the DAW layout opens it as the Generate drawer.
-for (const layout of LAYOUTS) {
-test(titled("prototype audio stays hidden unless the service is configured", layout), async ({ page }) => {
-  await openGenerate(page, false, undefined, layout);
+// Generation opens as the Generate drawer.
+test("prototype audio stays hidden unless the service is configured", async ({ page }) => {
+  await openGenerate(page, false);
   await expect(page.getByRole("region", { name: "AI generation workspace" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Prototype audio" })).toHaveCount(0);
 });
 
-test(titled("prototype audio is labelled non-commercial, follows live progress, and plays the clip", layout), async ({ page }) => {
+test("prototype audio is labelled non-commercial, follows live progress, and plays the clip", async ({ page }) => {
   const { posts } = await openGenerate(page, true, {
     events: sse(job("queued", { position: 2 }), job("generating", { progress: 0.4, version: 4 }), COMPLETED),
     polls: [COMPLETED]
-  }, layout);
+  });
   const panel = page.getByRole("region", { name: "Prototype audio" });
   await expect(panel.getByText("Non-commercial · prototype only")).toBeVisible();
   await expect(panel.getByLabel("Prompt")).toHaveValue(/video game music, \d+ BPM, D minor/);
@@ -110,11 +109,11 @@ test(titled("prototype audio is labelled non-commercial, follows live progress, 
   expect(posts.at(-1)).toMatchObject({ durationSeconds: 10, seed: 1 });
 });
 
-test(titled("without live updates the panel polls, shows progress, and can cancel a queued clip", layout), async ({ page }) => {
+test("without live updates the panel polls, shows progress, and can cancel a queued clip", async ({ page }) => {
   const { deletes } = await openGenerate(page, true, {
     events: null,
     polls: [job("queued", { position: 2, version: 2 })]
-  }, layout);
+  });
   const panel = page.getByRole("region", { name: "Prototype audio" });
   await panel.getByRole("button", { name: "Generate prototype audio" }).click(); // service unreachable
   await panel.getByRole("button", { name: "Generate prototype audio" }).click();
@@ -127,11 +126,11 @@ test(titled("without live updates the panel polls, shows progress, and can cance
   await expect(panel.getByRole("button", { name: "Generate prototype audio" })).toBeEnabled();
 });
 
-test(titled("polling reports generation progress until the clip is ready", layout), async ({ page }) => {
+test("polling reports generation progress until the clip is ready", async ({ page }) => {
   await openGenerate(page, true, {
     events: null,
     polls: [job("generating", { progress: 0.4, version: 4 }), job("generating", { progress: 0.4, version: 4 }), COMPLETED]
-  }, layout);
+  });
   const panel = page.getByRole("region", { name: "Prototype audio" });
   await panel.getByRole("button", { name: "Generate prototype audio" }).click();
   await panel.getByRole("button", { name: "Generate prototype audio" }).click();
@@ -139,4 +138,3 @@ test(titled("polling reports generation progress until the clip is ready", layou
   await expect(panel.getByRole("progressbar", { name: "Prototype audio progress" })).toHaveAttribute("value", "0.4");
   await expect(panel.getByLabel("Prototype audio clip")).toBeVisible({ timeout: 10_000 });
 });
-}

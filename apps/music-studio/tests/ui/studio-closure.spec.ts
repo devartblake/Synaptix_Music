@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { LAYOUTS, openWorkspace, titled, useClassicLayout } from "./layouts";
+import { openWorkspace } from "./layouts";
 
 async function prepareStudio(page: Page): Promise<void> {
   await page.route("**/api/platform/generation/jobs**", async (route) => {
@@ -49,20 +49,13 @@ test("studio shell preserves its desktop and tablet layout contract", async ({ p
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-for (const layout of LAYOUTS)
-test(titled("generation workspace exposes a screen-reader-safe status and labeled controls", layout), async ({ page }) => {
+test("generation workspace exposes a screen-reader-safe status and labeled controls", async ({ page }) => {
   await prepareStudio(page);
-  if (layout === "classic") {
-    await useClassicLayout(page);
-    await page.locator(".studio-nav").getByRole("button", { name: /Generate/ }).click();
-  }
-  else await openWorkspace(page, layout, "generation");
+  await openWorkspace(page, "generation");
   await expect(page.getByRole("heading", { name: "Create a project variation" })).toBeVisible();
-  // The DAW layout opens Generate as a drawer beside the timeline, which stays on screen.
-  if (layout === "daw") {
-    await expect(page.getByRole("complementary", { name: "Generate" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Project workspace" }).locator("[data-track-id]").first()).toBeVisible();
-  }
+  // Generate is a drawer beside the timeline, which stays on screen.
+  await expect(page.getByRole("complementary", { name: "Generate" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Project workspace" }).locator("[data-track-id]").first()).toBeVisible();
   const preview = page.getByRole("region", { name: "Generated variation preview" });
   await expect(preview.getByRole("status")).toContainText("durable polling");
   await expect(page.getByLabel("Creative brief")).toBeVisible();

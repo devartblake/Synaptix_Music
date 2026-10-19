@@ -22,14 +22,12 @@ import {
   VIBRATO_PARAMETER,
   primaryDevice,
   resolveEffectiveInstrumentSettings,
-  resolveInstrumentDefinition,
   REVERB_SEND_PARAMETER
 } from "@synaptix/daw-engine";
 import type { Track } from "@synaptix/project-model";
 
 import { Button } from "../../../components/ui/StudioControls";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
-import { InstrumentIcon } from "./InstrumentIcon";
 
 type NumericSettingsKey =
   | "filterFrequency" | "resonance" | "attack" | "decay" | "sustain" | "release" | "reverbSend"
@@ -121,15 +119,6 @@ export function DeviceControls({ track, hydrated, onExecute, modulationOpen, onM
       })()}
     </div>
   );
-}
-
-/** The Devices & effects workspace: every track's device controls on one page (also the v2 dock's Devices tab). */
-export function DevicesWorkspace({ tracks, onClose, ...controls }: Omit<DeviceControlsProps, "track"> & {
-  tracks: readonly Track[];
-  /** Omitted in the dock, which has no page to go back from (and labels the panel itself). */
-  onClose?: () => void;
-}) {
-  return <section aria-label="Devices and effects" className="device-workspace">{onClose && <><h2>Devices & effects</h2><p>Instrument → filter and envelope → track fader → output bus. Reverb sends feed the shared return in Mixer.</p><p>Use Tab to move between controls; arrow keys adjust values. Undo and redo use the project history.</p></>}{tracks.filter(track => track.devices.length > 0).map(track => <fieldset key={track.id}><legend>{track.name}</legend>{(() => { const type = (primaryDevice(track) ?? track.devices[0])?.deviceType ?? ""; if (type === FREQUENCY_DRONE_DEVICE_TYPE) return <p>Frequency Drone</p>; const definition = resolveInstrumentDefinition(type, track.name); return <p className="device-instrument"><InstrumentIcon kind={definition.profile.kind} deviceType={definition.deviceType} size={28} />{definition.label}</p>; })()}<DeviceControls track={track} {...controls} /></fieldset>)}{onClose && <Button onClick={onClose}>Back to arrangement</Button>}</section>;
 }
 
 /** The slider/knob step for a parameter. */

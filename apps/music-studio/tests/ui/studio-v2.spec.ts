@@ -64,7 +64,7 @@ test("the DAW layout keeps the timeline in view while the dock edits, mixes and 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("the layout choice and dock state survive a reload, and the classic layout is one click back", async ({ page }) => {
+test("the dock state survives a reload", async ({ page }) => {
   await openStudio(page);
   await switchToV2(page);
   await page.keyboard.press("Alt+3");
@@ -72,23 +72,13 @@ test("the layout choice and dock state survive a reload, and the classic layout 
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await expect(page.locator(".studio-v2")).toBeVisible();
   await expect(page.getByRole("region", { name: "Dock" }).getByRole("tab", { name: /^Mixer/ })).toHaveAttribute("aria-selected", "true");
-
-  // The DAW layout's Settings dialog switches to the classic layout, which is then remembered.
+  // There is one layout now: Settings no longer offers the classic one.
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("switch", { name: "Classic layout" })).not.toBeChecked();
-  await page.getByRole("switch", { name: "Classic layout" }).click();
-  await expect(page.locator(".studio-topbar")).toBeVisible();
-  await expect(page.locator(".studio-v2")).toHaveCount(0);
-  await page.reload();
-  await expect(page.locator(".studio-topbar")).toBeVisible();
-  // The classic Layout menu switches back.
-  await page.getByRole("button", { name: "Layout", exact: true }).click();
-  await page.getByRole("button", { name: "DAW layout" }).click();
-  await expect(page.locator(".studio-v2")).toBeVisible();
+  await expect(page.getByRole("switch", { name: "Classic layout" })).toHaveCount(0);
 });
 
-test("a browser that used the studio before the switch-over opens in the DAW layout", async ({ page }) => {
-  // Before step 9b every stored layout said shell "v1": that was the old default, not a choice.
+test("a browser that used the classic layout opens in the DAW layout and keeps its other choices", async ({ page }) => {
+  // Layouts stored before step 9b say shell "v1"; the classic layout no longer exists.
   await page.addInitScript(() => {
     if (!sessionStorage.getItem("seeded")) {
       sessionStorage.setItem("seeded", "1");
@@ -482,7 +472,7 @@ test("the dock mixer shows a strip per channel whose fader, knobs and switches e
   await pan.dblclick();
   await expect(pan).toHaveAttribute("aria-valuetext", "C");
 
-  // Mute, solo and the output route are the same edits the classic mixer makes.
+  // Mute, solo and the output route are each one undoable edit.
   await strip.getByRole("button", { name: "Mute Bass" }).click();
   await expect(strip.getByRole("button", { name: "Mute Bass" })).toHaveAttribute("aria-pressed", "true");
   await strip.getByRole("button", { name: "Solo Bass" }).click();
