@@ -2,8 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { SILENT_METER, type AudioTransport, type MasterMeterSnapshot } from "@synaptix/daw-engine";
-import { MeterBar } from "../../../components/ui/StudioControls";
-import styles from "./mixer.module.css";
 
 const Levels = createContext<Record<string, MasterMeterSnapshot>>({});
 export function ChannelMeters({
@@ -17,20 +15,6 @@ export function ChannelMeters({
   useEffect(() => engine.subscribeChannelMeters(setLevels), [engine]);
   return <Levels.Provider value={levels}>{children}</Levels.Provider>;
 }
-export function ChannelMeter({ id, name }: { id: string; name: string }) {
-  const meter = useContext(Levels)[id] ?? SILENT_METER;
-  const db = (value: number) => (Number.isFinite(value) ? `${value.toFixed(1)} dBFS` : "Silent");
-  return (
-    <div className={styles.levels}>
-      <MeterBar label={`${name} peak`} value={meter.peakDbfs} clipped={meter.clipped} />
-      <small>
-        Peak {db(meter.peakDbfs)} · RMS {db(meter.rmsDbfs)}
-        {meter.clipped ? " · Clipping" : ""}
-      </small>
-    </div>
-  );
-}
-
 /** A slim vertical level for a timeline track header or, with `rms`, a mixer strip (the DAW layout). */
 export function TrackLevel({ id, name, className = "track-level", rms = false }: { id: string; name: string; className?: string; rms?: boolean }) {
   const meter = useContext(Levels)[id] ?? SILENT_METER;

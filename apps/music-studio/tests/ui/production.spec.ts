@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createEmptyProject } from "@synaptix/project-model";
 import type { RenderJob, RenderManifest } from "@synaptix/render-contracts";
 
-import { LAYOUTS, openWorkspace, titled, type StudioLayout } from "./layouts";
+import { openWorkspace } from "./layouts";
 
 test("bus controls and sends persist; track and bus meters read live audio", async ({
   page
@@ -111,18 +111,17 @@ function jobFixture(manifest: RenderManifest, key: string): RenderJob {
     lastError: null
   };
 }
-async function openExport(page: Page, layout: StudioLayout, reload = false) {
+async function openExport(page: Page, reload = false) {
   if (reload) await page.reload();
   else await page.goto("/studio/export-test");
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
-  await openWorkspace(page, layout, "render");
+  await openWorkspace(page, "render");
   await expect(page.getByRole("heading", { name: "Render & export" })).toBeVisible();
-  // The DAW layout opens Export as a modal dialog over the studio.
-  if (layout === "daw") await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
+  // Export opens as a modal dialog over the studio.
+  await expect(page.getByRole("dialog", { name: "Export" })).toBeVisible();
 }
 
-for (const layout of LAYOUTS)
-test(titled("export retries with one idempotency key, recovers history, and downloads completed artifacts", layout), async ({
+test("export retries with one idempotency key, recovers history, and downloads completed artifacts", async ({
   page
 }, info) => {
   const project = projectFixture();
@@ -147,10 +146,10 @@ test(titled("export retries with one idempotency key, recovers history, and down
     }
     return route.fulfill({ json: { jobs: job ? [job] : [] } });
   });
-  await openExport(page, layout);
+  await openExport(page);
   await page.getByRole("button", { name: "Render current revision", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Temporary queue outage" })).toBeVisible();
-  await openExport(page, layout, true);
+  await openExport(page, true);
   await page.getByRole("button", { name: "Retry submission", exact: true }).click();
   await expect(page.getByText("queued", { exact: true })).toBeVisible();
   expect(keys).toHaveLength(2);
@@ -194,15 +193,14 @@ test(titled("export retries with one idempotency key, recovers history, and down
       .violations
   ).toEqual([]);
   await page.screenshot({ path: info.outputPath("export.png") });
-  await openExport(page, layout, true);
+  await openExport(page, true);
   await expect(page.getByText("completed", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   // The DAW layout switches to its phone layout on the resize's re-render; measure once it has.
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-for (const layout of LAYOUTS)
-test(titled("export blocks an unsynced revision and shows cancel and failure states", layout), async ({ page }) => {
+test("export blocks an unsynced revision and shows cancel and failure states", async ({ page }) => {
   const project = projectFixture();
   let cloud = project;
   let job: RenderJob | null = null;
@@ -224,7 +222,7 @@ test(titled("export blocks an unsynced revision and shows cancel and failure sta
     }
     return route.fulfill({ json: { jobs: job ? [job] : [] } });
   });
-  await openExport(page, layout);
+  await openExport(page);
   cloud = { ...project, revisionId: "different-revision" };
   await page.getByRole("button", { name: "Render current revision" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Save and sync" })).toBeVisible();

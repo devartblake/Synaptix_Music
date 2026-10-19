@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, ViewTabs } from "../../../components/ui/StudioControls";
+import { Button } from "../../../components/ui/StudioControls";
 import { useStudioLayout, type DockTab } from "../../../lib/editor/use-studio-layout";
 import { useStudioSettings } from "../../../lib/editor/use-studio-settings";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
@@ -67,19 +67,16 @@ import { HttpPlatformProjectRepository } from "../../../lib/platform/platform-pr
 import { ProjectSyncCoordinator, type ProjectSyncSnapshot } from "../../../lib/platform/project-sync-coordinator";
 import { GenerationWorkspace } from "./GenerationWorkspace";
 import { AdaptiveStatesWorkspace } from "./AdaptiveStatesWorkspace";
-import { MixerDrawer } from "./MixerDrawer";
 import { DockMixer } from "./DockMixer";
 import { StudioBrowser } from "./StudioBrowser";
-import { DeviceControls, DevicesWorkspace } from "./DeviceControls";
+import { DeviceControls } from "./DeviceControls";
 import { DeviceChain } from "./DeviceChain";
 import { StudioBanners } from "./StudioBanners";
 import { StudioInspector } from "./StudioInspector";
 import { NotebookPanel } from "./NotebookPanel";
 import { StickyNotesEditor, TrackStickyNotes } from "./StickyNotes";
 import { StudioSettingsPanel } from "./StudioSettings";
-import { LayoutMenu, StudioSidebar, StudioViewbar, type ActiveClip, type Workspace } from "./StudioSidebar";
-import { hintFor, SaveSyncStatus, StatusAccount, StudioDialog, StudioDock, StudioDrawer, StudioStatusBar, StudioTransportBar } from "./StudioV2";
-import { StudioTopbar } from "./StudioTopbar";
+import { hintFor, SaveSyncStatus, StatusAccount, StudioDialog, StudioDock, StudioDrawer, StudioStatusBar, StudioTransportBar, type ActiveClip, type Workspace } from "./StudioV2";
 import { RenderWorkspace } from "./RenderWorkspace";
 import { PianoRoll } from "./PianoRoll";
 import { PluginRack, pluginInsertNames } from "./PluginRack";
@@ -88,7 +85,7 @@ import { createPlatformFrozenAudioSource } from "../../../lib/platform/frozen-au
 import { studioStartTick } from "../../../lib/player/playback-model";
 import { usePlayer } from "../../../lib/player/player-store";
 import { ArrangementTimeline } from "./ArrangementTimeline";
-import { TransportCounters, TransportPosition } from "./TransportPosition";
+import { TransportCounters } from "./TransportPosition";
 import { INSTRUMENT_ACCENTS } from "./InstrumentIcon";
 import { CommitSlider } from "../../../components/ui/CommitSlider";
 import { arrangementBars, barTicks } from "../../../lib/editor/timeline-model";
@@ -194,26 +191,13 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const [modulationOpen, setModulationOpen] = useState<Record<string, boolean>>({});
   // v2 dock Devices tab: the track shown; it follows the clip being edited.
   const [deviceTrackId, setDeviceTrackId] = useState<string | null>(null);
-  const [mixerOpen, setMixerOpen] = useState(false);
   const [newInstrument, setNewInstrument] = useState("synaptix-pad");
-  const mixerToggleRef = useRef<HTMLButtonElement>(null);
   const panelLayout = useStudioLayout();
   const studioSettings = useStudioSettings();
   // DAW layout: the Notebook drawer and the Settings dialog.
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => {
-    try { setMixerOpen(localStorage.getItem("synaptix-music:mixer-open:v1") === "true"); }
-    catch { /* Layout preferences are optional when browser storage is unavailable. */ }
-  }, []);
-
-  function changeMixerOpen(open: boolean) {
-    setMixerOpen(open);
-    try { localStorage.setItem("synaptix-music:mixer-open:v1", String(open)); }
-    catch { /* The mixer remains usable without persisted preferences. */ }
-    if (!open) mixerToggleRef.current?.focus();
-  }
   const engine = useMemo(() => new BrowserAudioEngine({ frozenAudio: createPlatformFrozenAudioSource() }), []);
   // Tone.js has one global transport: the listening player hands the audio to the studio.
   useEffect(() => { usePlayer.getState().release(); }, []);
@@ -655,17 +639,16 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   function pause(): void { engine.pause(); setPlaying(false); }
   function stop(): void { engine.stop(); setPlaying(false); }
 
-  const v2 = panelLayout.v2;
   useEffect(() => {
-    if (workspace === "arrangement" || (v2 && workspace === "devices")) return;
-    // DAW layout: Generate is a drawer and Export a dialog; each takes focus to its heading.
-    const heading = document.querySelector<HTMLElement>(!v2 ? ".studio-workspace h2"
-      : workspace === "generation" ? ".studio-drawer h2" : workspace === "render" ? ".studio-dialog h2" : ".studio-v2-main h2");
+    if (workspace === "arrangement" || workspace === "devices") return;
+    // Generate is a drawer and Export a dialog; each takes focus to its heading.
+    const heading = document.querySelector<HTMLElement>(workspace === "generation" ? ".studio-drawer h2"
+      : workspace === "render" ? ".studio-dialog h2" : ".studio-v2-main h2");
     heading?.setAttribute("tabindex", "-1");
     heading?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
     if (workspace === "adaptive") { engine.stop(); setPlaying(false); }
-  }, [workspace, engine, v2]);
+  }, [workspace, engine]);
 
   // v2 dock: choosing the open tab collapses it; any other tab opens the dock on that tab.
   function chooseDockTab(tab: DockTab): void {
@@ -692,8 +675,8 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (settingsOpen) document.querySelector<HTMLElement>(".studio-settings h2")?.focus({ preventScroll: true });
   }, [settingsOpen]);
-  const notebookVisible = v2 && notebookOpen && studioSettings.settings.notebook && workspace !== "generation";
-  const stickyNotesOn = v2 && studioSettings.settings.stickyNotes;
+  const notebookVisible = notebookOpen && studioSettings.settings.notebook && workspace !== "generation";
+  const stickyNotesOn = studioSettings.settings.stickyNotes;
 
   // DAW layout on narrow screens: the Browser or inspector opened over the timeline.
   const [panelOverlay, setPanelOverlay] = useState<"browser" | "inspector" | null>(null);
@@ -713,7 +696,6 @@ export default function StudioClient({ projectId }: { projectId: string }) {
       ?? document.querySelector<HTMLElement>(".studio-transportbar [aria-controls][aria-expanded]"))?.focus());
   }
   useEffect(() => {
-    if (!v2) return;
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === "KeyE") {
         event.preventDefault();
@@ -802,21 +784,11 @@ export default function StudioClient({ projectId }: { projectId: string }) {
     onClose={() => setActiveClip(null)}
   />;
   const toArrangement = () => setWorkspace("arrangement");
-  const workspaces = <>
-    {workspace === "generation" && <GenerationWorkspace
-      project={builtinView}
-      onAddDrone={addFrequencyDrone}
-      onApply={applyGeneratedVariation}
-      onClose={toArrangement}
-    />}
-    {workspace === "render" && <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} onClose={toArrangement} onSync={async () => coordinatorRef.current?.drain()} />}
-    {workspace === "adaptive" && <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} />}
-  </>;
   // DAW layout: the inspector and Browser follow the timeline selection, else the clip being edited.
   const inspectedClip = selectedClip ?? activeClip;
   const inspectedTrack = (inspectedClip && builtinView.tracks.find((track) => track.id === inspectedClip.trackId)) ?? null;
   const inspectedClipData = inspectedTrack?.clips.find((clip) => clip.id === inspectedClip?.clipId);
-  const selection = panelLayout.v2 && inspectedTrack && inspectedClipData ? {
+  const selection = inspectedTrack && inspectedClipData ? {
     clip: inspectedClipData,
     track: inspectedTrack,
     instrument: resolveInstrumentDefinition((primaryDevice(inspectedTrack) ?? inspectedTrack.devices[0])?.deviceType ?? "", inspectedTrack.name).label,
@@ -827,9 +799,9 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   const notedTrack = inspectedTrack && project.tracks.find((track) => track.id === inspectedTrack.id);
   const inspector = <StudioInspector panelLayout={panelLayout} projectId={project.projectId} trackCount={project.tracks.length}
     bars={arrangementBars(builtinView)} bpm={bpm} syncLabel={syncLabel} selection={selection}
-    publication={panelLayout.v2 ? { revisionId: project.revisionId, refreshKey: workspace, onOpenAdaptive: () => setWorkspace("adaptive") } : undefined}
+    publication={{ revisionId: project.revisionId, refreshKey: workspace, onOpenAdaptive: () => setWorkspace("adaptive") }}
     onOpenGenerator={() => setWorkspace("generation")}
-    overlay={panelLayout.v2 ? { open: panelOverlay === "inspector", onClose: closePanelOverlay } : undefined}
+    overlay={{ open: panelOverlay === "inspector", onClose: closePanelOverlay }}
     notes={stickyNotesOn ? <section className="inspector-card sticky-card" aria-labelledby="sticky-card-title">
       <strong id="sticky-card-title">Sticky notes</strong>
       {notedTrack && <>
@@ -845,170 +817,113 @@ export default function StudioClient({ projectId }: { projectId: string }) {
   // DAW layout: a track takes its own colour, else its instrument family's (as the engine resolves it).
   const dawTrackColor = (track: Track) => track.color ?? INSTRUMENT_ACCENTS[resolveInstrumentDefinition((primaryDevice(track) ?? track.devices[0])?.deviceType ?? "", track.name).profile.kind];
 
-  if (panelLayout.v2) {
-    const { dockTab, dockOpen } = panelLayout.layout;
-    const dockClip = activeClip && builtinView.tracks.find((track) => track.id === activeClip.trackId);
-    const browserOverlay = panelOverlay === "browser" && !panelLayout.navigationVisible;
-    return (
-      <main className={`studio-v2${panelLayout.mobile ? " studio-v2-phone" : ""}`}
-        onFocus={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
-        onPointerOver={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
-        style={{
-          "--studio-nav-width": panelLayout.navigationVisible ? `${panelLayout.navigationWidth}px` : "0px",
-          "--studio-inspector-width": panelLayout.inspectorVisible ? `${panelLayout.layout.inspectorWidth}px` : "0px"
-        } as React.CSSProperties}>
-        <StudioTransportBar {...topbarProps}
-          position={<TransportCounters engine={engine} project={builtinView} />}
-          view={workspace === "adaptive" ? "adaptive" : "arrange"}
-          onView={(view) => setWorkspace(view === "adaptive" ? "adaptive" : "arrangement")}
-          onGenerate={() => { setNotebookOpen(false); setWorkspace("generation"); }} onExport={() => setWorkspace("render")}
-          onSettings={() => setSettingsOpen(true)}
-          notebook={studioSettings.settings.notebook ? { open: notebookVisible, onToggle: () => {
-            if (notebookVisible) { closeOverlay("notebook"); return; }
-            if (workspace === "generation") setWorkspace("arrangement");
-            setNotebookOpen(true);
-          } } : undefined}
-          compact={panelLayout.mobile}
-          panels={[
-            ...(!panelLayout.navigationVisible && panelLayout.mobile ? [{ id: "browser" as const, label: "Browser", open: panelOverlay === "browser", onToggle: () => togglePanelOverlay("browser") }] : []),
-            ...(!panelLayout.inspectorVisible && panelLayout.narrow ? [{ id: "inspector" as const, label: "Inspector", open: panelOverlay === "inspector", onToggle: () => togglePanelOverlay("inspector") }] : [])
-          ]} />
-        <div className="studio-v2-banners">{banners}</div>
-        <div className="studio-v2-body">
-          <aside id="studio-browser" aria-label="Browser"
-            className={`studio-browser${browserOverlay ? " studio-overlay studio-overlay-left" : ""}`}
-            hidden={!panelLayout.navigationVisible && !browserOverlay}
-            onKeyDown={browserOverlay ? (event) => { if (event.key === "Escape") { event.preventDefault(); closePanelOverlay(); } } : undefined}>
-            {!browserOverlay && <ResizeHandle label="Browser panel size" controls="studio-browser" orientation="vertical"
-              value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />}
-            <div className="studio-sidebar-scroll">
-              <div className="studio-overlay-heading"><h2 className="panel-label" tabIndex={-1}>Browser</h2>
-                {browserOverlay && <Button className="studio-overlay-close" onClick={closePanelOverlay}>Close</Button>}</div>
-              <StudioBrowser project={builtinView} value={newInstrument} onChange={setNewInstrument}
-                selectedTrack={inspectedTrack} disabled={!hydrated}
-                onAdd={(deviceType) => void addInstrument(deviceType)}
-                onSwap={(trackId, deviceType) => void swapInstrument(trackId, deviceType)}
-                onAddClip={(trackId, clip) => void executeV1(new AddClipEditorCommand(trackId, clip)).then(() => openInDock({ trackId, clipId: clip.id }))}
-                onOpenClip={openInDock} onOpenGenerator={() => setWorkspace("generation")} onExport={() => setWorkspace("render")} />
-            </div>
-          </aside>
-          <div className="studio-v2-centre">
-            <section className="studio-v2-main" aria-label="Project workspace">
-              {workspace === "adaptive"
-                ? <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} variant="daw" />
-                : <>{conflictBanners}{timeline(openInDock, {
-                  trackColor: dawTrackColor,
-                  onSelect: setSelectedClip,
-                  onDropInstrument: (deviceType, trackId) => void (trackId ? swapInstrument(trackId, deviceType) : addInstrument(deviceType)),
-                  trackAccessory: stickyNotesOn ? (track) => <TrackStickyNotes trackName={track.name} disabled={!hydrated}
-                    notes={project.tracks.find((candidate) => candidate.id === track.id)?.stickyNotes ?? []}
-                    onChange={(update) => void editStickyNotes(track.id, update)} /> : undefined,
-                  emptyState: <div className="timeline-empty">
-                    <strong>Start with an instrument</strong>
-                    <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>
-                    <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add {instrumentDefinition(newInstrument)?.label ?? "instrument"} track</Button>
-                  </div>
-                })}</>}
-            </section>
-            <StudioDock tab={dockTab} open={dockOpen} onTab={chooseDockTab}
-              height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax}
-              onResize={(dockHeight) => panelLayout.update({ dockHeight })}
-              context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Device chain" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
-              panels={{
-                editor: pianoRoll("daw") || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
-                devices: <DeviceChain tracks={project.tracks} trackId={deviceTrackId ?? activeClip?.trackId ?? null}
-                  onTrack={setDeviceTrackId} {...deviceControls}
-                  inserts={(chainTrack) => { const track = project.tracks.find((candidate) => candidate.id === chainTrack.id); return track && <PluginRack track={track}
-                    statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
-                    onExecute={(command) => void execute(command)}
-                    freeze={{ evidence: freezeEvidence, progress: freezeProgress, onFreeze: (trackId, deviceId) => void freezePlugin(trackId, deviceId) }}
-                    gestures={{
-                      begin: beginDeviceGesture,
-                      preview: previewDeviceParameter,
-                      end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
-                    }} />; }} />,
-                mixer: <DockMixer project={builtinView} engine={engine} trackColor={dawTrackColor}
-                  pluginNames={(id) => { const track = project.tracks.find((candidate) => candidate.id === id); return track ? pluginInsertNames(track) : []; }}
-                  selectedTrackId={activeClip?.trackId ?? null} onExecute={executeV1}
-                  onOpenDevices={(id) => { setDeviceTrackId(id); chooseDockTab("devices"); }} />
-              }} />
-          </div>
-          {inspector}
-          {workspace === "generation" && <StudioDrawer label="Generate" onClose={() => closeOverlay("generate")}>
-            <GenerationWorkspace project={builtinView} onAddDrone={addFrequencyDrone} onApply={applyGeneratedVariation}
-              onClose={() => closeOverlay("generate")} variant="drawer" />
-          </StudioDrawer>}
-          {notebookVisible && <StudioDrawer label="Notebook" onClose={() => closeOverlay("notebook")}>
-            <NotebookPanel pages={project.notebook ?? []} disabled={!hydrated}
-              onChange={(update) => void editNotebook(update)} onClose={() => closeOverlay("notebook")} />
-          </StudioDrawer>}
-        </div>
-        {workspace === "render" && <StudioDialog label="Export" onClose={() => closeOverlay("export")}>
-          <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} variant="dialog"
-            onClose={() => closeOverlay("export")} onSync={async () => coordinatorRef.current?.drain()} />
-        </StudioDialog>}
-        {settingsOpen && <StudioDialog label="Settings" onClose={() => closeOverlay("settings")}>
-          <StudioSettingsPanel settings={studioSettings.settings} onSettings={studioSettings.update} panelLayout={panelLayout}
-            onClose={() => closeOverlay("settings")} />
-        </StudioDialog>}
-        <StudioStatusBar hint={hint}
-          facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span><StatusAccount /></>} />
-      </main>
-    );
-  }
-
+  const { dockTab, dockOpen } = panelLayout.layout;
+  const dockClip = activeClip && builtinView.tracks.find((track) => track.id === activeClip.trackId);
+  const browserOverlay = panelOverlay === "browser" && !panelLayout.navigationVisible;
   return (
-    <main className={`studio-shell${mixerOpen ? " studio-shell-mixer-open" : ""}`}
-      style={{ "--studio-mixer-height": `${panelLayout.mixerHeight}px` } as React.CSSProperties}>
-      <StudioTopbar {...topbarProps} />
-
-      {banners}
-
-      <StudioViewbar ref={mixerToggleRef} workspace={workspace} onWorkspace={setWorkspace} panelLayout={panelLayout}
-        mixerOpen={mixerOpen} onMixerOpen={changeMixerOpen} />
-
-      <div className="studio-grid" style={{
+    <main className={`studio-v2${panelLayout.mobile ? " studio-v2-phone" : ""}`}
+      onFocus={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
+      onPointerOver={(event) => { const next = hintFor(event.target); if (next) setHint(next); }}
+      style={{
         "--studio-nav-width": panelLayout.navigationVisible ? `${panelLayout.navigationWidth}px` : "0px",
         "--studio-inspector-width": panelLayout.inspectorVisible ? `${panelLayout.layout.inspectorWidth}px` : "0px"
       } as React.CSSProperties}>
-        <StudioSidebar project={builtinView} panelLayout={panelLayout} workspace={workspace} onWorkspace={setWorkspace}
-          activeClip={activeClip} onActiveClip={setActiveClip} mixerOpen={mixerOpen} onMixerOpen={changeMixerOpen}
-          newInstrument={newInstrument} onNewInstrument={setNewInstrument}
-          onAddInstrument={(deviceType) => void addInstrument(deviceType)} addDisabled={!hydrated}
-          onOpenPreview={() => { stop(); setWorkspace("adaptive"); }} />
-
-        <section className="studio-workspace" aria-label="Project workspace">
-          {workspace === "arrangement" && <div className="workspace-tabs">
-            <ViewTabs label="Editor views" value={activeClip ? "midi" : "arrangement"}
-              onChange={(view) => { if (view === "arrangement") setActiveClip(null); }}
-              tabs={[{ value: "arrangement", label: "Arrangement", panelId: "arrangement-view" },
-                { value: "midi", label: "MIDI editor", panelId: "midi-view", disabled: !activeClip }]} />
-            <span className="workspace-spacer" />
-            <TransportPosition engine={engine} project={builtinView} />
-            <Badge>Revision {project.revisionId.slice(0, 8)}</Badge>
-          </div>}
-
-      {workspace === "arrangement" && <>
-      {conflictBanners}
-
-      <div id="arrangement-view" role="tabpanel" aria-labelledby="arrangement-view-tab" hidden={Boolean(activeClip)}>
-      {timeline(setActiveClip)}
-      </div>
-
-      <div id="midi-view" role="tabpanel" aria-labelledby="midi-view-tab" hidden={!activeClip}>
-      {pianoRoll()}
-      </div>
-      </>}
-
-      {workspaces}
-      {workspace === "devices" && <DevicesWorkspace tracks={project.tracks} {...deviceControls} onClose={toArrangement} />}
-        </section>
-
+      <StudioTransportBar {...topbarProps}
+        position={<TransportCounters engine={engine} project={builtinView} />}
+        view={workspace === "adaptive" ? "adaptive" : "arrange"}
+        onView={(view) => setWorkspace(view === "adaptive" ? "adaptive" : "arrangement")}
+        onGenerate={() => { setNotebookOpen(false); setWorkspace("generation"); }} onExport={() => setWorkspace("render")}
+        onSettings={() => setSettingsOpen(true)}
+        notebook={studioSettings.settings.notebook ? { open: notebookVisible, onToggle: () => {
+          if (notebookVisible) { closeOverlay("notebook"); return; }
+          if (workspace === "generation") setWorkspace("arrangement");
+          setNotebookOpen(true);
+        } } : undefined}
+        compact={panelLayout.mobile}
+        panels={[
+          ...(!panelLayout.navigationVisible && panelLayout.mobile ? [{ id: "browser" as const, label: "Browser", open: panelOverlay === "browser", onToggle: () => togglePanelOverlay("browser") }] : []),
+          ...(!panelLayout.inspectorVisible && panelLayout.narrow ? [{ id: "inspector" as const, label: "Inspector", open: panelOverlay === "inspector", onToggle: () => togglePanelOverlay("inspector") }] : [])
+        ]} />
+      <div className="studio-v2-banners">{banners}</div>
+      <div className="studio-v2-body">
+        <aside id="studio-browser" aria-label="Browser"
+          className={`studio-browser${browserOverlay ? " studio-overlay studio-overlay-left" : ""}`}
+          hidden={!panelLayout.navigationVisible && !browserOverlay}
+          onKeyDown={browserOverlay ? (event) => { if (event.key === "Escape") { event.preventDefault(); closePanelOverlay(); } } : undefined}>
+          {!browserOverlay && <ResizeHandle label="Browser panel size" controls="studio-browser" orientation="vertical"
+            value={panelLayout.navigationWidth} min={160} max={320} onChange={(navigationWidth) => panelLayout.update({ navigationWidth })} />}
+          <div className="studio-sidebar-scroll">
+            <div className="studio-overlay-heading"><h2 className="panel-label" tabIndex={-1}>Browser</h2>
+              {browserOverlay && <Button className="studio-overlay-close" onClick={closePanelOverlay}>Close</Button>}</div>
+            <StudioBrowser project={builtinView} value={newInstrument} onChange={setNewInstrument}
+              selectedTrack={inspectedTrack} disabled={!hydrated}
+              onAdd={(deviceType) => void addInstrument(deviceType)}
+              onSwap={(trackId, deviceType) => void swapInstrument(trackId, deviceType)}
+              onAddClip={(trackId, clip) => void executeV1(new AddClipEditorCommand(trackId, clip)).then(() => openInDock({ trackId, clipId: clip.id }))}
+              onOpenClip={openInDock} onOpenGenerator={() => setWorkspace("generation")} onExport={() => setWorkspace("render")} />
+          </div>
+        </aside>
+        <div className="studio-v2-centre">
+          <section className="studio-v2-main" aria-label="Project workspace">
+            {workspace === "adaptive"
+              ? <AdaptiveStatesWorkspace key={project.projectId} project={builtinView} onClose={toArrangement} variant="daw" />
+              : <>{conflictBanners}{timeline(openInDock, {
+                trackColor: dawTrackColor,
+                onSelect: setSelectedClip,
+                onDropInstrument: (deviceType, trackId) => void (trackId ? swapInstrument(trackId, deviceType) : addInstrument(deviceType)),
+                trackAccessory: stickyNotesOn ? (track) => <TrackStickyNotes trackName={track.name} disabled={!hydrated}
+                  notes={project.tracks.find((candidate) => candidate.id === track.id)?.stickyNotes ?? []}
+                  onChange={(update) => void editStickyNotes(track.id, update)} /> : undefined,
+                emptyState: <div className="timeline-empty">
+                  <strong>Start with an instrument</strong>
+                  <p>Choose one in the Browser, then add it as a track. Its starter phrase gives you something to edit straight away.</p>
+                  <Button disabled={!hydrated} onClick={() => void addInstrument(newInstrument)}>Add {instrumentDefinition(newInstrument)?.label ?? "instrument"} track</Button>
+                </div>
+              })}</>}
+          </section>
+          <StudioDock tab={dockTab} open={dockOpen} onTab={chooseDockTab}
+            height={panelLayout.dockHeight} maxHeight={panelLayout.dockMax}
+            onResize={(dockHeight) => panelLayout.update({ dockHeight })}
+            context={dockTab === "mixer" ? "All tracks" : dockTab === "devices" ? "Device chain" : dockClip ? `${dockClip.name} · ${dockClip.clips.find((clip) => clip.id === activeClip?.clipId)?.name ?? ""}` : "No clip selected"}
+            panels={{
+              editor: pianoRoll("daw") || <p className="studio-dock-empty">Select a clip in the arrangement, then press Enter or double-click it to edit it here.</p>,
+              devices: <DeviceChain tracks={project.tracks} trackId={deviceTrackId ?? activeClip?.trackId ?? null}
+                onTrack={setDeviceTrackId} {...deviceControls}
+                inserts={(chainTrack) => { const track = project.tracks.find((candidate) => candidate.id === chainTrack.id); return track && <PluginRack track={track}
+                  statuses={pluginStatuses.filter((status) => status.trackId === track.id)}
+                  onExecute={(command) => void execute(command)}
+                  freeze={{ evidence: freezeEvidence, progress: freezeProgress, onFreeze: (trackId, deviceId) => void freezePlugin(trackId, deviceId) }}
+                  gestures={{
+                    begin: beginDeviceGesture,
+                    preview: previewDeviceParameter,
+                    end: (trackId, deviceId, parameterId, next) => void endDeviceGesture(trackId, deviceId, parameterId, next)
+                  }} />; }} />,
+              mixer: <DockMixer project={builtinView} engine={engine} trackColor={dawTrackColor}
+                pluginNames={(id) => { const track = project.tracks.find((candidate) => candidate.id === id); return track ? pluginInsertNames(track) : []; }}
+                selectedTrackId={activeClip?.trackId ?? null} onExecute={executeV1}
+                onOpenDevices={(id) => { setDeviceTrackId(id); chooseDockTab("devices"); }} />
+            }} />
+        </div>
         {inspector}
+        {workspace === "generation" && <StudioDrawer label="Generate" onClose={() => closeOverlay("generate")}>
+          <GenerationWorkspace project={builtinView} onAddDrone={addFrequencyDrone} onApply={applyGeneratedVariation}
+            onClose={() => closeOverlay("generate")} variant="drawer" />
+        </StudioDrawer>}
+        {notebookVisible && <StudioDrawer label="Notebook" onClose={() => closeOverlay("notebook")}>
+          <NotebookPanel pages={project.notebook ?? []} disabled={!hydrated}
+            onChange={(update) => void editNotebook(update)} onClose={() => closeOverlay("notebook")} />
+        </StudioDrawer>}
       </div>
-      {mixerOpen && <MixerDrawer project={builtinView} engine={engine} storageStatus={storageStatus}
-        height={panelLayout.mixerHeight} maxHeight={panelLayout.mixerMax} onResize={(mixerHeight) => panelLayout.update({ mixerHeight })}
-        syncLabel={syncLabel} onExecute={executeV1} onExport={() => { changeMixerOpen(false); setWorkspace("render"); }} onClose={() => changeMixerOpen(false)} />}
+      {workspace === "render" && <StudioDialog label="Export" onClose={() => closeOverlay("export")}>
+        <RenderWorkspace key={project.projectId} project={builtinView} editorProject={project} variant="dialog"
+          onClose={() => closeOverlay("export")} onSync={async () => coordinatorRef.current?.drain()} />
+      </StudioDialog>}
+      {settingsOpen && <StudioDialog label="Settings" onClose={() => closeOverlay("settings")}>
+        <StudioSettingsPanel settings={studioSettings.settings} onSettings={studioSettings.update} panelLayout={panelLayout}
+          onClose={() => closeOverlay("settings")} />
+      </StudioDialog>}
+      <StudioStatusBar hint={hint}
+        facts={<><SaveSyncStatus {...topbarProps} /><span>Revision {project.revisionId.slice(0, 8)}</span><span>{project.tracks.length} tracks</span><span>{arrangementBars(builtinView)} bars</span><StatusAccount /></>} />
     </main>
   );
 }

@@ -6,13 +6,13 @@ The product is intentionally narrower than a general-purpose desktop DAW. Its pr
 
 ## The Studio
 
-![Studio arrangement with four instrument tracks](docs/images/studio/05-arrangement-with-tracks.png)
+![The studio: Browser, timeline with four instrument tracks, the piano roll in the dock, and the inspector](docs/images/studio-v2/daw-arrange-piano-roll.png)
 
-| Piano roll                                          | Drum sequencer                                                | Mixer                                            |
-| --------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------ |
-| ![Piano roll](docs/images/studio/07-piano-roll.png) | ![Drum step sequencer](docs/images/studio/08-drum-editor.png) | ![Mixer drawer](docs/images/studio/06-mixer.png) |
+| Drum sequencer                                                 | Mixer                                                | Device chain                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------- |
+| ![Drum step sequencer in the dock](docs/images/studio-v2/daw-drums.png) | ![Mixer channel strips](docs/images/studio-v2/daw-mixer.png) | ![Device chain with knobs](docs/images/studio-v2/daw-devices.png) |
 
-More screens, and notes on the current layout, are in the [studio UI baseline](docs/plans/ui/studio-ui-baseline-2026-10.md).
+The layout and how it was built are in the [Studio UI v2 plan](docs/plans/ui/studio-ui-v2.md); the [studio UI baseline](docs/plans/ui/studio-ui-baseline-2026-10.md) shows the classic layout it replaced.
 
 ## Current Capabilities
 

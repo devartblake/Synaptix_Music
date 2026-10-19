@@ -2,16 +2,45 @@
 
 import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 
+import type { BrowserAudioEngine } from "@synaptix/daw-engine";
+
 import { Button } from "../../../components/ui/StudioControls";
 import { ResizeHandle } from "../../../components/ui/ResizeHandle";
 import { PlatformAccount } from "../../../components/PlatformAccount";
 import type { DockTab } from "../../../lib/editor/use-studio-layout";
 import { MasterMeter } from "./MasterMeter";
 import { ProjectTitle } from "./ProjectTitle";
-import type { StudioTopbarProps } from "./StudioTopbar";
 
 // The Studio UI v2 shell (docs/plans/ui/studio-ui-v2.md, step 2): transport bar, bottom dock and
 // status bar. Content comes in as slots so both shells share the same editors and workspaces.
+
+export type Workspace = "arrangement" | "generation" | "adaptive" | "render" | "devices";
+export type ActiveClip = { trackId: string; clipId: string };
+
+/** What the transport bar and status bar show and do. */
+export interface StudioShellProps {
+  engine: BrowserAudioEngine;
+  name: string;
+  bpm: number;
+  storageStatus: string;
+  renameDisabled: boolean;
+  onRename: (next: string) => Promise<void>;
+  playing: boolean;
+  onPlay: () => void;
+  onPause: () => void;
+  onStop: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  loopEnabled: boolean;
+  onToggleLoop: () => void;
+  onTempo: (next: number) => void;
+  onSyncNow: () => void;
+  saveState: { readOnly: boolean; state: string };
+  syncLabel: string;
+  syncTone: string;
+}
 
 export type StudioView = "arrange" | "adaptive";
 
@@ -56,7 +85,7 @@ function ActionButton({ icon, label, iconOnly, className = "", ...props }: Omit<
 }
 
 /** One bar for playback, position, tempo, view, project actions, save and sync state. */
-export function StudioTransportBar(props: StudioTopbarProps & {
+export function StudioTransportBar(props: StudioShellProps & {
   position: ReactNode;
   view: StudioView;
   onView: (view: StudioView) => void;
@@ -131,7 +160,7 @@ export function StudioTransportBar(props: StudioTopbarProps & {
 }
 
 /** Save state, sync state and Sync now; in the v2 status bar. */
-export function SaveSyncStatus({ saveState: session, syncLabel, syncTone, onSyncNow }: Pick<StudioTopbarProps, "saveState" | "syncLabel" | "syncTone" | "onSyncNow">) {
+export function SaveSyncStatus({ saveState: session, syncLabel, syncTone, onSyncNow }: Pick<StudioShellProps, "saveState" | "syncLabel" | "syncTone" | "onSyncNow">) {
   return <>
     <span className="status-pill" role="status" aria-label="Save state">
       <span className={`status-dot ${session.state === "failed" ? "danger" : session.state === "saving" ? "warning" : ""}`} />

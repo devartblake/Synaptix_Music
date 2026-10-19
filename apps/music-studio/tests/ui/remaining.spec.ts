@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { adaptiveFixture } from "../fixtures/adaptive";
-import { LAYOUTS, openWorkspace, titled } from "./layouts";
+import { openWorkspace } from "./layouts";
 import { resolve } from "node:path";
 
 async function offline(page: Page) {
@@ -148,16 +148,14 @@ test("devices support keyboard history and the editing viewport has an accessibl
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-// The DAW layout shows the states as a grid and edits one state at a time, so `state(n)` selects it first.
-for (const layout of LAYOUTS)
-test(titled("adaptive authoring validates timing, persists its graph, verifies evidence, previews audio and publishes versions", layout), async ({
+// The states show as a grid and are edited one at a time, so `state(n)` selects it first.
+test("adaptive authoring validates timing, persists its graph, verifies evidence, previews audio and publishes versions", async ({
   page
 }) => {
-  const daw = layout === "daw";
-  const openAdaptive = () => openWorkspace(page, layout, "adaptive");
+  const openAdaptive = () => openWorkspace(page, "adaptive");
   const grid = page.getByRole("table", { name: "States grid" });
   const state = async (n: number) => {
-    if (daw) await grid.locator("tbody tr").nth(n - 1).getByRole("button").click();
+    await grid.locator("tbody tr").nth(n - 1).getByRole("button").click();
     return page.getByRole("group", { name: `State ${n}`, exact: true });
   };
   const fixture = adaptiveFixture();
@@ -264,30 +262,19 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
     .getByLabel("Cue seconds")
     .fill("0.5");
   await expect(page.getByRole("img", { name: "exploration to combat, immediate" })).toBeVisible();
-  await page.addStyleTag({ content: "nextjs-portal { display: none !important; } .studio-topbar { position: static !important; }" });
-  // The graph editor is the same component in both layouts. The DAW layout's centre scrolls inside a
-  // fixed-height shell, so an element screenshot there would capture the bars around it; its new
-  // surface, the states grid, has its own baseline below.
-  if (!daw)
-    await expect(
-      page.getByRole("region", { name: "Transitions and cues", exact: true })
-    ).toHaveScreenshot("adaptive-graph.png", {
-      animations: "disabled",
-      stylePath: resolve("tests/ui/visual.css"),
-      maxDiffPixelRatio: 0.002
-    });
-  if (daw) {
-    // The grid has a row per state: its intensity, render, loop, cues and where it leads; transitions below.
-    await expect(grid.locator("tbody tr")).toHaveCount(2);
-    await expect(grid.locator("tbody tr").first()).toContainText("Intensity 100%");
-    await expect(grid.locator("tbody tr").first()).toContainText("Adaptive state 2 (immediate)");
-    await expect(page.getByRole("region", { name: "Transitions strip" })).toContainText("Exploration → Adaptive state 2 · immediate");
-    await expect(grid).toHaveScreenshot("adaptive-states-grid-daw.png", {
-      animations: "disabled",
-      stylePath: resolve("tests/ui/visual.css"),
-      maxDiffPixelRatio: 0.002
-    });
-  }
+  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+  // The centre scrolls inside a fixed-height shell, so an element screenshot of the graph editor would
+  // capture the bars around it; the states grid has its own baseline.
+  // The grid has a row per state: its intensity, render, loop, cues and where it leads; transitions below.
+  await expect(grid.locator("tbody tr")).toHaveCount(2);
+  await expect(grid.locator("tbody tr").first()).toContainText("Intensity 100%");
+  await expect(grid.locator("tbody tr").first()).toContainText("Adaptive state 2 (immediate)");
+  await expect(page.getByRole("region", { name: "Transitions strip" })).toContainText("Exploration → Adaptive state 2 · immediate");
+  await expect(grid).toHaveScreenshot("adaptive-states-grid-daw.png", {
+    animations: "disabled",
+    stylePath: resolve("tests/ui/visual.css"),
+    maxDiffPixelRatio: 0.002
+  });
   await page.reload();
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
   await openAdaptive();
@@ -329,7 +316,7 @@ test(titled("adaptive authoring validates timing, persists its graph, verifies e
   await page.getByRole("button", { name: "Play preview" }).click();
   await expect(page.getByLabel("Preview position")).toContainText("exploration:");
   await page.getByRole("combobox", { name: "Target state", exact: true }).selectOption("combat");
-  if (daw) await expect(grid.locator("tbody tr").first()).toContainText("Playing");
+  await expect(grid.locator("tbody tr").first()).toContainText("Playing");
   await page.getByRole("button", { name: "Send set-state event" }).click();
   await expect(page.getByRole("log", { name: "Runtime events" })).toContainText(
     "exploration → combat"

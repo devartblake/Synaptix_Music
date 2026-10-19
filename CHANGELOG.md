@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Removed
+
+- **The classic studio layout (Studio UI v2, step 9b-2a).** The DAW layout is now the only layout: the classic top bar, sidebar, Workspace and Layout menus, mixer drawer, sidebar instrument picker and Devices page are gone, with their styles, tests and baselines. A layout saved by the classic studio still opens; its panel sizes and dock choices carry over. The README shows the DAW layout.
+
 ### Added
 
 - **The DAW layout is the default (Studio UI v2, step 9b-1).** Every studio opens in the DAW layout, including browsers that used the classic layout before (their panel sizes and dock choices are kept). The classic layout stays one switch away in **Settings → Classic layout** while it is retired. The DAW piano roll's **Edit** menu gains keyboard note entry (pitch, position, **Add note**), which was only in the classic layout.
