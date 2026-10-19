@@ -40,8 +40,7 @@ export function RenderWorkspace({
   project,
   editorProject,
   onClose,
-  onSync,
-  variant
+  onSync
 }: {
   /** Built-in view used for the manifest and track list. */
   project: MusicProject;
@@ -49,8 +48,6 @@ export function RenderWorkspace({
   editorProject: AnyMusicProject;
   onClose(): void;
   onSync(): Promise<unknown>;
-  /** DAW layout: shown in the Export dialog, so it closes rather than going back. */
-  variant?: "dialog";
 }) {
   const [options, setOptions] = useState<ExportOptions>({
     scope: "master",
@@ -207,7 +204,7 @@ export function RenderWorkspace({
             configured render worker.
           </p>
         </div>
-        <Button onClick={onClose}>{variant === "dialog" ? "Close" : "Back to arrangement"}</Button>
+        <Button onClick={onClose}>Close</Button>
       </header>
       <div className={styles.layout}>
         <form

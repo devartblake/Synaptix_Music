@@ -36,15 +36,15 @@ export function ArrangementTimeline({
   onExecute(command: EditorCommand): Promise<void>;
   onEdit(clip: { trackId: string; clipId: string }): void;
   renderControls(track: Track): ReactNode;
-  /** The DAW layout (Studio UI v2): each track and its clips take this colour, and headers get a level meter. */
-  trackColor?: (track: Track) => string;
-  /** The DAW layout: shown in place of the lanes when there are no tracks. */
-  emptyState?: ReactNode;
-  /** The DAW layout: told when the selected clip changes (the inspector follows it). */
+  /** Each track and its clips take this colour (headers also get a level meter). */
+  trackColor: (track: Track) => string;
+  /** Shown in place of the lanes when there are no tracks. */
+  emptyState: ReactNode;
+  /** Told when the selected clip changes (the inspector follows it). */
   onSelect?: (clip: { trackId: string; clipId: string } | null) => void;
-  /** The DAW layout: an instrument dragged from the Browser was dropped on a track (swap) or elsewhere (add). */
+  /** An instrument dragged from the Browser was dropped on a track (swap) or elsewhere (add). */
   onDropInstrument?: (deviceType: string, trackId: string | null) => void;
-  /** The DAW layout: extra content on a track's header, after its name (e.g. its sticky notes). */
+  /** Extra content on a track's header, after its name (e.g. its sticky notes). */
   trackAccessory?: (track: Track) => ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -54,9 +54,9 @@ export function ArrangementTimeline({
   };
   const bars = arrangementBars(project);
   const duration = bars * barTicks(project);
-  const daw = Boolean(trackColor);
-  const timeline = (
-    <section aria-label="Arrangement timeline" className="canvas-panel" data-variant={daw ? "daw" : undefined}
+  return (
+    <ChannelMeters engine={engine}>
+    <section aria-label="Arrangement timeline" className="canvas-panel" data-variant="daw"
       onDragOver={onDropInstrument ? (event) => { if (event.dataTransfer.types.includes(INSTRUMENT_DRAG_TYPE)) event.preventDefault(); } : undefined}
       onDrop={onDropInstrument ? (event) => {
         const deviceType = event.dataTransfer.getData(INSTRUMENT_DRAG_TYPE);
@@ -65,7 +65,7 @@ export function ArrangementTimeline({
         const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-track-id]") : null;
         onDropInstrument(deviceType, row?.dataset.trackId ?? null);
       } : undefined}
-      onKeyDown={daw ? (event) => {
+      onKeyDown={(event) => {
         // L loops the selected clip (whole bars it covers), as one undo step.
         if (event.key.toLowerCase() !== "l" || event.ctrlKey || event.metaKey || event.altKey) return;
         if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
@@ -78,15 +78,13 @@ export function ArrangementTimeline({
           { enabled: project.transport.loopEnabled, range: project.transport.loopRange },
           { enabled: true, range: barRange(project, first, Math.max(first, last)) }
         ));
-      } : undefined}>
+      }}>
       <div
         className={styles.arrangement}
         style={{ "--bars": bars, minWidth: 240 + bars * 52 } as CSSProperties}
       >
-        {daw && <>
-          <MarkerLane project={project} engine={engine} bars={bars} duration={duration} onExecute={onExecute} />
-          <LoopLane project={project} engine={engine} bars={bars} duration={duration} onExecute={onExecute} />
-        </>}
+        <MarkerLane project={project} engine={engine} bars={bars} duration={duration} onExecute={onExecute} />
+        <LoopLane project={project} engine={engine} bars={bars} duration={duration} onExecute={onExecute} />
         <div className={styles.rulerRow}>
           <div className={styles.trackTitle}>
             TRACKS <Badge>{project.tracks.length}</Badge>
@@ -104,16 +102,16 @@ export function ArrangementTimeline({
           </div>
         </div>
         <div className={styles.lanes}>
-          {!(daw && project.tracks.length === 0) && <div className={styles.arrangementPlayhead}>
+          {project.tracks.length > 0 && <div className={styles.arrangementPlayhead}>
             <Playhead engine={engine} project={project} duration={duration} />
           </div>}
-          {daw && project.tracks.length === 0 && emptyState}
+          {project.tracks.length === 0 && emptyState}
           {project.tracks.map((track, index) => (
-            <div key={track.id} className={styles.trackRow} data-muted={daw && track.muted ? true : undefined}
+            <div key={track.id} className={styles.trackRow} data-muted={track.muted || undefined}
               data-track-id={onDropInstrument ? track.id : undefined}
-              style={trackColor ? { "--track-color": trackColor(track) } as CSSProperties : undefined}>
+              style={{ "--track-color": trackColor(track) } as CSSProperties}>
               <div className={styles.trackHeader}>
-                {daw && <TrackLevel id={`track:${track.id}`} name={track.name} />}
+                <TrackLevel id={`track:${track.id}`} name={track.name} />
                 <div className={styles.trackName}>
                   <span className="track-index">{index + 1}</span>
                   <strong>{track.name}</strong>
@@ -236,11 +234,11 @@ export function ArrangementTimeline({
         </div>
       </div>
       <p className={styles.hint}>
-        Select a clip · Enter or double-click to edit · Select a bar number to seek{daw ? " · L loops the selected clip" : ""}
+        Select a clip · Enter or double-click to edit · Select a bar number to seek · L loops the selected clip
       </p>
     </section>
+    </ChannelMeters>
   );
-  return daw ? <ChannelMeters engine={engine}>{timeline}</ChannelMeters> : timeline;
 }
 
 function ClipPreview({ clip }: { clip: Clip }) {
