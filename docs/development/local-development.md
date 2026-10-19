@@ -273,7 +273,13 @@ Enable it in `.env.docker`, then start the service (it's in the `local-ai` Compo
 
 ```text
 AUDIO_GENERATION_API_URL=http://audio-generation:8400
+# For a demo without the platform. Otherwise set SYNAPTIX_AUDIO_GRANT_SECRET to the platform's
+# Music:AiAudio:GrantSecret and sign in with an account the platform has unlocked AI audio for.
+SYNAPTIX_AUDIO_LOCK=off
 ```
+
+The service is locked: every `/audio` route needs a grant the platform signs for an entitled
+account, which the studio's server fetches and forwards. With no grant secret it refuses everyone.
 
 ```bash
 docker compose --project-name synaptix-music --env-file .env.docker   -f infrastructure/docker/docker-compose.yml -f infrastructure/docker/docker-compose.local.yml   --profile local-ai up -d --build audio-generation music-studio

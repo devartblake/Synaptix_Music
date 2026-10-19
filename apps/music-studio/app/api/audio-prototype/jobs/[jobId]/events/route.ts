@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { callAudioService, isAudioJobId, relayJson } from "../../../../../../lib/audio-prototype/service";
 
@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
  * Live progress for a prototype-audio job: the service's server-sent event stream, passed
  * through unbuffered. It ends when the job finishes or the browser disconnects.
  */
-export async function GET(request: Request, { params }: { params: Promise<{ jobId: string }> }): Promise<Response> {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }): Promise<Response> {
   const { jobId } = await params;
   if (!isAudioJobId(jobId)) return NextResponse.json({ message: "This prototype audio job doesn't exist." }, { status: 404 });
-  const response = await callAudioService(`/audio/jobs/${jobId}/events`, {
+  const response = await callAudioService(request, `/audio/jobs/${jobId}/events`, {
     headers: { accept: "text/event-stream" },
     signal: request.signal,
     // The stream itself is capped by the service; this only bounds a hung connection.
