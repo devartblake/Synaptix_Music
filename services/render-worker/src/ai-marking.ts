@@ -52,3 +52,18 @@ export function withWavInfo(wav: Buffer, tags: AiTags): Buffer {
   tagged.writeUInt32LE(tagged.length - 8, 4);
   return tagged;
 }
+
+/**
+ * Music with AI involvement must carry C2PA content credentials, which the C2PA SDK can't bind to
+ * OGG, so it isn't delivered as OGG at all (decided 2026-10-19). The studio doesn't offer it; this
+ * refuses a direct request, previews included.
+ */
+export function assertDeliverableFormats(
+  project: { generationMetadata?: unknown },
+  output: { format: string; preview?: { format: string } }
+): void {
+  if (!project.generationMetadata) return;
+  if (output.format === "ogg" || output.preview?.format === "ogg") {
+    throw new Error("OGG isn't offered for music made with AI: it can't carry content credentials. Use WAV or MP3.");
+  }
+}

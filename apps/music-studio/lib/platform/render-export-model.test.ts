@@ -6,6 +6,7 @@ import { computePluginStateChecksum, computeSignalChainChecksum } from "@synapti
 import { downgradeProjectV2ToV1, projectV2BuiltinView, toProjectV2 } from "@synaptix/project-model/v2";
 import {
   createExportManifest,
+  exportFormatsFor,
   livePluginsInScope,
   pinManifestToPlatformRevision,
   safeDownloadUrl,
@@ -99,4 +100,16 @@ test("plug-ins covered by a current freeze don't block rendering; stale freezes 
 
   device.parameters = [{ id: "drive", value: 4 }];
   assert.equal((await livePluginsInScope(project, { kind: "master" })).length, 1);
+});
+
+test("music made with AI isn't offered or exported as OGG, which can't carry content credentials", async () => {
+  const project = createEmptyProject("ai-export");
+  project.tracks = [{ id: "track", name: "Bass", kind: "instrument", muted: false, solo: false, volumeDb: 0, pan: 0, devices: [], clips: [] }];
+  assert.deepEqual(exportFormatsFor(project), ["wav", "mp3", "ogg"]);
+  assert.equal((await createExportManifest(project, { ...options, format: "ogg" })).output.format, "ogg");
+
+  project.generationMetadata = { generatorId: "synaptix-claude-composer", generatorVersion: "1.0.0", seed: 1, createdAt: "2026-10-19T00:00:00.000Z" };
+  assert.deepEqual(exportFormatsFor(project), ["wav", "mp3"]);
+  await assert.rejects(createExportManifest(project, { ...options, format: "ogg" }), /OGG isn't offered/);
+  assert.equal((await createExportManifest(project, { ...options, format: "mp3" })).output.format, "mp3");
 });

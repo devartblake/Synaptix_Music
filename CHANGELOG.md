@@ -6,6 +6,10 @@
 
 - **The classic studio layout (Studio UI v2, step 9b-2a).** The DAW layout is now the only layout: the classic top bar, sidebar, Workspace and Layout menus, mixer drawer, sidebar instrument picker and Devices page are gone, with their styles, tests and baselines. A layout saved by the classic studio still opens; its panel sizes and dock choices carry over. The README shows the DAW layout. The editors now have one form each (9b-2b): the piano roll, timeline, adaptive workspace, Generate and Export lose their classic variants, including the "Back to arrangement" buttons.
 
+### Changed
+
+- **Music made with AI isn't exported as OGG.** OGG can't carry C2PA content credentials, so projects with AI involvement offer WAV and MP3 only, and the render worker refuses an OGG request for them (previews included). Hand-composed projects keep OGG.
+
 ### Added
 
 - **Exported music is marked as AI-involved (publication rules, phase 2).**
