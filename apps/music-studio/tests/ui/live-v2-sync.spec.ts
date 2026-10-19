@@ -41,7 +41,7 @@ test("plug-in projects sync to the platform as v2 and renders refuse live plug-i
   }, { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }).toBe("v2 drive=true");
 
   // Rendering is refused up front while the plug-in is live and unfrozen.
-  await page.getByRole("combobox", { name: "Workspace", exact: true }).selectOption("render");
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await page.getByRole("button", { name: "Render current revision", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "can't play live plug-ins" })).toBeVisible();
 
@@ -67,7 +67,7 @@ test("a plain project syncs as v2 and renders to completion from the stored v2 r
     return `v${project.schemaVersion} ${project.tempoMap[0]?.bpm} BPM`;
   }, { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }).toBe("v2 128 BPM");
 
-  await page.getByRole("combobox", { name: "Workspace", exact: true }).selectOption("render");
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await page.getByRole("button", { name: "Render current revision", exact: true }).click();
   await expect(page.getByText("completed", { exact: true }).first()).toBeVisible({ timeout: 120_000 });
 

@@ -13,8 +13,10 @@ test("bus controls and sends persist; track and bus meters read live audio", asy
   );
   await page.goto("/studio/production-mixer");
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
-  await page.getByRole("button", { name: "Mixer", exact: true }).click();
-  const mixer = page.getByRole("region", { name: "Mixer", exact: true });
+  // The dock mixer (the DAW layout, the default since Studio UI v2 step 9b).
+  const dock = page.getByRole("region", { name: "Dock" });
+  await dock.getByRole("tab", { name: /^Mixer/ }).click();
+  const mixer = dock.getByRole("group", { name: "Mixer channels" });
   const music = mixer.getByRole("slider", { name: "Music bus volume", exact: true });
   await music.press("ArrowLeft");
   await expect(music).toBeEnabled();
@@ -23,10 +25,10 @@ test("bus controls and sends persist; track and bus meters read live audio", asy
   await expect(music).toHaveValue("0");
   await mixer.getByRole("combobox", { name: "Bass output", exact: true }).selectOption("drums");
   await expect(mixer.getByRole("combobox", { name: "Bass output", exact: true })).toBeEnabled();
-  const send = mixer.getByRole("slider", { name: "Bass reverb send", exact: true });
+  const send = mixer.getByRole("region", { name: "Bass channel" }).getByRole("slider", { name: "Send" });
+  await send.focus();
   await send.press("ArrowRight");
-  await expect(send).toBeEnabled();
-  await expect(send).toHaveValue("0.17");
+  await expect(send).toHaveAttribute("aria-valuenow", "0.17");
   const master = mixer.getByRole("slider", { name: "Master volume", exact: true });
   await master.press("ArrowLeft");
   await expect(master).toBeEnabled();
@@ -35,14 +37,14 @@ test("bus controls and sends persist; track and bus meters read live audio", asy
   await expect(mixer.getByRole("combobox", { name: "Bass output", exact: true })).toHaveValue(
     "drums"
   );
-  await expect(send).toHaveValue("0.17");
-  await page.getByRole("button", { name: "Loop: Off", exact: true }).click();
+  await expect(send).toHaveAttribute("aria-valuenow", "0.17");
+  await page.getByRole("button", { name: "Loop", exact: true }).click();
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect
     .poll(async () =>
       Number(
         await mixer
-          .getByRole("meter", { name: "Drums peak", exact: true })
+          .getByRole("meter", { name: "Drums level", exact: true })
           .getAttribute("aria-valuenow")
       )
     )
@@ -51,13 +53,13 @@ test("bus controls and sends persist; track and bus meters read live audio", asy
     .poll(async () =>
       Number(
         await mixer
-          .getByRole("meter", { name: "Drums bus peak", exact: true })
+          .getByRole("meter", { name: "Drums bus level", exact: true })
           .getAttribute("aria-valuenow")
       )
     )
     .toBeGreaterThan(-60);
   await mixer.getByRole("button", { name: "Mute Drums bus", exact: true }).click();
-  await expect(mixer.getByRole("meter", { name: "Drums bus peak", exact: true })).toHaveAttribute(
+  await expect(mixer.getByRole("meter", { name: "Drums bus level", exact: true })).toHaveAttribute(
     "aria-valuenow",
     "-60"
   );
@@ -67,7 +69,7 @@ test("bus controls and sends persist; track and bus meters read live audio", asy
       .violations
   ).toEqual([]);
   await page.screenshot({ path: info.outputPath("production-mixer.png") });
-  await mixer.getByRole("button", { name: "Render / export", exact: true }).click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Render & export" })).toBeVisible();
 });
 

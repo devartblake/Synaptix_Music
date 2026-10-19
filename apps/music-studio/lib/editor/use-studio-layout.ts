@@ -9,8 +9,10 @@ const DEFAULT = {
   navigationWidth: null as number | null,
   inspectorWidth: 272,
   mixerHeight: 320,
-  /** "v2" is the DAW layout preview (docs/plans/ui/studio-ui-v2.md), with its own phone layout. */
-  shell: "v1" as "v1" | "v2",
+  /** "v2" is the DAW layout (docs/plans/ui/studio-ui-v2.md), the default since step 9b; "v1" is the classic layout. */
+  shell: "v2" as "v1" | "v2",
+  /** 2 since the DAW layout became the default: a stored "v1" from before then was the old default, not a choice. */
+  layoutVersion: 2,
   dockHeight: 320,
   dockTab: "editor" as DockTab,
   dockOpen: true
@@ -40,7 +42,8 @@ export function useStudioLayout() {
             data.navigationWidth == null ? null : size(data.navigationWidth, 160, 320, 208),
           inspectorWidth: size(data.inspectorWidth, 220, 400, 272),
           mixerHeight: size(data.mixerHeight, 180, 640, 320),
-          shell: data.shell === "v2" ? "v2" : "v1",
+          shell: data.shell === "v1" && data.layoutVersion === 2 ? "v1" : "v2",
+          layoutVersion: 2,
           dockHeight: size(data.dockHeight, 180, 640, 320),
           dockTab: DOCK_TABS.includes(data.dockTab as DockTab) ? (data.dockTab as DockTab) : "editor",
           dockOpen: typeof data.dockOpen === "boolean" ? data.dockOpen : true
@@ -50,7 +53,9 @@ export function useStudioLayout() {
       /* Missing, invalid, and unavailable preference storage use defaults. */
     }
     setReady(true);
-    const measure = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    // The layout viewport, as CSS media queries see it. innerWidth is the visual viewport, which a phone
+    // widens when it zooms out to fit the desktop-sized first paint, and then the phone layout never applies.
+    const measure = () => setViewport({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight });
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);

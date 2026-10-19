@@ -169,7 +169,13 @@ Each step is one PR with its own visual baselines and UI tests.
      - **Tablets (≤1120 px):** an **Inspector** button in the transport bar opens the inspector over the timeline; before this it couldn't be reached.
      - **Choosing the layout:** the DAW switch works on phones too (since item 10 it is in Settings).
      - **Tests:** a phone test reaches every view (dock tabs, Generate, Export, Adaptive states, both panels) with no horizontal scroll and axe clean. A tablet test covers the inspector toggle. The ported export and adaptive tests' 390 px checks now exercise the DAW phone layout.
-   - **9b:** v2 becomes the default, v1 code and baselines are removed, the remaining classic-only UI tests are ported, and the README screenshots, baseline doc and changelog are updated.
+   - **9b-1, done: the DAW layout is the default.**
+     - **Everyone switches:** before this, every stored layout said `shell: "v1"` (the old default, saved with the panel sizes). Stored layouts now carry `layoutVersion: 2`, and a stored `"v1"` only counts when it was chosen after the switch-over. Other stored choices (panel sizes, dock tab) are kept.
+     - **The way back:** Settings has a **Classic layout** switch, for one release, while the classic layout is retired.
+     - **Keyboard note entry:** the DAW piano roll's Edit menu now has the New note pitch / tick fields and Add note. Before, the DAW layout could only add notes with the pointer.
+     - **Fixes found by the switch:** phones measured the zoomed visual viewport and stayed in the tablet layout (now the layout viewport); blocked storage crashed the inspector's publication card; the DAW layout wasn't hidden below the 320 × 480 editing minimum.
+     - **Tests:** every classic-only behaviour test now runs in the DAW layout (mixer, edit queue, clipboard, editing, panels and dock sizing, production mixer and meters, device history, layout contract, live sync, visual baselines). Tests of classic-only widgets (the sidebar picker) and the classic half of the both-layout tests switch to the classic layout first, until 9b-2 removes them.
+   - **9b-2:** the classic layout's code, tests and baselines are removed, and the README screenshots, baseline doc and changelog are updated.
 10. **Notebook, sticky notes and Settings.** **Done** (a follow-up, not in the original plan). All three are in the DAW layout only:
     - **Settings dialog:** a gear button in the transport bar (`data-opens="settings"`) opens `StudioSettings.tsx` in the `StudioDialog`. It replaces the DAW layout's Layout menu. Sections: **Features** (Notebook, Sticky notes), **Layout** (Browser panel, Inspector panel, DAW layout (preview), Reset layout) and **Editing** (Preview notes while editing, shared with the editors through `useAuditionPreference`). Toggles are `role="switch"` checkboxes. Feature flags live in `use-studio-settings.ts` (`synaptix-music:studio-settings:v1`), not in the project.
     - **Notebook:** a **Notebook** button (an icon on phones) opens `NotebookPanel.tsx` as a right-hand drawer, like Generate (opening one closes the other). Pages have a title and plain text; `[ ]`/`[x]` lines are a checklist ticked below the text. Text saves on blur or when the drawer closes.
@@ -224,5 +230,6 @@ Each step is one PR with its own visual baselines and UI tests.
 - 2026-10-10: renamable note labels done (schema field, `SetMidiNoteLabelCommand`, the piano roll's Rename menu).
 - 2026-10-10: the piano roll's Edit and Rename menus float (`DisclosureMenu floating`, a top-layer popover placed from its button), so the dock can't clip them; chosen over a modal so the notes stay in view.
 - 2026-10-10: step 9 split into 9a (a phone layout for v2) and 9b (switch over). 9a done.
+- 2026-10-19: 9b split into 9b-1 (the DAW layout becomes the default; tests ported) and 9b-2 (remove the classic layout). 9b-1 done.
 - 2026-10-10: notebook, sticky notes and a Settings dialog added as item 10; Settings replaces the DAW layout's Layout menu.
 - 2026-10-10: on phones the transport bar's actions are icons on one row, replacing the More menu.

@@ -27,7 +27,7 @@ export function LayoutMenu({ panelLayout, onReset }: { panelLayout: PanelLayout;
       <Button onClick={() => { panelLayout.reset(); onReset(); }}>Reset layout</Button>
       <p>Drag a panel edge to resize, or focus it and use the arrow keys.</p>
       <Button aria-pressed={v2}
-        onClick={() => panelLayout.update({ shell: v2 ? "v1" : "v2" })}>DAW layout (preview)</Button>
+        onClick={() => panelLayout.update({ shell: v2 ? "v1" : "v2" })}>DAW layout</Button>
     </DisclosureMenu>
   );
 }

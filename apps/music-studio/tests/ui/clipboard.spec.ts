@@ -12,14 +12,21 @@ test("notes copy, paste, cut and undo as single steps; Stop sound is available",
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
 
   await page.getByRole("button", { name: "Select Bass Generated Loop", exact: true }).press("Enter");
-  const roll = page.getByRole("region", { name: "Piano roll editor" });
+  const roll = page.getByRole("region", { name: "Dock" }).getByRole("region", { name: "Piano roll editor" });
+  // The DAW piano roll keeps the clipboard actions and Stop sound in its Edit menu.
+  const editMenu = async () => {
+    const edit = roll.getByRole("button", { name: "Edit", exact: true });
+    if ((await edit.getAttribute("aria-expanded")) !== "true") await edit.click();
+  };
   const notes = roll.locator("[data-note-id]");
   await expect(notes).toHaveCount(64);
 
   const first = roll.locator('[data-note-id="clip-2-note-0-0"]');
   await first.press("Space");
   await first.press("Control+c");
+  await editMenu();
   await expect(roll.getByRole("button", { name: "Paste", exact: true })).toBeEnabled();
+  await page.keyboard.press("Escape");
 
   await first.press("Control+v");
   await expect(notes).toHaveCount(65);
@@ -38,9 +45,11 @@ test("notes copy, paste, cut and undo as single steps; Stop sound is available",
   await first.press("Space");
   await first.press("Control+x");
   await expect(notes).toHaveCount(63);
+  await editMenu();
   await roll.getByRole("button", { name: "Paste", exact: true }).click();
   await expect(notes).toHaveCount(64);
 
+  await editMenu();
   await roll.getByRole("button", { name: "Stop sound" }).click();
   expect(errors).toEqual([]);
 });

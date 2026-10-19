@@ -576,6 +576,61 @@ function PianoRollEditor({
     <Button title="Silence every sounding note" onClick={() => engine.allNotesOff()}>Stop sound</Button>
   </>;
 
+  // Keyboard insertion: a toolbar in the classic layout; in the DAW layout's Edit menu, where drawing
+  // on the grid is the pointer way in.
+  const insertFields = <>
+        <label>
+          New note pitch{" "}
+          <input
+            type="number"
+            min={0}
+            max={127}
+            value={newPitch}
+            onChange={(event) =>
+              setNewPitch(Math.max(0, Math.min(127, Math.round(Number(event.target.value)))))
+            }
+          />
+        </label>
+        <label>
+          New note tick{" "}
+          <input
+            type="number"
+            min={0}
+            max={clip.range.durationTicks - 1}
+            value={newTick}
+            onChange={(event) =>
+              setNewTick(
+                Math.max(
+                  0,
+                  Math.min(clip.range.durationTicks - 1, Math.round(Number(event.target.value)))
+                )
+              )
+            }
+          />
+        </label>
+        <Button
+          disabled={pending}
+          onClick={() => {
+            const startTick = snapEnabled
+              ? snapTick(newTick, gridTicks, clip.range.durationTicks - 1)
+              : newTick;
+            const note = {
+              id: crypto.randomUUID(),
+              pitch: newPitch,
+              startTick,
+              velocity,
+              durationTicks: Math.min(gridTicks, clip.range.durationTicks - startTick)
+            };
+            preview.audition(newPitch, velocity);
+            void onExecute(new AddMidiNoteCommand(trackId, clip.id, note)).then(() =>
+              setSelected(new Set([note.id]))
+            );
+          }}
+        >
+          Add note
+        </Button>
+  </>;
+
   // FL Studio-style note labels: the name replaces the pitch when Labels is on.
   const labelForm = (
     <form className={styles.labelForm} onSubmit={(event) => { event.preventDefault(); void renameSelected(labelDraft); }}>
@@ -626,7 +681,7 @@ function PianoRollEditor({
         <Button disabled={!selectedIds.length || pending} title="Nudge the selected notes' timing and velocity a little, at random"
           onClick={() => void onExecute(new HumanizeMidiNotesCommand(trackId, clip.id, selectedIds,
             { timingTicks: Math.max(1, Math.min(30, Math.round(gridTicks / 8))), velocity: 12, seed: (Date.now() & 0x7fffffff) || 1 }))}>Humanize</Button>
-        <DisclosureMenu label="Edit" floating><div className={styles.editActions}>{editActions}</div></DisclosureMenu>
+        <DisclosureMenu label="Edit" floating><div className={styles.editActions}>{editActions}</div><div className={styles.insertForm} role="group" aria-label="Insert MIDI note">{insertFields}</div></DisclosureMenu>
         {ghostCandidates.length > 0 && <label title="Show another track's notes faintly behind these">
           Ghost{" "}
           <select value={ghostTrackId} onChange={(event) => setGhostTrackId(event.target.value)}>
@@ -747,58 +802,7 @@ function PianoRollEditor({
           {selectedIds.length} selected
         </span>
       </Toolbar>}
-      {!daw && <Toolbar aria-label="Insert MIDI note">
-        <label>
-          New note pitch{" "}
-          <input
-            type="number"
-            min={0}
-            max={127}
-            value={newPitch}
-            onChange={(event) =>
-              setNewPitch(Math.max(0, Math.min(127, Math.round(Number(event.target.value)))))
-            }
-          />
-        </label>
-        <label>
-          New note tick{" "}
-          <input
-            type="number"
-            min={0}
-            max={clip.range.durationTicks - 1}
-            value={newTick}
-            onChange={(event) =>
-              setNewTick(
-                Math.max(
-                  0,
-                  Math.min(clip.range.durationTicks - 1, Math.round(Number(event.target.value)))
-                )
-              )
-            }
-          />
-        </label>
-        <Button
-          disabled={pending}
-          onClick={() => {
-            const startTick = snapEnabled
-              ? snapTick(newTick, gridTicks, clip.range.durationTicks - 1)
-              : newTick;
-            const note = {
-              id: crypto.randomUUID(),
-              pitch: newPitch,
-              startTick,
-              velocity,
-              durationTicks: Math.min(gridTicks, clip.range.durationTicks - startTick)
-            };
-            preview.audition(newPitch, velocity);
-            void onExecute(new AddMidiNoteCommand(trackId, clip.id, note)).then(() =>
-              setSelected(new Set([note.id]))
-            );
-          }}
-        >
-          Add note
-        </Button>
-      </Toolbar>}
+      {!daw && <Toolbar aria-label="Insert MIDI note">{insertFields}</Toolbar>}
       <p className={daw ? "visually-hidden" : styles.hint} id="note-keyboard-help">
         Space selects · Shift-click adds to selection · Arrows move · Shift + left/right resizes ·
         Shift + up/down moves an octave · Alt + left/right focuses notes · Ctrl/Cmd+A selects all ·

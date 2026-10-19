@@ -609,3 +609,7 @@
   pointer-events: none;
   white-space: nowrap;
 }
+
+/* The DAW Edit menu's keyboard note insertion (Studio UI v2, step 9b). */
+.insertForm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sx-line-soft); }
+.insertForm input { width: 72px; }

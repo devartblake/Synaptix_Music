@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { LAYOUTS, openWorkspace, titled } from "./layouts";
+import { LAYOUTS, openWorkspace, titled, useClassicLayout } from "./layouts";
 
 async function prepareStudio(page: Page): Promise<void> {
   await page.route("**/api/platform/generation/jobs**", async (route) => {
@@ -17,12 +17,13 @@ async function prepareStudio(page: Page): Promise<void> {
 
 test("studio shell preserves its desktop and tablet layout contract", async ({ page }, testInfo) => {
   await prepareStudio(page);
-  const selectors = [".studio-topbar", ".studio-sidebar", ".studio-workspace", ".studio-inspector"];
-  // The layout hook narrows the tablet sidebar after hydration, so measure once the layout settles.
+  // The DAW layout (the default since Studio UI v2 step 9b): transport bar, Browser, centre, inspector.
+  const selectors = [".studio-transportbar", ".studio-browser", ".studio-v2-centre", ".studio-inspector"];
+  // The layout hook narrows the tablet Browser after hydration, so measure once the layout settles.
   const measure = () => page.locator(selectors.join(",")).evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     return {
-      className: element.className,
+      className: element.classList[0],
       visible: rect.width > 0 && rect.height > 0,
       x: Math.round(rect.x),
       width: Math.round(rect.width),
@@ -32,15 +33,16 @@ test("studio shell preserves its desktop and tablet layout contract", async ({ p
 
   const expected = testInfo.project.name === "desktop"
     ? [
-        { className: "studio-topbar", visible: true, x: 0, width: 1440, right: 1440 },
-        { className: "studio-sidebar", visible: true, x: 0, width: 208, right: 208 },
-        { className: "studio-workspace", visible: true, x: 208, width: 960, right: 1168 },
+        { className: "studio-transportbar", visible: true, x: 0, width: 1440, right: 1440 },
+        { className: "studio-browser", visible: true, x: 0, width: 208, right: 208 },
+        { className: "studio-v2-centre", visible: true, x: 208, width: 960, right: 1168 },
         { className: "studio-inspector", visible: true, x: 1168, width: 272, right: 1440 }
       ]
     : [
-        { className: "studio-topbar", visible: true, x: 0, width: 1024, right: 1024 },
-        { className: "studio-sidebar", visible: true, x: 0, width: 184, right: 184 },
-        { className: "studio-workspace", visible: true, x: 184, width: 840, right: 1024 },
+        // Tablets open the inspector over the timeline from the transport bar instead.
+        { className: "studio-transportbar", visible: true, x: 0, width: 1024, right: 1024 },
+        { className: "studio-browser", visible: true, x: 0, width: 184, right: 184 },
+        { className: "studio-v2-centre", visible: true, x: 184, width: 840, right: 1024 },
         { className: "studio-inspector", visible: false, x: 0, width: 0, right: 0 }
       ];
   await expect.poll(measure).toEqual(expected);
@@ -50,7 +52,10 @@ test("studio shell preserves its desktop and tablet layout contract", async ({ p
 for (const layout of LAYOUTS)
 test(titled("generation workspace exposes a screen-reader-safe status and labeled controls", layout), async ({ page }) => {
   await prepareStudio(page);
-  if (layout === "classic") await page.locator(".studio-nav").getByRole("button", { name: /Generate/ }).click();
+  if (layout === "classic") {
+    await useClassicLayout(page);
+    await page.locator(".studio-nav").getByRole("button", { name: /Generate/ }).click();
+  }
   else await openWorkspace(page, layout, "generation");
   await expect(page.getByRole("heading", { name: "Create a project variation" })).toBeVisible();
   // The DAW layout opens Generate as a drawer beside the timeline, which stays on screen.

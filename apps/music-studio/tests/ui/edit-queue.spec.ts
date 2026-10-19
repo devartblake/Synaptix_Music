@@ -8,8 +8,9 @@ test("edits made in quick succession all apply, and undo reverses them in order"
   );
   await page.goto(`/studio/edit-queue-${Date.now()}`);
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
-  await page.getByRole("button", { name: "Mixer", exact: true }).click();
-  const mixer = page.getByRole("region", { name: "Mixer", exact: true });
+  const dock = page.getByRole("region", { name: "Dock" });
+  await dock.getByRole("tab", { name: /^Mixer/ }).click();
+  const mixer = dock.getByRole("group", { name: "Mixer channels" });
   const drums = mixer.getByRole("button", { name: "Mute Drums bus", exact: true });
   const music = mixer.getByRole("button", { name: "Mute Music bus", exact: true });
   await expect(drums).toHaveAttribute("aria-pressed", "false");

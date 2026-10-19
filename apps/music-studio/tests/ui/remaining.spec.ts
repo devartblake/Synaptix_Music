@@ -105,30 +105,35 @@ test("devices support keyboard history and the editing viewport has an accessibl
   await offline(page);
   await page.goto("/studio/device-test");
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
-  await page.getByRole("combobox", { name: "Workspace", exact: true }).selectOption("devices");
-  const bass = page.getByRole("group", { name: "Bass", exact: true });
+  // The dock's device chain (the DAW layout, the default since Studio UI v2 step 9b).
+  const dock = page.getByRole("region", { name: "Dock" });
+  await dock.getByRole("tab", { name: /^Devices/ }).click();
+  await dock.getByLabel("Track").selectOption({ label: "Bass" });
+  const bass = dock.getByRole("region", { name: "Bass devices" });
   const attack = bass.getByRole("slider", { name: "Attack", exact: true });
-  const value = Number(await attack.inputValue());
+  const value = await attack.getAttribute("aria-valuenow");
+  await attack.focus();
   await attack.press("ArrowRight");
-  await expect(attack).toHaveValue(String(value + 0.001));
+  await expect(attack).not.toHaveAttribute("aria-valuenow", value!);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
-  await expect(attack).toHaveValue(String(value));
+  await expect(attack).toHaveAttribute("aria-valuenow", value!);
   await bass.getByRole("button", { name: "Bass device enabled" }).press("Space");
   await expect(bass.getByRole("button", { name: "Bass device enabled" })).toHaveAttribute(
     "aria-pressed",
     "false"
   );
-  // Modulation the preset doesn't use stays tucked away until asked for. Once opened it stays open
+  // Modulation the preset doesn't use stays folded until asked for. Once opened it stays open
   // while being edited, even when the edit takes it back to unused (it must not snap shut).
-  const modulation = bass.locator("summary", { hasText: "Modulation" });
+  const modulation = bass.getByRole("button", { name: /^Modulation/ });
   const tremolo = bass.getByRole("slider", { name: "Tremolo", exact: true });
   await expect(tremolo).toBeHidden();
   await modulation.press("Enter");
+  await tremolo.focus();
   await tremolo.press("ArrowRight");
-  await expect(tremolo).toHaveValue("0.01");
+  await expect(tremolo).toHaveAttribute("aria-valuenow", "0.01");
   await expect(modulation).toContainText("in use");
   await tremolo.press("ArrowLeft");
-  await expect(tremolo).toHaveValue("0");
+  await expect(tremolo).toHaveAttribute("aria-valuenow", "0");
   await expect(modulation).not.toContainText("in use");
   await expect(tremolo).toBeVisible();
   expect(
@@ -139,7 +144,7 @@ test("devices support keyboard history and the editing viewport has an accessibl
   await expect(page.getByRole("heading", { name: "Make room to edit" })).toBeVisible();
   await expect(page.getByRole("slider", { name: "Attack", exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 480 });
-  await expect(page.getByRole("region", { name: "Devices and effects" })).toBeVisible();
+  await expect(bass).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

@@ -42,9 +42,9 @@ export function StudioSettingsPanel({ settings, onSettings, panelLayout, onClose
         <Toggle label="Inspector panel" checked={panelLayout.inspectorVisible} disabled={panelLayout.narrow}
           onChange={() => panelLayout.update({ inspectorOpen: !panelLayout.layout.inspectorOpen })}
           description={panelLayout.narrow ? "On smaller screens the inspector opens over the timeline. Your desktop layout is remembered." : "The selection, project facts and notes on the right."} />
-        <Toggle label="DAW layout (preview)" checked={panelLayout.v2}
+        <Toggle label="Classic layout" checked={!panelLayout.v2}
           onChange={() => { onClose(); panelLayout.update({ shell: panelLayout.v2 ? "v1" : "v2" }); }}
-          description="Turn off to go back to the classic studio layout." />
+          description="The previous studio layout. It is being retired and will be removed in a later update." />
         <div className="studio-settings-row">
           <Button onClick={() => panelLayout.reset()}>Reset layout</Button>
           <p>Panel sizes and the dock go back to their defaults. Drag a panel edge to resize, or focus it and use the arrow keys.</p>
