@@ -11,6 +11,7 @@ import {
 
 import type { AudioTranscoder, LossyAudioFormat } from "./ffmpeg-transcoder.ts";
 import type { OfflineRenderOutcome, RenderedArtifact } from "./offline-renderer.ts";
+import type { AudioWatermarker } from "./watermark-client.ts";
 
 const MEDIA_TYPES: Record<LossyAudioFormat, string> = {
   mp3: "audio/mpeg",
@@ -129,12 +130,41 @@ function manifestArtifact(
   };
 }
 
-/** Converts the deterministic WAV intermediate into delivery artifacts and a signed-delivery manifest. */
-export async function packageRenderArtifacts(
+/**
+ * Marks each rendered WAV before anything is derived from it, so every delivered format carries the
+ * watermark. Plug-in freezes are intermediates that a later master or stem render plays back, and
+ * that render is marked, so they are left alone (marking twice would stack two marks).
+ */
+async function watermarked(
   outcome: OfflineRenderOutcome,
   manifest: RenderManifest,
-  transcoder: AudioTranscoder
+  watermarker: AudioWatermarker | null
 ): Promise<OfflineRenderOutcome> {
+  if (!watermarker || manifest.scope.kind === "plugin-freeze") return outcome;
+  const artifacts = await Promise.all(
+    outcome.artifacts.map(async (artifact) => {
+      const bytes = await watermarker.markWav(artifact.bytes);
+      return {
+        bytes,
+        metadata: {
+          ...artifact.metadata,
+          byteLength: bytes.length,
+          checksumSha256: createHash("sha256").update(bytes).digest("hex")
+        }
+      };
+    })
+  );
+  return { ...outcome, artifacts };
+}
+
+/** Converts the deterministic WAV intermediate into delivery artifacts and a signed-delivery manifest. */
+export async function packageRenderArtifacts(
+  rendered: OfflineRenderOutcome,
+  manifest: RenderManifest,
+  transcoder: AudioTranscoder,
+  watermarker: AudioWatermarker | null = null
+): Promise<OfflineRenderOutcome> {
+  const outcome = await watermarked(rendered, manifest, watermarker);
   const audio = await requestedArtifacts(outcome, manifest, transcoder);
   const preview = await previewArtifact(outcome, manifest, transcoder);
   const deliverables = preview ? [...audio, preview] : audio;

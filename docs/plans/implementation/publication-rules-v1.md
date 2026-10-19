@@ -103,6 +103,10 @@ The rules are enforced by code at publish time. Policy written in a document alo
 
 ## Phase 2: AI marking on exported audio (decision 3; EU deadline 2 December 2026)
 
+**Progress (2026-10-19):**
+- **Watermark built.** AudioSeal runs in the backend's `Synaptix.Watermark` service (TycoonTycoon_Backend; MIT code and weights, CPU, internal only). The render worker sends each master and stem WAV of a project with AI involvement to the backend's `/internal/music/watermark` before transcoding, so every format carries the mark. The backend sets the 16-bit message (`5358`, "SX" v1). Hand-composed projects and plug-in freezes aren't marked. A watermark failure fails the render. In a robustness check on a synthetic clip, the mark sat 32.7 dB below the music and was detected after MP3 192/128/96k and OGG 160/96k (p ≥ 0.993; unmarked 0.269). It still needs checking on real renders.
+- **Next:** C2PA signed with a self-signed certificate (staging and, until a trusted certificate arrives, production), then the metadata tags. The C2PA SDK embeds manifests in WAV and MP3, and OGG gets a sidecar `.c2pa`. DigiCert and SSL.com are being asked for a trusted claim-signing certificate.
+
 - **C2PA manifest on every export.** Signed content credentials that state AI involvement, generator, model, licence and `editShare`, written with the open-source C2PA SDK (`c2pa-rs` / `c2patool`).
   - The renderer already writes WAV, MP3 and OGG files. The manifest is embedded where the format supports it and written as a sidecar `.c2pa` file otherwise.
   - Signing needs a certificate; the KMS work in the backend (`Synaptix.Security.Kms`) is the natural home for the key.

@@ -166,6 +166,8 @@ Studio sign-in uses the platform's own studio routes (`/api/v1/auth/studio/login
 
 The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete `RENDER_WORKER_MINIO_*` configuration before its polling loop starts. Use `RENDER_WORKER_FFMPEG_PATH` only when FFmpeg is not on `PATH`. `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` caps how many queued-or-running render jobs one signed-in player may have (default 10, `0` turns the limit off); a submission over it answers 429 `render_quota_exceeded`. Private callers without a player (certification tooling, the backend) are not limited.
 
+Exported audio with any AI involvement is watermarked; hand-composed projects aren't. When the worker renders such a project for the platform it sends each master and stem WAV to the backend's `/internal/music/watermark` before transcoding, so WAV, MP3, OGG and previews all carry the platform's inaudible AudioSeal mark (publication rules phase 2). Plug-in freezes aren't marked, because the master that plays them back is. A watermark failure fails the render instead of delivering unmarked audio. The backend needs its watermark service running (TycoonTycoon_Backend: `--profile music-watermark`). Set `RENDER_WATERMARK=off` to render without it locally.
+
 ## Install TypeScript Dependencies
 
 ```bash

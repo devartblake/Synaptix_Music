@@ -9,6 +9,7 @@ import { renderPluginFreeze, renderProjectOffline, type RenderedArtifact } from 
 import type { FrozenArtifactSource } from "./frozen-playback.ts";
 import { resolveRenderableProject } from "./plugin-render-gate.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
+import { watermarkerFor, type AudioWatermarker } from "./watermark-client.ts";
 
 /** Fetches the exact immutable project revision a render manifest references. */
 export interface ProjectLoader {
@@ -23,6 +24,8 @@ export interface WorkerDependencies {
   loader: ProjectLoader;
   sink: ArtifactSink;
   transcoder?: AudioTranscoder;
+  /** Marks exported audio (see watermark-client.ts); without it renders carry no watermark. */
+  watermarker?: AudioWatermarker | null;
   /** Where plug-in freezes are read back for frozen playback; without it frozen plug-ins fail closed. */
   frozenSource?: FrozenArtifactSource;
 }
@@ -79,7 +82,8 @@ export async function processNextJob(
     const outcome = await packageRenderArtifacts(
       rendered,
       job.manifest,
-      dependencies.transcoder ?? new FfmpegTranscoder()
+      dependencies.transcoder ?? new FfmpegTranscoder(),
+      watermarkerFor(project, dependencies.watermarker ?? null)
     );
     for (const artifact of outcome.artifacts) {
       await dependencies.sink.store(job.manifest.renderId, artifact);
