@@ -12,7 +12,7 @@ import {
   type RenderJob
 } from "@synaptix/render-contracts";
 import { FREQUENCY_DRONE_DEVICE_TYPE, DEVICE_PARAMETER_DEFINITIONS } from "@synaptix/daw-engine";
-import type { MusicProject } from "@synaptix/project-model";
+import { licenceRefusal, packageProvenance, type MusicProject } from "@synaptix/project-model";
 import { z } from "zod";
 import { AdaptiveGraphEditor, type AdaptiveConfiguration } from "./AdaptiveGraphEditor";
 import { AdaptivePreviewPanel } from "./AdaptivePreviewPanel";
@@ -175,15 +175,21 @@ export function AdaptiveStatesWorkspace({
     try {
       return {
         manifest: states.length
-          ? buildAdaptiveDraft(packageId, project.projectId, states, jobs, configuration, createdAt, clock)
+          ? buildAdaptiveDraft(packageId, project.projectId, states, jobs, configuration, createdAt, clock,
+            { revisionId: project.revisionId, record: packageProvenance(project) })
           : null,
         error: null
       };
     } catch (cause) {
       return { manifest: null, error: cause instanceof Error ? cause.message : "Invalid draft." };
     }
-  }, [jobs, packageId, project.projectId, states, configuration, createdAt, clock]);
+  }, [jobs, packageId, project, states, configuration, createdAt, clock]);
   const manifest = validation.manifest;
+  // Publication rules v1: the platform enforces the licence gate; checking first says why up front.
+  const licenceIssue = !manifest ? null
+    : !manifest.provenance && manifest.revisionId !== project.revisionId
+      ? "These renders are of an earlier revision, so their provenance can't be recorded. Render the current revision to publish."
+      : licenceRefusal(manifest.provenance);
 
   function addState(job: RenderJob): void {
     const index = states.length + 1;
@@ -600,7 +606,7 @@ export function AdaptiveStatesWorkspace({
           </section>
           <div className="adaptive-daw-side">
             {candidates}
-            <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
+            <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} licenceIssue={licenceIssue} />
           </div>
         </div>
       </section>
@@ -625,7 +631,7 @@ export function AdaptiveStatesWorkspace({
           {states.map(stateCard)}
           {details}
         </section>
-        <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} />
+        <AdaptivePublication manifest={manifest} jobs={jobs} packageId={packageId} licenceIssue={licenceIssue} />
       </div>
     </section>
   );

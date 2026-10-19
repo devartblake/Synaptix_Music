@@ -72,7 +72,12 @@ The rules are enforced by code at publish time. Policy written in a document alo
   - **Project schema:** `generationMetadata.provenance` and `generationMetadata.generatedNotes`, optional, in Zod v1 and v2, both JSON Schemas and both Pydantic models.
   - **Studio:** applying a generated arrangement records both; undo removes them. `editShare(project)` measures how much a person changed. Proposals from an older API record no provenance, which publishing will treat as unlicensed.
   - **Not stored:** `editShare` itself (computed at publish, since every edit changes it), `generatedAt` (it is `generationMetadata.createdAt`) and the generator (it is `generatorId`).
-- **1b:** the publish request and package manifest carry the record (with `editShare` computed at publish), and the studio checks the licence rule before uploading.
+- **1b, done (2026-10-19): the package carries the record, and the studio checks first.**
+  - **Record:** `PackageProvenanceSchema` and `packageProvenance(project)` (project-model): origin, generator and version, `generatedAt`, the licence facts and `editShare`, computed when the manifest is built.
+  - **Manifest:** an optional `provenance` on the adaptive package manifest. It travels inside the publish request, so the request and the manifest can't disagree. The platform and the game read manifests field by field, so the extra field is safe before 1c lands.
+  - **Only for the current revision:** the record describes the project as it stands, so it is attached only when the package's renders are of the current revision. For older renders the studio asks for a render of the current revision.
+  - **Studio check:** `licenceRefusal(record)` is the rule: hand-composed music passes; generated or edited music needs a licence record that isn't `not-allowed`; no record means no publish. The publish panel shows the reason and disables Publish.
+  - **Trust:** the platform must not rely on the studio's record. 1c recomputes it from the platform's stored copy of the revision and enforces the gate on that.
 - **1c (backend):** the platform stores the record with each version, enforces the gate, and adds the admin override with a reason and an audit entry.
 - **1d:** the server-side lock on AI audio.
 

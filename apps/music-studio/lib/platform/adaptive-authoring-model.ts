@@ -7,6 +7,7 @@ import {
   type RenderJob,
   type TransitionClock
 } from "@synaptix/render-contracts";
+import type { PackageProvenance } from "@synaptix/project-model";
 
 export interface AdaptiveStateDraft {
   jobId: string;
@@ -93,7 +94,9 @@ export function buildAdaptiveDraft(
   jobs: readonly RenderJob[],
   configuration?: Pick<AdaptiveGameAudioManifest, "transitions" | "cuePoints">,
   createdAt = new Date().toISOString(),
-  clock?: TransitionClock
+  clock?: TransitionClock,
+  /** The project's provenance record and the revision it describes (publication-rules-v1). */
+  provenance?: { revisionId: string; record: PackageProvenance }
 ): AdaptiveGameAudioManifest {
   if (states.length === 0) throw new Error("Add at least one certified render state.");
   const musicStates = states.filter((state) => adaptiveStateRole(state.tags).kind === "music");
@@ -167,6 +170,8 @@ export function buildAdaptiveDraft(
     createdAt
   });
   manifest.cuePoints = configuration?.cuePoints ?? [];
+  // The record describes the project as it is now, so it is only true of renders of this revision.
+  if (provenance && provenance.revisionId === manifest.revisionId) manifest.provenance = provenance.record;
   for (const { state, master } of selected) {
     const value = manifest.states.find((item) => item.stateId === state.stateId)!;
     if (

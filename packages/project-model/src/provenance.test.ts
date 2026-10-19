@@ -4,9 +4,12 @@ import test from "node:test";
 import {
   MusicProjectSchema,
   createEmptyProject,
+  PackageProvenanceSchema,
   editShare,
   generatedNoteHashes,
+  licenceRefusal,
   noteHash,
+  packageProvenance,
   type MusicProject
 } from "./index.ts";
 import { MusicProjectV2Schema, migrateProjectV1ToV2 } from "./v2.ts";
@@ -72,4 +75,30 @@ test("provenance validates in v1 and v2, rejects unknown commercial-use values, 
   delete older.generationMetadata!.generatedNotes;
   const parsed = MusicProjectSchema.parse(older);
   assert.deepEqual(Object.keys(parsed.generationMetadata!).sort(), Object.keys(older.generationMetadata!).sort());
+});
+
+test("the package record says where the music came from, its licence and how much was changed", () => {
+  const project = generatedProject();
+  const record = packageProvenance(project);
+  assert.deepEqual(record, {
+    origin: "generated", generatorId: "synaptix-claude-composer", generatorVersion: "1.0.0",
+    generatedAt: "2026-10-19T00:00:00.000Z", model: "claude-x", licence: "Anthropic-Commercial-Terms",
+    commercialUse: "allowed", planSha256: "a".repeat(64), editShare: 0
+  });
+  assert.doesNotThrow(() => PackageProvenanceSchema.parse(record));
+  assert.deepEqual(packageProvenance(createEmptyProject("h")), { origin: "hand" });
+});
+
+test("publishing refuses generated music without a licence record or with a non-commercial one", () => {
+  // Hand-composed music needs no licence; a missing record can't be checked, so it is refused.
+  assert.equal(licenceRefusal({ origin: "hand" }), null);
+  assert.match(licenceRefusal(undefined)!, /no provenance record/);
+  assert.equal(licenceRefusal(packageProvenance(generatedProject())), null);
+  // Edited music is still generated: the licence follows it.
+  assert.match(licenceRefusal({ origin: "edited", generatorId: "synaptix-claude-composer" })!, /before licence records were kept/);
+  assert.match(
+    licenceRefusal({ origin: "generated", model: "musicgen-small", licence: "CC-BY-NC-4.0", commercialUse: "not-allowed" })!,
+    /musicgen-small.*CC-BY-NC-4\.0.*doesn't allow commercial use/
+  );
+  assert.equal(licenceRefusal({ origin: "generated", licence: "Stability-Community", commercialUse: "conditional" }), null);
 });

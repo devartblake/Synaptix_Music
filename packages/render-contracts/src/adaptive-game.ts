@@ -1,3 +1,4 @@
+import { PackageProvenanceSchema } from "@synaptix/project-model";
 import { z } from "zod";
 
 export const ADAPTIVE_GAME_AUDIO_CONTRACT_VERSION = "1.0.0" as const;
@@ -70,7 +71,9 @@ export const AdaptiveGameAudioManifestSchema = z.object({
   transitions: z.array(AdaptiveTransitionSchema).default([]),
   cuePoints: z.array(AdaptiveCuePointSchema).default([]),
   clock: AdaptiveMusicClockSchema.optional(),
-  createdAt: z.string().datetime()
+  createdAt: z.string().datetime(),
+  /** Where the music came from and its licence (publication-rules-v1); the platform checks it. */
+  provenance: PackageProvenanceSchema.optional()
 }).strict().superRefine((value, context) => {
   const stateIds = new Set(value.states.map((state) => state.stateId));
   if (stateIds.size !== value.states.length) {

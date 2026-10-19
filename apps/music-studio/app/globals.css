@@ -147,6 +147,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .adaptive-candidates, .adaptive-state-editor, .certification-gate { min-width: 0; padding: 20px; }
 .adaptive-candidates, .adaptive-state-editor { border-right: 1px solid var(--sx-line); }
 .adaptive-candidates > p, .certification-gate > p { color: var(--sx-text-muted); font-size: 12px; line-height: 1.5; }
+.certification-gate > .licence-issue { color: var(--sx-danger); }
 .adaptive-render-card { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-top: 10px; padding: 12px; border: 1px solid var(--sx-line-soft); border-radius: var(--sx-radius-md); background: var(--sx-surface-raised); }
 .adaptive-render-card small { display: block; margin-top: 4px; color: var(--sx-text-muted); }
 .adaptive-state-card { display: grid; gap: 10px; margin-bottom: 12px; padding: 14px; border: 1px solid var(--sx-line); border-radius: var(--sx-radius-md); }
