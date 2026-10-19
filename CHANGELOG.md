@@ -12,6 +12,7 @@
 
 ### Added
 
+- **Melody check in the generation API (publication rules, phase 3).** Every generated proposal is screened against a reference set of melodies and carries a `similarityCheck`. The check compares the top line of each pitched clip, ignoring key and tempo. 8 or more consecutive matching notes against a protected song mark it `blocked`, while phrases shared with public-domain tunes are only logged. Findings name the track, clip and bars, never the matched song. The reference index is a server-side file (`SYNAPTIX_MELODY_INDEX`, built from MIDI with `scripts/build_melody_index.py`); without it, proposals are `unchecked`. The block isn't enforced in the studio or at publish yet.
 - **Exported music is marked as AI-involved (publication rules, phase 2).**
   - **Watermark:** the render worker sends each master and stem WAV of a generated or edited project to the platform's `/internal/music/watermark` before transcoding, so WAV, MP3, OGG and previews carry an inaudible AudioSeal mark that survives re-encoding. Hand-composed projects and plug-in freezes aren't marked.
   - **Metadata tags:** `AI_GENERATED`, `AI_GENERATOR`, `AI_MODEL` and `AI_LICENSE` as ID3 TXXX frames, Vorbis comments and a WAV LIST/INFO comment.

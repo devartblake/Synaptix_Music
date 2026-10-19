@@ -19,6 +19,7 @@ from app.generation.plan import ArrangementPlan, render_plan
 from app.generation.procedural import generate_arrangement
 from app.generation.theory import parse_key
 from app.models.generation import GenerationProposal, GenerationRequest
+from app.similarity.proposal import check_proposal, melody_index, score_threshold
 
 logger = logging.getLogger(__name__)
 
@@ -302,8 +303,11 @@ def composer_from_env(env: Mapping[str, str] | None = None) -> Composer:
 
 
 def compose_arrangement(request: GenerationRequest, composer: Composer) -> GenerationProposal:
-    """The composer's proposal (or the procedural fallback's), with its licence facts filled in."""
-    return with_licence(request, _compose(request, composer))
+    """The composer's proposal (or the procedural fallback's), with its licence facts filled in
+    and its melodies checked against the reference set (publication-rules-v1, decision 4)."""
+    proposal = with_licence(request, _compose(request, composer))
+    check = check_proposal(proposal, melody_index(), score_threshold())
+    return proposal.model_copy(update={"similarityCheck": check})
 
 
 def _compose(request: GenerationRequest, composer: Composer) -> GenerationProposal:

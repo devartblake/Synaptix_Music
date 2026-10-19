@@ -51,6 +51,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       SYNAPTIX_LOCAL_MODEL_URL: ${SYNAPTIX_LOCAL_MODEL_URL:-http://ollama:11434}
       SYNAPTIX_LOCAL_MODEL: ${SYNAPTIX_LOCAL_MODEL:-qwen2.5:7b}
+      # Melody check reference index (publication rules phase 3); empty = proposals are unchecked.
+      SYNAPTIX_MELODY_INDEX: ${SYNAPTIX_MELODY_INDEX:-}
     ports:
       - "127.0.0.1:${GENERATION_PORT:-8100}:8100"
     healthcheck:
