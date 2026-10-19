@@ -2,8 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 
-// Studio UI v2 (docs/plans/ui/studio-ui-v2.md), step 2: the DAW shell behind the Layout menu's
-// preview switch. The editors inside are v1's; these tests cover the shell around them.
+// Studio UI v2 (docs/plans/ui/studio-ui-v2.md): the DAW layout, the default since step 9b.
 
 async function openStudio(page: Page) {
   await page.route("**/api/platform/**", (route) =>
@@ -14,9 +13,8 @@ async function openStudio(page: Page) {
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 }
 
+/** The DAW layout is the default: a new browser opens straight into it. */
 async function switchToV2(page: Page) {
-  await page.getByRole("button", { name: "Layout", exact: true }).click();
-  await page.getByRole("button", { name: "DAW layout (preview)" }).click();
   await expect(page.locator(".studio-v2")).toBeVisible();
 }
 
@@ -75,12 +73,32 @@ test("the layout choice and dock state survive a reload, and the classic layout 
   await expect(page.locator(".studio-v2")).toBeVisible();
   await expect(page.getByRole("region", { name: "Dock" }).getByRole("tab", { name: /^Mixer/ })).toHaveAttribute("aria-selected", "true");
 
-  // The DAW layout's Settings dialog switches back to the classic layout.
+  // The DAW layout's Settings dialog switches to the classic layout, which is then remembered.
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("switch", { name: "DAW layout (preview)" })).toBeChecked();
-  await page.getByRole("switch", { name: "DAW layout (preview)" }).click();
+  await expect(page.getByRole("switch", { name: "Classic layout" })).not.toBeChecked();
+  await page.getByRole("switch", { name: "Classic layout" }).click();
   await expect(page.locator(".studio-topbar")).toBeVisible();
   await expect(page.locator(".studio-v2")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".studio-topbar")).toBeVisible();
+  // The classic Layout menu switches back.
+  await page.getByRole("button", { name: "Layout", exact: true }).click();
+  await page.getByRole("button", { name: "DAW layout" }).click();
+  await expect(page.locator(".studio-v2")).toBeVisible();
+});
+
+test("a browser that used the studio before the switch-over opens in the DAW layout", async ({ page }) => {
+  // Before step 9b every stored layout said shell "v1": that was the old default, not a choice.
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("seeded")) {
+      sessionStorage.setItem("seeded", "1");
+      localStorage.setItem("synaptix-music:studio-layout:v1", JSON.stringify({ shell: "v1", dockTab: "mixer" }));
+    }
+  });
+  await openStudio(page);
+  await expect(page.locator(".studio-v2")).toBeVisible();
+  // Its other choices are kept.
+  await expect(page.getByRole("region", { name: "Dock" }).getByRole("tab", { name: /^Mixer/ })).toHaveAttribute("aria-selected", "true");
 });
 
 test("tracks take their instrument family's colour and show a level and the clock", async ({ page }) => {

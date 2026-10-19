@@ -4,6 +4,11 @@
 
 ### Added
 
+- **The DAW layout is the default (Studio UI v2, step 9b-1).** Every studio opens in the DAW layout, including browsers that used the classic layout before (their panel sizes and dock choices are kept). The classic layout stays one switch away in **Settings → Classic layout** while it is retired. The DAW piano roll's **Edit** menu gains keyboard note entry (pitch, position, **Add note**), which was only in the classic layout.
+  - **Fixed along the way** (each showed up once the DAW layout was the first thing a browser renders):
+    - **Phones** stayed in the tablet layout: the layout measured the visual viewport, which a phone widens when it zooms out to fit the desktop-sized first paint. It now measures the layout viewport, as CSS media queries do.
+    - **Blocked browser storage** stopped the DAW layout rendering: the inspector's publication card read `localStorage` outside its error handling.
+    - **Below 320 × 480** the "Make room to edit" notice showed, but the DAW layout stayed usable behind it (a later CSS rule overrode the hiding).
 - **Notebook, sticky notes and a Settings dialog in the DAW layout.**
   - **Notebook:** a **Notebook** button in the transport bar opens a drawer of titled pages for ideas, lyrics and to-dos. Lines starting with `[ ]` become a checklist you can tick below the text. Typing saves when you leave the page or close the drawer, as one undo step.
   - **Sticky notes:** each track header has a sticky-note button showing its first note; it opens a movable panel to add, edit and delete notes. The inspector has a **Sticky notes** card for the selected track and the whole project. Clearing a note's text deletes it, and every change is undoable.

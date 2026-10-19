@@ -245,7 +245,7 @@ input[type="range"] { accent-color: var(--sx-primary); }
 .device-workspace legend { font-weight: 700; }
 @media (max-width: 319px), (max-height: 479px) {
   .viewport-notice { display: block; }
-  .studio-shell, .studio-v2 { display: none; }
+  .studio-shell { display: none; }
 }
 .adaptive-state-card fieldset { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--sx-line); }
 .adaptive-state-card select, .adaptive-state-card input, .certification-gate input { min-width: 0; max-width: 100%; }
@@ -266,6 +266,8 @@ input[type="range"] { accent-color: var(--sx-primary); }
 /* Studio UI v2 shell (docs/plans/ui/studio-ui-v2.md): transport bar, browser, centre with a bottom
    dock, inspector and status bar, filling the viewport; panels scroll inside. */
 .studio-v2 { height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; background: var(--sx-canvas); }
+/* Below the editing minimum the viewport notice replaces the studio; this follows the rule above so it wins. */
+@media (max-width: 319px), (max-height: 479px) { .studio-v2 { display: none; } }
 .studio-transportbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; min-height: 52px; padding: 6px 12px; border-bottom: 1px solid var(--sx-line); background: var(--sx-surface); }
 .studio-transportbar > * { flex: none; }
 .studio-transportbar button { white-space: nowrap; }

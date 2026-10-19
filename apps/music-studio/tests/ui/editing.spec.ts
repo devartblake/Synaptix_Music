@@ -39,8 +39,8 @@ test("playheads follow real transport seek, looping, pause, and stop", async ({ 
   await openStudio(page);
   await page.getByRole("spinbutton", { name: "Tempo", exact: true }).fill("300");
   await expect(page.locator(".studio-title small")).toContainText("Revision saved");
-  await page.getByRole("button", { name: "Loop: Off", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Loop: On", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Loop", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Loop", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Seek to bar 16", exact: true }).click();
   const position = page.getByLabel("Playback position");
   await expect(position).toHaveAttribute("data-tick", "57600");
@@ -174,6 +174,8 @@ test("pointer group edits form one undo step and keyboard insertion respects cli
   await expect(page.getByRole("button", { name: "Quantize", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.locator("[data-note-id]")).toHaveCount(64);
+  // Keyboard insertion lives in the DAW piano roll's Edit menu.
+  await page.getByRole("region", { name: "Piano roll editor" }).getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("spinbutton", { name: "New note pitch" }).fill("127");
   await page.getByRole("spinbutton", { name: "New note tick" }).fill("61439");
   await page.getByRole("button", { name: "Add note", exact: true }).click();
@@ -189,9 +191,8 @@ test("pointer group edits form one undo step and keyboard insertion respects cli
 
 test("the Drum Kit edits in the step sequencer, and in a piano roll that names its drums", async ({ page }) => {
   await openStudio(page);
-  await page.getByRole("button", { name: /^All instruments \(\d+\)$/ }).click();
-  await page.getByRole("dialog", { name: "Choose an instrument" }).getByText("Drum Kit", { exact: true }).click();
-  await page.getByRole("button", { name: "Add instrument track" }).click();
+  await page.getByRole("complementary", { name: "Browser" }).getByRole("button", { name: "Drum Kit", exact: true }).click();
+  await page.getByRole("button", { name: "Add Drum Kit track" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).last().click();
 
   // Lanes for everything the kit plays, including rim and cymbals.

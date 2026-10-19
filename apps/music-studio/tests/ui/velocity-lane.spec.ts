@@ -18,6 +18,8 @@ test("velocity lane bars drag and step note velocities, each as one undo step", 
   const note = roll.locator(`[data-note-id="${noteId}"]`);
   const original = await note.getAttribute("data-velocity");
 
+  // The lane sits below the notes in the dock, which scrolls; bring it into view first.
+  await bar.scrollIntoViewIfNeeded();
   // Drag the bar to the top of the lane: maximum velocity.
   const box = (await lane.boundingBox())!;
   const barBox = (await bar.boundingBox())!;

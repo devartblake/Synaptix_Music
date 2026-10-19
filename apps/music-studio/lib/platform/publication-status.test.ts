@@ -31,6 +31,15 @@ test("the package comes from the project's Adaptive states draft, and bad drafts
   const storage = (value: string | null) => ({ getItem: () => value });
   assert.equal(draftPackageId("p", storage(JSON.stringify({ packageId: "pkg-1", states: [] }))), "pkg-1");
   assert.equal(draftPackageId("p", storage(null)), null);
+  // Blocked storage (reading localStorage throws) means no draft, not a crash: the DAW inspector
+  // calls this while rendering.
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, get() { throw new Error("Storage blocked"); } });
+  try { assert.equal(draftPackageId("p"), null); }
+  finally {
+    if (original) Object.defineProperty(globalThis, "localStorage", original);
+    else delete (globalThis as { localStorage?: unknown }).localStorage;
+  }
   assert.equal(draftPackageId("p", storage("{not json")), null);
   assert.equal(draftPackageId("p", { getItem: () => { throw new Error("blocked"); } }), null);
 });

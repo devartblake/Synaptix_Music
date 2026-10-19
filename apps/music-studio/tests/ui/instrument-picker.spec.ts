@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { useClassicLayout } from "./layouts";
+
+// The classic layout's sidebar picker, kept until the classic layout is removed (Studio UI v2, step
+// 9b). The DAW Browser's version of this test is in studio-v2.spec.ts.
 
 test("the sidebar shows six instruments and the full list opens in a modal", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "tablet", "The navigation sidebar is hidden on tablet layouts.");
@@ -7,6 +11,7 @@ test("the sidebar shows six instruments and the full list opens in a modal", asy
   );
   await page.goto(`/studio/picker-${Date.now()}`);
   await expect(page.locator(".studio-title small")).not.toContainText("Loading project");
+  await useClassicLayout(page);
 
   const sidebar = page.getByRole("group", { name: "Choose an instrument" });
   await expect(sidebar.getByRole("radio")).toHaveCount(6);

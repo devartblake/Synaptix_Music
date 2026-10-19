@@ -35,9 +35,10 @@ export function publicationStatus(versions: readonly AdaptivePackageVersionSumma
 }
 
 /** The adaptive package this browser is authoring for the project, from the Adaptive states draft. */
-export function draftPackageId(projectId: string, storage: Pick<Storage, "getItem"> = localStorage): string | null {
+export function draftPackageId(projectId: string, storage?: Pick<Storage, "getItem">): string | null {
   try {
-    const raw = storage.getItem(`synaptix-music:adaptive:v1:${projectId}`);
+    // Reading `localStorage` itself throws when storage is blocked, so it stays inside the try.
+    const raw = (storage ?? localStorage).getItem(`synaptix-music:adaptive:v1:${projectId}`);
     const packageId = raw ? (JSON.parse(raw) as { packageId?: unknown }).packageId : null;
     return typeof packageId === "string" ? packageId : null;
   } catch {
