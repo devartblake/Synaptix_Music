@@ -6,7 +6,7 @@ export {
   FfmpegTranscoder,
   type AudioTranscodeRequest,
   type AudioTranscoder,
-  type LossyAudioFormat
+  type EncodedAudioFormat
 } from "./ffmpeg-transcoder.ts";
 export {
   HttpProjectLoader,

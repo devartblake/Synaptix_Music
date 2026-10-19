@@ -8,6 +8,7 @@
 
 ### Changed
 
+- **More export formats: AAC (M4A), Opus (MP4) and FLAC.** All three carry the AI marks: the watermark, metadata tags (MP4 metadata or Vorbis comments) and signed C2PA content credentials, so music made with AI can be exported as WAV, MP3, M4A, Opus or FLAC. Opus is delivered in an MP4 container (`.mp4`), which C2PA can bind to. Defaults: AAC 192 kbps, Opus 128 kbps. Output stays byte-identical across retries.
 - **Music made with AI isn't exported as OGG.** OGG can't carry C2PA content credentials, so projects with AI involvement offer WAV and MP3 only, and the render worker refuses an OGG request for them (previews included). Hand-composed projects keep OGG.
 
 ### Added

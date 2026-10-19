@@ -8,7 +8,7 @@ import { encodeWav } from "./wav-encoder.ts";
 const ffmpegAvailable = spawnSync("ffmpeg", ["-version"]).status === 0;
 
 test(
-  "FFmpeg creates deterministic MP3 and OGG delivery artifacts",
+  "FFmpeg creates deterministic, tagged MP3, OGG, M4A, MP4 (Opus) and FLAC delivery artifacts",
   { skip: !ffmpegAvailable },
   async () => {
     const frames = 4410;
@@ -21,11 +21,14 @@ test(
     const wav = encodeWav({ left, right }, 44100, 16);
     const transcoder = new FfmpegTranscoder();
 
-    for (const format of ["mp3", "ogg"] as const) {
-      const first = await transcoder.transcodeWav(wav, { format, bitrateKbps: 128 });
-      const second = await transcoder.transcodeWav(wav, { format, bitrateKbps: 128 });
+    const tags = { AI_GENERATED: "true" };
+    for (const format of ["mp3", "ogg", "m4a", "opus", "flac"] as const) {
+      const first = await transcoder.transcodeWav(wav, { format, bitrateKbps: 128, tags });
+      const second = await transcoder.transcodeWav(wav, { format, bitrateKbps: 128, tags });
       assert.ok(first.length > 0);
+      // Retries must reproduce the same bytes, or a re-rendered artifact fails its checksum.
       assert.ok(first.equals(second), `${format} output should be byte-identical`);
+      assert.ok(first.includes("AI_GENERATED"), `${format} output should carry the AI tags`);
     }
   }
 );

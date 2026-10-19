@@ -64,6 +64,6 @@ export function assertDeliverableFormats(
 ): void {
   if (!project.generationMetadata) return;
   if (output.format === "ogg" || output.preview?.format === "ogg") {
-    throw new Error("OGG isn't offered for music made with AI: it can't carry content credentials. Use WAV or MP3.");
+    throw new Error("OGG isn't offered for music made with AI: it can't carry content credentials. Use another format.");
   }
 }

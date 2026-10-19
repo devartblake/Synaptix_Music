@@ -13,7 +13,7 @@ import {
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import type { AudioTranscodeRequest, AudioTranscoder } from "./ffmpeg-transcoder.ts";
 import type { OfflineRenderOutcome } from "./offline-renderer.ts";
-import type { AudioWatermarker, ContentCredentialSigner } from "./watermark-client.ts";
+import type { AudioWatermarker, ContentCredentialSigner, SignableMediaType } from "./watermark-client.ts";
 
 const renderId = "10000000-0000-4000-8000-000000000000";
 
@@ -177,7 +177,7 @@ test("a watermark failure fails the render rather than delivering unmarked audio
 // C2PA content credentials go on last, over the final bytes; tags are written before signing.
 class FakeSigner implements ContentCredentialSigner {
   readonly signed: { mediaType: string; projectId: string; revisionId: string; input: string }[] = [];
-  async sign(audio: Buffer, mediaType: "audio/wav" | "audio/mpeg", projectId: string, revisionId: string): Promise<Buffer> {
+  async sign(audio: Buffer, mediaType: SignableMediaType, projectId: string, revisionId: string): Promise<Buffer> {
     this.signed.push({ mediaType, projectId, revisionId, input: audio.toString("latin1") });
     return Buffer.concat([audio, Buffer.from("+c2pa")]);
   }
@@ -221,4 +221,22 @@ test("a signing failure fails the render", async () => {
     packageRenderArtifacts(outcome(), manifest("mp3"), new RecordingTranscoder(), { signer: failing }),
     /Signing content credentials failed with 503/
   );
+});
+
+test("M4A (AAC), MP4 (Opus) and FLAC deliverables get their own type and extension, and are signed", async () => {
+  const cases = [
+    { format: "m4a", fileName: "master.m4a", mediaType: "audio/mp4", kbps: 192 },
+    { format: "opus", fileName: "master.mp4", mediaType: "audio/mp4", kbps: 128 },
+    { format: "flac", fileName: "master.flac", mediaType: "audio/flac", kbps: 0 }
+  ] as const;
+  for (const expected of cases) {
+    const transcoder = new RecordingTranscoder();
+    const signer = new FakeSigner();
+    const request = { ...manifest("wav"), output: { ...manifest("wav").output, format: expected.format, lossyBitrateKbps: undefined } };
+    const packaged = await packageRenderArtifacts(outcome(), request as RenderManifest, transcoder, { signer });
+    assert.equal(packaged.artifacts[0]!.metadata.fileName, expected.fileName);
+    assert.equal(packaged.artifacts[0]!.metadata.mediaType, expected.mediaType);
+    assert.equal(transcoder.requests[0]!.bitrateKbps, expected.kbps);
+    assert.deepEqual(signer.signed.map((s) => s.mediaType), [expected.mediaType]);
+  }
 });

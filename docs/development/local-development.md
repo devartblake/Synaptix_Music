@@ -168,8 +168,8 @@ The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete 
 
 Exports are marked as AI-involved (publication rules phase 2). When the worker renders for the platform:
 - **Watermark:** each master and stem WAV of a project with AI involvement goes to the backend's `/internal/music/watermark` before transcoding, so WAV, MP3, OGG and previews all carry the inaudible AudioSeal mark. Hand-composed projects and plug-in freezes aren't marked.
-- **Metadata tags:** projects with AI involvement get `AI_GENERATED`, `AI_GENERATOR`, `AI_MODEL` and `AI_LICENSE` as ID3 TXXX frames (MP3), Vorbis comments (OGG) and a LIST/INFO comment (WAV), for players that don't read C2PA.
-- **C2PA content credentials:** every WAV and MP3 deliverable, tags included, is signed last through the backend's `/internal/music/projects/{id}/revisions/{rev}/content-credentials`, which states the provenance from its own copy of the revision. OGG can't carry C2PA (the SDK can't bind to it), so projects with AI involvement aren't exported as OGG: the studio doesn't offer it and the worker refuses it.
+- **Metadata tags:** projects with AI involvement get `AI_GENERATED`, `AI_GENERATOR`, `AI_MODEL` and `AI_LICENSE` as ID3 TXXX frames (MP3), MP4 metadata (M4A, Opus), Vorbis comments (FLAC, OGG) and a LIST/INFO comment (WAV), for players that don't read C2PA.
+- **C2PA content credentials:** every WAV, MP3, M4A, Opus (MP4) and FLAC deliverable, tags included, is signed last through the backend's `/internal/music/projects/{id}/revisions/{rev}/content-credentials`, which states the provenance from its own copy of the revision. OGG can't carry C2PA (the SDK can't bind to it), so projects with AI involvement aren't exported as OGG: the studio doesn't offer it and the worker refuses it.
 - A watermark or signing failure fails the render instead of delivering unmarked audio. The backend needs its watermark service (TycoonTycoon_Backend: `--profile music-watermark`, with a signing chain from `Synaptix.Watermark/scripts/staging-c2pa-cert.sh`). Set `RENDER_AI_MARKING=off` to render without the watermark and credentials locally.
 
 ## Install TypeScript Dependencies

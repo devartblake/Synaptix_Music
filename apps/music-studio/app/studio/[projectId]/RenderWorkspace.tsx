@@ -8,6 +8,7 @@ import { RenderJobSchema, RenderManifestSchema, type RenderJob } from "@synaptix
 import { Button, Panel, Badge } from "../../../components/ui/StudioControls";
 import {
   createExportManifest,
+  EXPORT_FORMAT_LABELS,
   exportFormatsFor,
   describeLivePlugins,
   livePluginsInScope,
@@ -267,7 +268,7 @@ export function RenderWorkspace({
                 }
               >
                 {exportFormatsFor(project).map((format) => (
-                  <option key={format} value={format}>{format.toUpperCase()}</option>
+                  <option key={format} value={format}>{EXPORT_FORMAT_LABELS[format]}</option>
                 ))}
               </select>
             </label>

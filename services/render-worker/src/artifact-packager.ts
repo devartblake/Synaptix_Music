@@ -9,18 +9,27 @@ import {
   type RenderResult
 } from "@synaptix/render-contracts";
 
-import type { AudioTranscoder, LossyAudioFormat } from "./ffmpeg-transcoder.ts";
+import type { AudioTranscoder, EncodedAudioFormat } from "./ffmpeg-transcoder.ts";
 import type { OfflineRenderOutcome, RenderedArtifact } from "./offline-renderer.ts";
 import { withWavInfo, type AiTags } from "./ai-marking.ts";
-import type { AudioWatermarker, ContentCredentialSigner } from "./watermark-client.ts";
+import type { AudioWatermarker, ContentCredentialSigner, SignableMediaType } from "./watermark-client.ts";
 
-const MEDIA_TYPES: Record<LossyAudioFormat, string> = {
+const MEDIA_TYPES: Record<EncodedAudioFormat, string> = {
   mp3: "audio/mpeg",
-  ogg: "audio/ogg"
+  ogg: "audio/ogg",
+  m4a: "audio/mp4",
+  opus: "audio/mp4",
+  flac: "audio/flac"
 };
 
-function replaceExtension(fileName: string, format: LossyAudioFormat): string {
-  return `${fileName.replace(/\.[^.]+$/, "")}.${format}`;
+/** Opus is delivered in an MP4 container (C2PA can bind to MP4, not to Ogg). */
+const EXTENSIONS: Record<EncodedAudioFormat, string> = { mp3: "mp3", ogg: "ogg", m4a: "m4a", opus: "mp4", flac: "flac" };
+
+/** Default bitrates; Opus sounds as good as the others at a lower one. FLAC is lossless. */
+const DEFAULT_KBPS: Record<EncodedAudioFormat, number> = { mp3: 192, ogg: 160, m4a: 192, opus: 128, flac: 0 };
+
+function replaceExtension(fileName: string, format: EncodedAudioFormat): string {
+  return `${fileName.replace(/\.[^.]+$/, "")}.${EXTENSIONS[format]}`;
 }
 
 function metadataFor(
@@ -64,7 +73,7 @@ async function requestedArtifacts(
     });
   }
   const format = manifest.output.format;
-  const bitrateKbps = manifest.output.lossyBitrateKbps ?? (format === "mp3" ? 192 : 160);
+  const bitrateKbps = manifest.output.lossyBitrateKbps ?? DEFAULT_KBPS[format];
   return Promise.all(
     outcome.artifacts.map(async (source) => {
       const bytes = await transcoder.transcodeWav(source.bytes, { format, bitrateKbps, ...tagRequest(tags) });
@@ -169,12 +178,18 @@ async function watermarked(
   return { ...outcome, artifacts };
 }
 
-const SIGNABLE: Record<string, "audio/wav" | "audio/mpeg"> = { "audio/wav": "audio/wav", "audio/mpeg": "audio/mpeg" };
+const SIGNABLE: Record<string, SignableMediaType> = {
+  "audio/wav": "audio/wav",
+  "audio/mpeg": "audio/mpeg",
+  "audio/mp4": "audio/mp4",
+  "audio/flac": "audio/flac"
+};
 
 /**
- * Signs C2PA content credentials into each WAV and MP3 deliverable, last, since the signature covers
+ * Signs C2PA content credentials into each WAV, MP3, M4A, MP4 (Opus) and FLAC deliverable, last, since the signature covers
  * the final bytes (tags included). Every render is signed: hand-composed music is stated as human work.
- * The C2PA SDK can't bind to OGG, so OGG files keep the watermark and tags only.
+ * The C2PA SDK can't bind to OGG, which is why music with AI involvement is never delivered as OGG
+ * (see assertDeliverableFormats); hand-composed OGG exports go out unsigned.
  */
 async function signed(
   deliverables: RenderedArtifact[],
