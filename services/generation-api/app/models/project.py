@@ -138,6 +138,19 @@ class MusicalKey(StrictModel):
     mode: Literal["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "harmonic minor"]
 
 
+NoteHash = Annotated[str, Field(pattern=r"^[0-9a-f]{8}$")]
+
+
+class ProjectProvenance(StrictModel):
+    """Licence facts for generated music (publication-rules-v1, phase 1)."""
+
+    model: str | None = Field(default=None, min_length=1)
+    licence: str = Field(min_length=1)
+    commercialUse: Literal["allowed", "not-allowed", "conditional"]
+    planSha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    credits: list[Annotated[str, Field(min_length=1)]] | None = None
+
+
 class GenerationMetadata(StrictModel):
     generatorId: str = Field(min_length=1)
     generatorVersion: str = Field(min_length=1)
@@ -145,6 +158,9 @@ class GenerationMetadata(StrictModel):
     createdAt: datetime
     prompt: str | None = None
     arrangementFingerprint: str | None = Field(default=None, pattern=r"^fnv1a64:[0-9a-f]{16}$")
+    provenance: ProjectProvenance | None = None
+    # Per clip: each generated note's id and an 8-hex hash of its pitch, timing and velocity.
+    generatedNotes: dict[str, dict[str, NoteHash]] | None = None
 
 
 class MixerChannel(StrictModel):

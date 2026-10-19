@@ -140,6 +140,25 @@ export const MusicalKeySchema = z.object({
 });
 export type MusicalKey = z.infer<typeof MusicalKeySchema>;
 
+/** Whether a model's licence lets its output be used commercially (docs/plans/implementation/publication-rules-v1.md). */
+export const COMMERCIAL_USE = ["allowed", "not-allowed", "conditional"] as const;
+/**
+ * The licence facts for generated music. The generation API fills them from its reviewed licence
+ * table, never from what a model says about itself; publishing refuses `not-allowed`.
+ */
+export const GenerationProvenanceSchema = z.object({
+  /** The model that actually ran, for AI composers (e.g. a Claude model, or "qwen2.5:7b"). */
+  model: z.string().min(1).optional(),
+  /** An SPDX identifier or a named licence, e.g. "Apache-2.0", "Anthropic-Commercial-Terms", or "none". */
+  licence: z.string().min(1),
+  commercialUse: z.enum(COMMERCIAL_USE),
+  /** SHA-256 of the request and the arrangement it produced: proves the exact input later without storing it. */
+  planSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+  /** Credit lines the licence requires, e.g. "Powered by Stability AI". */
+  credits: z.array(z.string().min(1)).optional()
+});
+export type GenerationProvenance = z.infer<typeof GenerationProvenanceSchema>;
+
 export const GenerationMetadataSchema = z.object({
   generatorId: IdSchema,
   generatorVersion: z.string().min(1),
@@ -148,7 +167,11 @@ export const GenerationMetadataSchema = z.object({
   prompt: z.string().optional(),
   // The arrangement as generated (see arrangementFingerprint). Optional, and absent on projects
   // generated before it existed, so their checksums don't change.
-  arrangementFingerprint: z.string().regex(/^fnv1a64:[0-9a-f]{16}$/).optional()
+  arrangementFingerprint: z.string().regex(/^fnv1a64:[0-9a-f]{16}$/).optional(),
+  // Licence facts for the generated music. Optional: absent on projects generated before it existed.
+  provenance: GenerationProvenanceSchema.optional(),
+  // Per clip, each generated note's id and a hash of its pitch, timing and velocity (see editShare).
+  generatedNotes: z.record(IdSchema, z.record(IdSchema, z.string().regex(/^[0-9a-f]{8}$/))).optional()
 });
 
 export const MixerChannelSchema = z.object({
@@ -289,6 +312,55 @@ export function arrangementFingerprint(project: ArrangementSource): string {
   }));
   const music = { tracks, tempoMap: project.tempoMap, timeSignatureMap: project.timeSignatureMap, markers: project.markers, key: project.key };
   return `fnv1a64:${fnv1a64(canonicalJson(music))}`;
+}
+
+/** A short hash of what a note plays: pitch, timing and velocity (its id is the key it is stored under). */
+export function noteHash(note: { pitch: number; startTick: number; durationTicks: number; velocity: number }): string {
+  return fnv1a64(`${note.pitch}:${note.startTick}:${note.durationTicks}:${note.velocity}`).slice(0, 8);
+}
+
+/** Every MIDI note in the project, by clip: the record kept when a generated arrangement is applied. */
+export function generatedNoteHashes(project: ArrangementSource): Record<string, Record<string, string>> {
+  const clips: Record<string, Record<string, string>> = {};
+  for (const track of project.tracks) {
+    for (const clip of track.clips) {
+      if (clip.kind !== "midi") continue;
+      clips[clip.id] = Object.fromEntries(clip.notes.map((note) => [note.id, noteHash(note)]));
+    }
+  }
+  return clips;
+}
+
+/**
+ * How much of the music a person changed, from 0 (as generated) to 1:
+ * (generated notes removed or changed + notes added) ÷ (generated notes + notes added).
+ * Null when there is no generated-notes record (hand-composed, or generated before it existed).
+ */
+export function editShare(project: ArrangementSource): number | null {
+  const generated = project.generationMetadata?.generatedNotes;
+  if (!generated) return null;
+  const current = new Map<string, string>();
+  for (const track of project.tracks) {
+    for (const clip of track.clips) {
+      if (clip.kind !== "midi") continue;
+      for (const note of clip.notes) current.set(`${clip.id}/${note.id}`, noteHash(note));
+    }
+  }
+  let generatedCount = 0;
+  let changed = 0;
+  const generatedKeys = new Set<string>();
+  for (const [clipId, notes] of Object.entries(generated)) {
+    for (const [noteId, hash] of Object.entries(notes)) {
+      const key = `${clipId}/${noteId}`;
+      generatedKeys.add(key);
+      generatedCount += 1;
+      if (current.get(key) !== hash) changed += 1;
+    }
+  }
+  let added = 0;
+  for (const key of current.keys()) if (!generatedKeys.has(key)) added += 1;
+  const total = generatedCount + added;
+  return total === 0 ? 0 : (changed + added) / total;
 }
 
 /**

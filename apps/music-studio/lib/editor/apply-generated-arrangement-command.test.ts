@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createEmptyProject } from "@synaptix/project-model";
+import { createEmptyProject, editShare } from "@synaptix/project-model";
 import { ApplyGeneratedArrangementEditorCommand, projectKeyFromGeneration } from "./apply-generated-arrangement-command.ts";
 
 test("generated variations replace the arrangement and undo restores it", () => {
@@ -97,4 +97,44 @@ test("a generated project reads as Generated until its music changes, then Edite
   // Projects generated before the fingerprint existed can't show edits, so they read as Generated.
   const { arrangementFingerprint: _old, ...legacy } = generated.generationMetadata!;
   assert.equal(projectOrigin({ ...edited, generationMetadata: legacy }), "generated");
+});
+
+test("applying records the generator's licence facts and every generated note, so edits can be measured", () => {
+  // Publication rules v1: publishing reads these to refuse unlicensed music and report the edit share.
+  const project = createEmptyProject("project-1");
+  const notes = [0, 1, 2].map((index) => ({ id: `n${index}`, pitch: 60 + index, startTick: index * 960, durationTicks: 480, velocity: 100 }));
+  const proposal = {
+    operation: "create-arrangement" as const, projectId: "project-1", genre: "electronic-trivia" as const, mood: "upbeat" as const,
+    tempo: 120, key: "C major", ticksPerQuarterNote: 960 as const,
+    sections: [
+      { id: "s1", kind: "intro" as const, name: "Intro", startBar: 0, bars: 4 },
+      { id: "s2", kind: "main" as const, name: "Main", startBar: 4, bars: 8 },
+      { id: "s3", kind: "victory" as const, name: "Win", startBar: 12, bars: 4 }
+    ],
+    tracks: (["drums", "bass", "harmony", "melody"] as const).map((role, index) => ({
+      id: `track-${index}`, role, name: role, instrumentId: "synth",
+      clips: role === "melody" ? [{ id: "clip-m", name: "Melody", range: { start: { bar: 0, beat: 0, tick: 0 }, durationTicks: 15360 }, loop: false, notes }] : []
+    })),
+    provenance: {
+      generatorId: "synaptix-claude-composer" as const, generatorVersion: "1.0.0", seed: 4, model: "claude-x",
+      licence: "Anthropic-Commercial-Terms", commercialUse: "allowed" as const, planSha256: "b".repeat(64), credits: []
+    },
+    warnings: []
+  };
+  const command = new ApplyGeneratedArrangementEditorCommand(proposal, "job-2");
+  const generated = command.execute(project);
+  assert.deepEqual(generated.generationMetadata?.provenance, {
+    model: "claude-x", licence: "Anthropic-Commercial-Terms", commercialUse: "allowed", planSha256: "b".repeat(64)
+  });
+  assert.equal(editShare(generated), 0);
+  assert.deepEqual(Object.keys(generated.generationMetadata?.generatedNotes?.["clip-m"] ?? {}), ["n0", "n1", "n2"]);
+  // Undo takes the record away with the music (the project had none).
+  assert.equal(command.undo(generated).generationMetadata, undefined);
+
+  // An older generation API sent no licence facts: the music is recorded without provenance, which
+  // publishing treats as unlicensed rather than guessing.
+  const { licence: _l, commercialUse: _c, planSha256: _p, credits: _cr, ...bare } = proposal.provenance;
+  const older = new ApplyGeneratedArrangementEditorCommand({ ...proposal, provenance: bare }, "job-3").execute(project);
+  assert.equal(older.generationMetadata?.provenance, undefined);
+  assert.ok(older.generationMetadata?.generatedNotes);
 });

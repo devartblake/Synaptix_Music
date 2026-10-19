@@ -8,6 +8,7 @@
 
 ### Added
 
+- **Where generated music came from, and its licence (publication rules, phase 1a).** The generation API stamps every proposal with its licence, whether commercial use is allowed, a hash of the request and arrangement, and any required credits, from a reviewed table; generators or local models that weren't reviewed are marked not allowed. Applying a generated arrangement saves this record in the project (`generationMetadata.provenance`) with a fingerprint of every generated note (`generatedNotes`), so `editShare` can measure how much a person changed. Both fields are optional, so existing projects are unchanged.
 - **The DAW layout is the default (Studio UI v2, step 9b-1).** Every studio opens in the DAW layout, including browsers that used the classic layout before (their panel sizes and dock choices are kept). The classic layout stays one switch away in **Settings → Classic layout** while it is retired. The DAW piano roll's **Edit** menu gains keyboard note entry (pitch, position, **Add note**), which was only in the classic layout.
   - **Fixed along the way** (each showed up once the DAW layout was the first thing a browser renders):
     - **Phones** stayed in the tablet layout: the layout measured the visual viewport, which a phone widens when it zooms out to fit the desktop-sized first paint. It now measures the layout viewport, as CSS media queries do.

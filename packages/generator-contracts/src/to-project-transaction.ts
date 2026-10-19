@@ -9,12 +9,14 @@ import {
 } from "@synaptix/command-system";
 import {
   MusicProjectSchema,
+  type GenerationProvenance,
   type MusicProject,
   type Track
 } from "@synaptix/project-model";
 
 import {
   GenerationProposalSchema,
+  projectProvenance,
   type GenerationProposal,
   type GeneratedTrack
 } from "./index.ts";
@@ -84,7 +86,8 @@ class ApplyGenerationStateCommand {
       generatorVersion: this.proposal.provenance.generatorVersion,
       seed: this.proposal.provenance.seed,
       createdAt: this.timestamp,
-      prompt: `${this.proposal.genre}:${this.proposal.mood}:${this.proposal.key}`
+      prompt: `${this.proposal.genre}:${this.proposal.mood}:${this.proposal.key}`,
+      ...withProvenance(this.proposal)
     };
     return MusicProjectSchema.parse(next);
   }
@@ -199,4 +202,9 @@ export async function applyGenerationProposal(
   });
 
   return { ...result, transaction };
+}
+
+function withProvenance(proposal: GenerationProposal): { provenance?: GenerationProvenance } {
+  const provenance = projectProvenance(proposal.provenance);
+  return provenance ? { provenance } : {};
 }

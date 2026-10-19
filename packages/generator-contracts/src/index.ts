@@ -1,3 +1,4 @@
+import { COMMERCIAL_USE, type GenerationProvenance } from "@synaptix/project-model";
 import { z } from "zod";
 
 const MusicalPositionSchema = z.object({
@@ -129,7 +130,13 @@ export const GenerationProposalSchema = z.object({
     generatorVersion: z.string().min(1),
     seed: z.number().int(),
     /** The model that composed the plan, for AI composers. */
-    model: z.string().nullable().optional()
+    model: z.string().nullable().optional(),
+    // Licence facts from the generation API's reviewed table (publication-rules-v1). Optional so
+    // proposals from an older API still parse; without them the music counts as unlicensed.
+    licence: z.string().min(1).nullable().optional(),
+    commercialUse: z.enum(COMMERCIAL_USE).nullable().optional(),
+    planSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable().optional(),
+    credits: z.array(z.string().min(1)).optional()
   }),
   warnings: z.array(z.string())
 });
@@ -139,3 +146,19 @@ export type GenerationProposal = z.infer<typeof GenerationProposalSchema>;
 export type GeneratedTrack = z.infer<typeof GeneratedTrackSchema>;
 
 export * from "./to-project-transaction.ts";
+
+/**
+ * The project's provenance record for a proposal: its model and the licence facts the generation
+ * API filled in. Undefined for proposals from an API that didn't provide licence facts, which
+ * publishing treats as unlicensed generated music.
+ */
+export function projectProvenance(provenance: GenerationProposal["provenance"]): GenerationProvenance | undefined {
+  if (!provenance.licence || !provenance.commercialUse) return undefined;
+  return {
+    ...(provenance.model ? { model: provenance.model } : {}),
+    licence: provenance.licence,
+    commercialUse: provenance.commercialUse,
+    ...(provenance.planSha256 ? { planSha256: provenance.planSha256 } : {}),
+    ...(provenance.credits?.length ? { credits: [...provenance.credits] } : {})
+  };
+}

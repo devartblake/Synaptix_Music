@@ -43,6 +43,18 @@
   },
   "$defs": {
     "id": { "type": "string", "minLength": 1 },
+    "generationProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["licence", "commercialUse"],
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "licence": { "type": "string", "minLength": 1 },
+        "commercialUse": { "enum": ["allowed", "not-allowed", "conditional"] },
+        "planSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "credits": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
     "musicalKey": {
       "type": "object",
       "additionalProperties": false,
@@ -251,7 +263,15 @@
         "seed": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" },
         "prompt": { "type": "string" },
-        "arrangementFingerprint": { "type": "string", "pattern": "^fnv1a64:[0-9a-f]{16}$" }
+        "arrangementFingerprint": { "type": "string", "pattern": "^fnv1a64:[0-9a-f]{16}$" },
+        "provenance": { "$ref": "#/$defs/generationProvenance" },
+        "generatedNotes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{8}$" }
+          }
+        }
       }
     }
   }

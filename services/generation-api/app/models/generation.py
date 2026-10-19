@@ -78,6 +78,12 @@ class GenerationProvenance(StrictModel):
     seed: int
     # The model that composed the plan, for AI composers.
     model: str | None = None
+    # Licence facts from the reviewed table in app/generation/licensing.py (publication-rules-v1).
+    # Filled on every proposal the API returns; optional so composers can build one without them.
+    licence: str | None = Field(default=None, min_length=1)
+    commercialUse: Literal["allowed", "not-allowed", "conditional"] | None = None
+    planSha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    credits: list[str] = Field(default_factory=list)
 
 
 class GenerationProposal(StrictModel):
