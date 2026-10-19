@@ -8,6 +8,7 @@ import { RenderJobSchema, RenderManifestSchema, type RenderJob } from "@synaptix
 import { Button, Panel, Badge } from "../../../components/ui/StudioControls";
 import {
   createExportManifest,
+  exportFormatsFor,
   describeLivePlugins,
   livePluginsInScope,
   pinManifestToPlatformRevision,
@@ -265,9 +266,9 @@ export function RenderWorkspace({
                   update({ format: event.target.value as ExportOptions["format"] })
                 }
               >
-                <option value="wav">WAV</option>
-                <option value="mp3">MP3</option>
-                <option value="ogg">OGG</option>
+                {exportFormatsFor(project).map((format) => (
+                  <option key={format} value={format}>{format.toUpperCase()}</option>
+                ))}
               </select>
             </label>
             <label>

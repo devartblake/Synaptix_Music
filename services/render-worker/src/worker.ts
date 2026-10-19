@@ -2,7 +2,7 @@ import type { MusicProject } from "@synaptix/project-model";
 import type { MusicProjectV2 } from "@synaptix/project-model/v2";
 import type { RenderJob } from "@synaptix/render-contracts";
 
-import { aiTags } from "./ai-marking.ts";
+import { aiTags, assertDeliverableFormats } from "./ai-marking.ts";
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import { assertWorkerEngine } from "./engine-version.ts";
 import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
@@ -73,6 +73,7 @@ export async function processNextJob(
       job.manifest.projectId,
       job.manifest.revisionId
     );
+    assertDeliverableFormats(project, job.manifest.output);
     let rendered: ReturnType<typeof renderProjectOffline>;
     if (job.manifest.scope.kind === "plugin-freeze") {
       if (project.schemaVersion !== 2) throw new Error("Plug-in freezes need a Project Schema v2 revision.");

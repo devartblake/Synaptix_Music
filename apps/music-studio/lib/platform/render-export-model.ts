@@ -16,6 +16,18 @@ export interface ExportOptions {
   normalize: boolean;
   trackIds: string[];
 }
+/**
+ * Export formats a project may use. Music with AI involvement (a generated arrangement was applied)
+ * isn't offered as OGG: its exports must carry C2PA content credentials (publication rules,
+ * phase 2), and the C2PA SDK can't bind to OGG.
+ */
+export function exportFormatsFor(project: { generationMetadata?: unknown }): ExportOptions["format"][] {
+  return project.generationMetadata ? ["wav", "mp3"] : ["wav", "mp3", "ogg"];
+}
+
+export const OGG_NOT_FOR_AI_MESSAGE =
+  "OGG isn't offered for music made with AI: it can't carry content credentials. Choose WAV or MP3.";
+
 export async function createExportManifest(
   project: MusicProject,
   options: ExportOptions
@@ -28,6 +40,7 @@ export async function createExportManifest(
   }
   if (!canonical.tracks.some((track) => track.kind === "instrument"))
     throw new Error("Add an instrument track before exporting.");
+  if (!exportFormatsFor(canonical).includes(options.format)) throw new Error(OGG_NOT_FOR_AI_MESSAGE);
   if (
     options.scope === "stems" &&
     options.trackIds.some(
