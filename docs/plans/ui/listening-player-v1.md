@@ -56,6 +56,6 @@ The worker's logic is unit-tested by running `public/sw.js` against fake Cache S
 ## Deliberate limits (follow-ups)
 
 - A rendered mix maps onto the project timeline by time, so a render from an older revision with a different tempo can land on a slightly different spot.
-- Covers are local to this browser; syncing them across devices needs a platform asset upload.
+- ~~Covers are local to this browser; syncing them across devices needs a platform asset upload.~~ Done (2026-10-19): covers of cloud projects sync through the platform (`PUT/GET/DELETE /api/v1/music/projects/{id}/cover`, TycoonTycoon_Backend #598). Setting or removing a cover updates the platform too; loading the cloud project list downloads covers changed on another device (the list carries `coverSha256`), removes ones deleted elsewhere and uploads covers only saved in this browser. When both differ, the platform's copy wins so every device converges. Local-only projects and signed-out sessions keep covers in the browser.
 - Only pages opened online (plus Home and Library) work offline; studio pages for other projects show the offline page.
 - Search covers project names only.
