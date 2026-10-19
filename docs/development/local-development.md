@@ -236,6 +236,26 @@ GET  http://localhost:8100/docs
 
 The direct Python endpoint is suitable for generator development. In the integrated SynaptixPlay flow, the browser calls the Next.js BFF and the .NET platform dispatches to Python privately.
 
+### Melody check
+
+Every proposal carries a `similarityCheck` (publication rules phase 3, decision 4). The API takes
+the top line of each pitched clip and compares it with a reference set of melodies, ignoring key
+and tempo. 8 or more consecutive matching notes against a protected song make the check
+`blocked`. Phrases that also appear in a public-domain tune (scales, folk turns) are only counted
+as logged matches. Findings name the track, clip and bars, never the matched song.
+
+The reference set is a server-side index file. Build it from folders of MIDI files:
+
+```bash
+python scripts/build_melody_index.py --protected <copyrighted-midi-dir> \
+  --public-domain <folk-midi-dir> --version <name> --out melodies.json.gz
+```
+
+Then set `SYNAPTIX_MELODY_INDEX=/path/to/melodies.json.gz`. Without it, proposals are
+`unchecked`. `SYNAPTIX_MELODY_SCORE_THRESHOLD` adds a rarity-weighted score rule, which is off
+until the thresholds are calibrated. Which reference set to use is still being decided, and none
+ships in this repository.
+
 ### Choose a composer
 
 `SYNAPTIX_COMPOSER` selects who writes arrangements. Any AI failure falls back to the procedural composer, and the proposal carries a warning saying why.

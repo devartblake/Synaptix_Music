@@ -155,6 +155,21 @@ The rules are enforced by code at publish time. Policy written in a document alo
    - This catches arrangement-level similarity that the symbolic check misses.
    - It matters because content-ID systems on YouTube and Twitch will scan streams of the game.
 
+**Progress (2026-10-19): the symbolic check is built in the generation API (`app/similarity/`), not yet enforced.**
+- **Matcher:**
+  - Takes the top line of each pitched clip.
+  - Tokens are (interval, onset-gap ratio), so the match ignores key and tempo and survives doubled or halved note values.
+  - The index uses 4-token seeds (6 notes) weighted by rarity, and exact runs are joined along each reference's diagonal.
+  - 8 or more consecutive notes against a protected reference is a block. A run also found in a public-domain reference is logged only. The rarity-score rule is configurable and off until calibrated.
+- **Generation API:** every proposal carries `similarityCheck` (`clear`, `blocked` or `unchecked`), with findings by track, clip and bars, never naming the song. `unchecked` until `SYNAPTIX_MELODY_INDEX` points at an index.
+- **Index builder:** `scripts/build_melody_index.py` reads folders of MIDI files (protected or public domain). It picks the melody as the highest-pitched non-drum part with at least 16 notes.
+- **Still to do:**
+  - Choose and build the reference set (lawyer on Lakh MIDI).
+  - Calibrate on POP909 and known infringement cases.
+  - Confirm near-misses with local alignment; today's matches are exact runs.
+  - Act on a block: regenerate or warn in the studio, block preview and publish, and run the check again at publish over the edited project.
+  - Store the result in the package record.
+
 **What a block does (Agreed):**
 - The version can't be published, and the matched clip can't be previewed.
 - The person sees a warning naming the clip and bars, but not the matched song, so the warning doesn't become a lookup service. It suggests regenerating or editing those bars.

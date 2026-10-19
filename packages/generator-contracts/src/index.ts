@@ -138,7 +138,28 @@ export const GenerationProposalSchema = z.object({
     planSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable().optional(),
     credits: z.array(z.string().min(1)).optional()
   }),
-  warnings: z.array(z.string())
+  warnings: z.array(z.string()),
+  /**
+   * The melody check (publication-rules-v1, decision 4): where generated melodies repeat a protected
+   * reference melody, by track, clip and bars, never naming the song. Optional: older APIs omit it.
+   */
+  similarityCheck: z
+    .object({
+      status: z.enum(["clear", "blocked", "unchecked"]),
+      indexVersion: z.string().nullable().optional(),
+      findings: z.array(
+        z.object({
+          trackId: z.string().min(1),
+          clipId: z.string().min(1),
+          startBar: z.number().int().nonnegative(),
+          endBar: z.number().int().nonnegative(),
+          notes: z.number().int().positive()
+        })
+      ),
+      loggedMatches: z.number().int().nonnegative()
+    })
+    .nullable()
+    .optional()
 });
 
 export type GenerationRequest = z.infer<typeof GenerationRequestSchema>;

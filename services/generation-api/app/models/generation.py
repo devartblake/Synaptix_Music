@@ -86,6 +86,29 @@ class GenerationProvenance(StrictModel):
     credits: list[str] = Field(default_factory=list)
 
 
+class SimilarityFinding(StrictModel):
+    """Where a generated melody repeats a protected reference melody (never which one)."""
+
+    trackId: str = Field(min_length=1)
+    clipId: str = Field(min_length=1)
+    startBar: int = Field(ge=0)
+    endBar: int = Field(ge=0)
+    notes: int = Field(ge=1)
+
+
+class SimilarityCheck(StrictModel):
+    """The melody check's result (publication-rules-v1, decision 4).
+
+    ``unchecked`` means no reference index was configured; ``blocked`` means at least one finding.
+    Matches only against public-domain tunes are counted in ``loggedMatches``, not reported.
+    """
+
+    status: Literal["clear", "blocked", "unchecked"]
+    indexVersion: str | None = None
+    findings: list[SimilarityFinding] = Field(default_factory=list)
+    loggedMatches: int = Field(default=0, ge=0)
+
+
 class GenerationProposal(StrictModel):
     operation: Literal["create-arrangement"]
     projectId: str = Field(min_length=1)
@@ -98,6 +121,7 @@ class GenerationProposal(StrictModel):
     tracks: list[GeneratedTrack] = Field(min_length=4)
     provenance: GenerationProvenance
     warnings: list[str]
+    similarityCheck: SimilarityCheck | None = None
 
     @model_validator(mode="after")
     def validate_unique_ids(self) -> "GenerationProposal":
