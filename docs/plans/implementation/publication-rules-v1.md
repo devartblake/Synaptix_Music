@@ -1,6 +1,6 @@
 # Publication Rules v1: Provenance, Licensing and AI Marking
 
-**Status (2026-10-10):** Draft plan, being worked out with the project owner. Decisions marked **Agreed** were settled on 2026-10-10; items marked **To discuss** are still open. Nothing here is built yet.
+**Status (2026-10-19):** Being built. Decisions marked **Agreed** were settled on 2026-10-10; items marked **To discuss** are still open. Phase 1 is delivered in parts (see "Phase 1 progress" below); 1a, the provenance record in the project, is done.
 
 **Not legal advice.** The owner's lawyer reviews this before launch, in particular Stable Audio 3.0's licence text and the final wording of the EU deadline change.
 
@@ -64,6 +64,17 @@ The rules are enforced by code at publish time. Policy written in a document alo
 - `editShare` = (generated notes removed or changed + notes added) ÷ (generated notes + notes added).
 - This was chosen over keeping a copy of the whole generated arrangement: it's cheaper (a few KB per project) and exact.
 - Applying a generated arrangement records it. Undoing the apply removes it.
+
+### Phase 1 progress
+
+- **1a, done (2026-10-19): the provenance record in the project.**
+  - **Generation API:** every proposal's provenance gets `licence`, `commercialUse`, `planSha256` and `credits` from a reviewed table (`app/generation/licensing.py`), never from the model. Unknown generators and local models whose exact tag wasn't reviewed fail closed (`unreviewed`, `not-allowed`). The procedural fallback carries the procedural composer's licence, not the failed composer's.
+  - **Project schema:** `generationMetadata.provenance` and `generationMetadata.generatedNotes`, optional, in Zod v1 and v2, both JSON Schemas and both Pydantic models.
+  - **Studio:** applying a generated arrangement records both; undo removes them. `editShare(project)` measures how much a person changed. Proposals from an older API record no provenance, which publishing will treat as unlicensed.
+  - **Not stored:** `editShare` itself (computed at publish, since every edit changes it), `generatedAt` (it is `generationMetadata.createdAt`) and the generator (it is `generatorId`).
+- **1b:** the publish request and package manifest carry the record (with `editShare` computed at publish), and the studio checks the licence rule before uploading.
+- **1c (backend):** the platform stores the record with each version, enforces the gate, and adds the admin override with a reason and an audit entry.
+- **1d:** the server-side lock on AI audio.
 
 ### Licence gate (decision 2)
 

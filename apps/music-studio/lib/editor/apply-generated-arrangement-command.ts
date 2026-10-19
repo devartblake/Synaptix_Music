@@ -1,5 +1,5 @@
-import { KEY_TONICS, type GenerationProposal } from "@synaptix/generator-contracts";
-import { MUSICAL_KEY_MODES, MusicProjectSchema, arrangementFingerprint, type MusicProject } from "@synaptix/project-model";
+import { KEY_TONICS, projectProvenance, type GenerationProposal } from "@synaptix/generator-contracts";
+import { MUSICAL_KEY_MODES, MusicProjectSchema, arrangementFingerprint, generatedNoteHashes, type MusicProject } from "@synaptix/project-model";
 import type { EditorCommand } from "@synaptix/command-system/editor";
 
 type ArrangementSnapshot = Pick<MusicProject, "tracks" | "tempoMap" | "markers" | "key" | "generationMetadata">;
@@ -56,6 +56,7 @@ export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
       devices: [{ id: `device-${track.id}`, deviceType: track.instrumentId, deviceVersion: "1.0.0", enabled: true, parameters: [] }],
       clips: track.clips.map((clip) => ({ ...structuredClone(clip), kind: "midi" as const }))
     }));
+    const provenance = projectProvenance(this.proposal.provenance);
     const applied = restore(project, {
       tracks,
       tempoMap: [{ id: "tempo-generated-1", position: { bar: 0, beat: 0, tick: 0 }, bpm: this.proposal.tempo }],
@@ -67,11 +68,15 @@ export class ApplyGeneratedArrangementEditorCommand implements EditorCommand {
         generatorVersion: this.proposal.provenance.generatorVersion,
         seed: this.proposal.provenance.seed,
         createdAt: this.appliedAt,
-        prompt: `${this.proposal.genre}:${this.proposal.mood}:${this.proposal.key}`
+        prompt: `${this.proposal.genre}:${this.proposal.mood}:${this.proposal.key}`,
+        // Licence facts from the generation API (publication-rules-v1); absent from an older API.
+        ...(provenance ? { provenance } : {})
       }
     });
-    // Remember the music as generated (after schema defaults), so later edits show as "Edited".
+    // Remember the music as generated (after schema defaults): the fingerprint shows whether it was
+    // edited, and each note's hash how much (editShare).
     applied.generationMetadata!.arrangementFingerprint = arrangementFingerprint(applied);
+    applied.generationMetadata!.generatedNotes = generatedNoteHashes(applied);
     return applied;
   }
 

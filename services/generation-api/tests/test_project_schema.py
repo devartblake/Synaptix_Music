@@ -128,3 +128,48 @@ def test_notebook_and_sticky_notes_are_optional_and_bounded() -> None:
     assert schema["$defs"]["stickyNote"]["properties"]["text"]["maxLength"] == 500
     assert schema["$defs"]["notebookPage"]["properties"]["body"]["maxLength"] == 20000
     assert schema["$defs"]["track"]["properties"]["stickyNotes"]["minItems"] == 1
+
+
+def test_generation_provenance_is_optional_and_strictly_shaped() -> None:
+    # Publication rules v1: licence facts and a per-note record travel with generated music, so
+    # publishing can refuse unlicensed material and report how much a person changed.
+    fixture = load_fixture()
+    base = {"generatorId": "synaptix-claude-composer", "generatorVersion": "1.0.0", "seed": 1}
+    base["createdAt"] = "2026-10-19T00:00:00Z"
+    provenance = {"licence": "Anthropic-Commercial-Terms", "commercialUse": "allowed"}
+    notes = {"clip-1": {"note-1": "0123abcd"}}
+    project = MusicProject.model_validate(
+        {
+            **fixture,
+            "generationMetadata": {**base, "provenance": provenance, "generatedNotes": notes},
+        }
+    )
+    assert project.generationMetadata.provenance.commercialUse == "allowed"  # type: ignore[union-attr]
+    assert (
+        MusicProject.model_validate(
+            {**fixture, "generationMetadata": base}
+        ).generationMetadata.provenance
+        is None
+    )  # type: ignore[union-attr]
+    for bad_provenance in (
+        {"licence": "x", "commercialUse": "maybe"},
+        {"commercialUse": "allowed"},
+        {**provenance, "planSha256": "abc"},
+        {**provenance, "invented": True},
+    ):
+        with pytest.raises(ValidationError):
+            MusicProject.model_validate(
+                {**fixture, "generationMetadata": {**base, "provenance": bad_provenance}}
+            )
+    with pytest.raises(ValidationError):
+        MusicProject.model_validate(
+            {**fixture, "generationMetadata": {**base, "generatedNotes": {"c": {"n": "XYZ"}}}}
+        )
+    for version in ("v1.json", "v2.json"):
+        schema = json.loads((FIXTURE_PATH.parents[1] / version).read_text(encoding="utf-8"))
+        assert schema["$defs"]["generationMetadata"]["properties"]["provenance"] == {
+            "$ref": "#/$defs/generationProvenance"
+        }
+        assert schema["$defs"]["generationProvenance"]["properties"]["commercialUse"] == {
+            "enum": ["allowed", "not-allowed", "conditional"]
+        }
