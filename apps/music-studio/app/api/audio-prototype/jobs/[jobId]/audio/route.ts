@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { callAudioService, isAudioJobId, relayJson } from "../../../../../../lib/audio-prototype/service";
 
@@ -14,10 +14,10 @@ const FORWARDED_HEADERS = [
 ];
 
 /** The finished job's WAV, with its model, licence and timing headers. */
-export async function GET(_request: Request, { params }: { params: Promise<{ jobId: string }> }): Promise<NextResponse> {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }): Promise<NextResponse> {
   const { jobId } = await params;
   if (!isAudioJobId(jobId)) return NextResponse.json({ message: "This prototype audio job doesn't exist." }, { status: 404 });
-  const response = await callAudioService(`/audio/jobs/${jobId}/audio`, { timeoutMs: 60_000 });
+  const response = await callAudioService(request, `/audio/jobs/${jobId}/audio`, { timeoutMs: 60_000 });
   if (response instanceof NextResponse) return response;
   if (!response.ok) return relayJson(response);
   const headers = new Headers({ "content-type": "audio/wav", "cache-control": "no-store" });

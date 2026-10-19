@@ -16,6 +16,7 @@ services:
       RENDER_WORKER_API_URL: http://render-worker:8200
       # Prototype MusicGen audio (local-ai profile). Empty hides the studio's prototype audio panel.
       AUDIO_GENERATION_API_URL: ${AUDIO_GENERATION_API_URL:-}
+      SYNAPTIX_AUDIO_LOCK: ${SYNAPTIX_AUDIO_LOCK:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -94,6 +95,9 @@ services:
       MUSICGEN_PRELOAD: ${MUSICGEN_PRELOAD:-true}
       # Queued jobs and their progress live in Redis, so they survive a service restart.
       REDIS_URL: ${AUDIO_GENERATION_REDIS_URL:-redis://redis:6379/0}
+      # Locked to accounts the platform signs a grant for; SYNAPTIX_AUDIO_LOCK=off opens it.
+      SYNAPTIX_AUDIO_LOCK: ${SYNAPTIX_AUDIO_LOCK:-}
+      SYNAPTIX_AUDIO_GRANT_SECRET: ${SYNAPTIX_AUDIO_GRANT_SECRET:-}
     depends_on:
       redis:
         condition: service_healthy

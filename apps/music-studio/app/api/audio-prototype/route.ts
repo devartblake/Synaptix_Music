@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { audioServiceUrl, callAudioService, relayJson } from "../../../lib/audio-prototype/service";
+import { audioGrantHeaders, audioServiceUrl, callAudioService, relayJson } from "../../../lib/audio-prototype/service";
 
 export const runtime = "nodejs";
 
@@ -13,9 +13,11 @@ export const runtime = "nodejs";
  * /api/audio-prototype/jobs/{jobId}/events (live progress) and fetches .../audio when done.
  */
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const base = audioServiceUrl();
   if (!base) return NextResponse.json({ enabled: false });
+  // The panel shows only for accounts the platform has unlocked AI audio for.
+  if ((await audioGrantHeaders(request)) instanceof NextResponse) return NextResponse.json({ enabled: false });
   try {
     const response = await fetch(`${base}/readyz`, { cache: "no-store", signal: AbortSignal.timeout(5000) });
     return NextResponse.json({ enabled: true, reachable: response.ok, ...(await response.json()) });
@@ -25,7 +27,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const response = await callAudioService("/audio/jobs", {
+  const response = await callAudioService(request, "/audio/jobs", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: await request.text()

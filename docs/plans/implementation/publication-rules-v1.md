@@ -79,7 +79,11 @@ The rules are enforced by code at publish time. Policy written in a document alo
   - **Studio check:** `licenceRefusal(record)` is the rule: hand-composed music passes; generated or edited music needs a licence record that isn't `not-allowed`; no record means no publish. The publish panel shows the reason and disables Publish.
   - **Trust:** the platform must not rely on the studio's record. 1c recomputes it from the platform's stored copy of the revision and enforces the gate on that.
 - **1c (backend):** the platform stores the record with each version, enforces the gate, and adds the admin override with a reason and an audit entry.
-- **1d:** the server-side lock on AI audio.
+- **1d: the server-side lock on AI audio.** The audio service and the studio's side are built (2026-10-19); the platform's grant endpoint is next.
+  - **Grant:** the platform signs `v1.<account>.<expires>.<hmac>` (HMAC-SHA256 over the first three parts, a few minutes' life) for an entitled account. The studio's server fetches one per request with `POST /api/v1/music/ai-audio/grants` (answering `{ token, expiresAt }`, or 403 `AiAudioNotEntitled`) and forwards it as `X-Synaptix-Audio-Grant`.
+  - **Service:** every `/audio` route checks the grant against `SYNAPTIX_AUDIO_GRANT_SECRET` (`app/entitlement.py`); health checks stay open. With no secret it refuses everyone. `SYNAPTIX_AUDIO_LOCK=off` opens it for local demos.
+  - **Studio:** the **Prototype audio** panel shows only when the platform grants this account access. Signed-out callers and refused accounts get 403 without the service being called; a platform that can't answer gets 502, never an open service.
+  - **Platform (next):** the grant endpoint, with entitlement as a feature flag (`Music:AiAudio:Enabled`) plus a per-account allow-list, signed with `Music:AiAudio:GrantSecret`.
 
 ### Licence gate (decision 2)
 

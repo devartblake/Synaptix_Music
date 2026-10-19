@@ -12,6 +12,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.entitlement import require_grant
 from app.generator import (
     LICENSE,
     MAX_SECONDS,
@@ -119,7 +120,7 @@ def readyz(generator: Generator) -> dict[str, object]:
     }
 
 
-@app.post("/audio/generations", response_class=Response)
+@app.post("/audio/generations", response_class=Response, dependencies=[Depends(require_grant)])
 def generate(request: AudioGenerationRequest, generator: Generator) -> Response:
     try:
         audio = generator.generate(
@@ -163,19 +164,19 @@ def _job_or_404(store: JobStore, job_id: str) -> dict:
     return job
 
 
-@app.post("/audio/jobs", status_code=202)
+@app.post("/audio/jobs", status_code=202, dependencies=[Depends(require_grant)])
 def submit_job(request: AudioGenerationRequest, store: Store) -> dict[str, object]:
     job = new_job(request.prompt, request.durationSeconds, request.seed, request.guidance)
     store.create(job)
     return public_view(job, store)
 
 
-@app.get("/audio/jobs/{job_id}")
+@app.get("/audio/jobs/{job_id}", dependencies=[Depends(require_grant)])
 def job_status(job_id: str, store: Store) -> dict[str, object]:
     return public_view(_job_or_404(store, job_id), store)
 
 
-@app.delete("/audio/jobs/{job_id}")
+@app.delete("/audio/jobs/{job_id}", dependencies=[Depends(require_grant)])
 def cancel_job(job_id: str, store: Store) -> dict[str, object]:
     job = _job_or_404(store, job_id)
     if job["status"] != QUEUED:
@@ -183,7 +184,7 @@ def cancel_job(job_id: str, store: Store) -> dict[str, object]:
     return public_view(store.update(job_id, status=CANCELLED) or job, store)
 
 
-@app.get("/audio/jobs/{job_id}/events")
+@app.get("/audio/jobs/{job_id}/events", dependencies=[Depends(require_grant)])
 def job_events(job_id: str, store: Store) -> StreamingResponse:
     """Server-sent events: the job's status each time it changes, ending when it finishes."""
     _job_or_404(store, job_id)
@@ -216,7 +217,9 @@ def job_events(job_id: str, store: Store) -> StreamingResponse:
     )
 
 
-@app.get("/audio/jobs/{job_id}/audio", response_class=Response)
+@app.get(
+    "/audio/jobs/{job_id}/audio", response_class=Response, dependencies=[Depends(require_grant)]
+)
 def job_audio(job_id: str, store: Store) -> Response:
     job = _job_or_404(store, job_id)
     wav = store.get_audio(job_id) if job["status"] == "completed" else None
