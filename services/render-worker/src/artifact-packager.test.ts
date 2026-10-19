@@ -13,7 +13,7 @@ import {
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import type { AudioTranscodeRequest, AudioTranscoder } from "./ffmpeg-transcoder.ts";
 import type { OfflineRenderOutcome } from "./offline-renderer.ts";
-import type { AudioWatermarker } from "./watermark-client.ts";
+import type { AudioWatermarker, ContentCredentialSigner } from "./watermark-client.ts";
 
 const renderId = "10000000-0000-4000-8000-000000000000";
 
@@ -142,7 +142,7 @@ class InputRecordingTranscoder implements AudioTranscoder {
 }
 
 test("a delivered WAV is the marked audio, with its size and checksum recomputed", async () => {
-  const packaged = await packageRenderArtifacts(outcome(), manifest("wav"), new RecordingTranscoder(), new FakeWatermarker());
+  const packaged = await packageRenderArtifacts(outcome(), manifest("wav"), new RecordingTranscoder(), { watermarker: new FakeWatermarker() });
   const master = packaged.artifacts[0]!;
   assert.equal(master.bytes.toString(), "wav-source+mark");
   assert.equal(master.metadata.byteLength, master.bytes.length);
@@ -154,14 +154,14 @@ test("a delivered WAV is the marked audio, with its size and checksum recomputed
 
 test("lossy files and previews are transcoded from the marked WAV, so every format carries the mark", async () => {
   const transcoder = new InputRecordingTranscoder();
-  await packageRenderArtifacts(outcome(), manifest("mp3", true), transcoder, new FakeWatermarker());
+  await packageRenderArtifacts(outcome(), manifest("mp3", true), transcoder, { watermarker: new FakeWatermarker() });
   assert.deepEqual(transcoder.inputs, ["wav-source+mark", "wav-source+mark"]);
 });
 
 test("plug-in freezes aren't marked: the master that plays them back is", async () => {
   const watermarker = new FakeWatermarker();
   const freeze = { ...manifest("wav"), scope: { kind: "plugin-freeze", trackId: "t", deviceId: "d" } } as RenderManifest;
-  const packaged = await packageRenderArtifacts(outcome(), freeze, new RecordingTranscoder(), watermarker);
+  const packaged = await packageRenderArtifacts(outcome(), freeze, new RecordingTranscoder(), { watermarker });
   assert.equal(watermarker.calls, 0);
   assert.equal(packaged.artifacts[0]!.bytes.toString(), "wav-source");
 });
@@ -169,7 +169,56 @@ test("plug-in freezes aren't marked: the master that plays them back is", async 
 test("a watermark failure fails the render rather than delivering unmarked audio", async () => {
   const failing: AudioWatermarker = { markWav: async () => { throw new Error("Watermarking failed with 503."); } };
   await assert.rejects(
-    packageRenderArtifacts(outcome(), manifest("mp3"), new RecordingTranscoder(), failing),
+    packageRenderArtifacts(outcome(), manifest("mp3"), new RecordingTranscoder(), { watermarker: failing }),
     /Watermarking failed with 503/
+  );
+});
+
+// C2PA content credentials go on last, over the final bytes; tags are written before signing.
+class FakeSigner implements ContentCredentialSigner {
+  readonly signed: { mediaType: string; projectId: string; revisionId: string; input: string }[] = [];
+  async sign(audio: Buffer, mediaType: "audio/wav" | "audio/mpeg", projectId: string, revisionId: string): Promise<Buffer> {
+    this.signed.push({ mediaType, projectId, revisionId, input: audio.toString("latin1") });
+    return Buffer.concat([audio, Buffer.from("+c2pa")]);
+  }
+}
+
+const tags = { AI_GENERATED: "true", AI_GENERATOR: "synaptix-claude-composer" };
+
+test("MP3 deliverables and previews are signed for their revision, OGG isn't (C2PA can't bind to it)", async () => {
+  const signer = new FakeSigner();
+  const mp3 = await packageRenderArtifacts(outcome(), manifest("mp3", true), new RecordingTranscoder(), { signer });
+  assert.deepEqual(signer.signed.map((s) => [s.mediaType, s.projectId, s.revisionId]), [
+    ["audio/mpeg", "project-a", "revision-a"],
+    ["audio/mpeg", "project-a", "revision-a"]
+  ]);
+  const listed = RenderArtifactManifestSchema.parse(JSON.parse(mp3.artifacts[2]!.bytes.toString("utf8")));
+  assert.equal(listed.artifacts[0]!.checksumSha256, createHash("sha256").update(mp3.artifacts[0]!.bytes).digest("hex"));
+  assert.equal(listed.previewArtifactId, mp3.artifacts[1]!.metadata.artifactId);
+
+  const oggSigner = new FakeSigner();
+  await packageRenderArtifacts(outcome(), manifest("ogg"), new RecordingTranscoder(), { signer: oggSigner });
+  assert.equal(oggSigner.signed.length, 0);
+});
+
+test("lossy files are tagged by the transcoder, and a WAV gets its INFO tags before it is signed", async () => {
+  const transcoder = new RecordingTranscoder();
+  await packageRenderArtifacts(outcome(), manifest("ogg"), transcoder, { tags });
+  assert.deepEqual(transcoder.requests[0]!.tags, tags);
+
+  const signer = new FakeSigner();
+  const wav = Buffer.from("RIFF\0\0\0\0WAVEdata");
+  const source = outcome();
+  source.artifacts[0] = { ...source.artifacts[0]!, bytes: wav };
+  const packaged = await packageRenderArtifacts(source, manifest("wav"), new RecordingTranscoder(), { tags, signer });
+  assert.match(signer.signed[0]!.input, /AI_GENERATED=true; AI_GENERATOR=synaptix-claude-composer/);
+  assert.ok(packaged.artifacts[0]!.bytes.toString("latin1").endsWith("+c2pa"));
+});
+
+test("a signing failure fails the render", async () => {
+  const failing: ContentCredentialSigner = { sign: async () => { throw new Error("Signing content credentials failed with 503."); } };
+  await assert.rejects(
+    packageRenderArtifacts(outcome(), manifest("mp3"), new RecordingTranscoder(), { signer: failing }),
+    /Signing content credentials failed with 503/
   );
 });

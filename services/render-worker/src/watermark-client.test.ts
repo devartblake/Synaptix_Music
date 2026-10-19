@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HttpWatermarker, watermarkerFor, watermarkerFromEnv, type AudioWatermarker } from "./watermark-client.ts";
+import {
+  HttpContentCredentialSigner,
+  HttpWatermarker,
+  aiMarkingFromEnv,
+  watermarkerFor,
+  type AudioWatermarker
+} from "./watermark-client.ts";
 
 test("audio is sent to the platform's watermark endpoint with the worker's service token", async () => {
   let seen: { url: string; init: RequestInit } | null = null;
@@ -28,12 +34,29 @@ test("a refusal from the platform is an error, not unmarked audio", async () => 
   await assert.rejects(watermarker.markWav(Buffer.from([1])), /Watermarking failed with 503: not configured/);
 });
 
-test("rendering for the platform watermarks unless RENDER_WATERMARK=off", () => {
+test("rendering for the platform marks exports unless RENDER_AI_MARKING=off", () => {
   const platform = { SYNAPTIX_PLATFORM_API_URL: "http://platform:5000", RENDER_WORKER_SERVICE_TOKEN: "t" };
-  assert.ok(watermarkerFromEnv(platform) instanceof HttpWatermarker);
-  assert.equal(watermarkerFromEnv({ ...platform, RENDER_WATERMARK: "off" }), null);
+  const marking = aiMarkingFromEnv(platform);
+  assert.ok(marking?.watermarker instanceof HttpWatermarker);
+  assert.ok(marking?.signer instanceof HttpContentCredentialSigner);
+  assert.equal(aiMarkingFromEnv({ ...platform, RENDER_AI_MARKING: "off" }), null);
   // Local renders without the platform have nothing to send to.
-  assert.equal(watermarkerFromEnv({}), null);
+  assert.equal(aiMarkingFromEnv({}), null);
+});
+
+test("content credentials are signed by the revision's platform endpoint", async () => {
+  let seen: { url: string; init: RequestInit } | null = null;
+  const signer = new HttpContentCredentialSigner({
+    baseUrl: "http://platform:5000",
+    serviceToken: "worker-token",
+    fetch: (async (url: string, init: RequestInit) => {
+      seen = { url, init };
+      return new Response(new Uint8Array([7]));
+    }) as typeof fetch
+  });
+  assert.deepEqual([...(await signer.sign(Buffer.from([1]), "audio/mpeg", "p 1", "r1"))], [7]);
+  assert.equal(seen!.url, "http://platform:5000/internal/music/projects/p%201/revisions/r1/content-credentials");
+  assert.equal((seen!.init.headers as Record<string, string>)["content-type"], "audio/mpeg");
 });
 
 test("only music with AI involvement is marked; hand-composed music isn't", () => {

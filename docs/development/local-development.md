@@ -166,7 +166,11 @@ Studio sign-in uses the platform's own studio routes (`/api/v1/auth/studio/login
 
 The render worker additionally needs `RENDER_WORKER_SERVICE_TOKEN` and complete `RENDER_WORKER_MINIO_*` configuration before its polling loop starts. Use `RENDER_WORKER_FFMPEG_PATH` only when FFmpeg is not on `PATH`. `RENDER_MAX_ACTIVE_JOBS_PER_OWNER` caps how many queued-or-running render jobs one signed-in player may have (default 10, `0` turns the limit off); a submission over it answers 429 `render_quota_exceeded`. Private callers without a player (certification tooling, the backend) are not limited.
 
-Exported audio with any AI involvement is watermarked; hand-composed projects aren't. When the worker renders such a project for the platform it sends each master and stem WAV to the backend's `/internal/music/watermark` before transcoding, so WAV, MP3, OGG and previews all carry the platform's inaudible AudioSeal mark (publication rules phase 2). Plug-in freezes aren't marked, because the master that plays them back is. A watermark failure fails the render instead of delivering unmarked audio. The backend needs its watermark service running (TycoonTycoon_Backend: `--profile music-watermark`). Set `RENDER_WATERMARK=off` to render without it locally.
+Exports are marked as AI-involved (publication rules phase 2). When the worker renders for the platform:
+- **Watermark:** each master and stem WAV of a project with AI involvement goes to the backend's `/internal/music/watermark` before transcoding, so WAV, MP3, OGG and previews all carry the inaudible AudioSeal mark. Hand-composed projects and plug-in freezes aren't marked.
+- **Metadata tags:** projects with AI involvement get `AI_GENERATED`, `AI_GENERATOR`, `AI_MODEL` and `AI_LICENSE` as ID3 TXXX frames (MP3), Vorbis comments (OGG) and a LIST/INFO comment (WAV), for players that don't read C2PA.
+- **C2PA content credentials:** every WAV and MP3 deliverable, tags included, is signed last through the backend's `/internal/music/projects/{id}/revisions/{rev}/content-credentials`, which states the provenance from its own copy of the revision. OGG can't carry C2PA (the SDK can't bind to it).
+- A watermark or signing failure fails the render instead of delivering unmarked audio. The backend needs its watermark service (TycoonTycoon_Backend: `--profile music-watermark`, with a signing chain from `Synaptix.Watermark/scripts/staging-c2pa-cert.sh`). Set `RENDER_AI_MARKING=off` to render without the watermark and credentials locally.
 
 ## Install TypeScript Dependencies
 

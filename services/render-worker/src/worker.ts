@@ -2,6 +2,7 @@ import type { MusicProject } from "@synaptix/project-model";
 import type { MusicProjectV2 } from "@synaptix/project-model/v2";
 import type { RenderJob } from "@synaptix/render-contracts";
 
+import { aiTags } from "./ai-marking.ts";
 import { packageRenderArtifacts } from "./artifact-packager.ts";
 import { assertWorkerEngine } from "./engine-version.ts";
 import { FfmpegTranscoder, type AudioTranscoder } from "./ffmpeg-transcoder.ts";
@@ -9,7 +10,7 @@ import { renderPluginFreeze, renderProjectOffline, type RenderedArtifact } from 
 import type { FrozenArtifactSource } from "./frozen-playback.ts";
 import { resolveRenderableProject } from "./plugin-render-gate.ts";
 import type { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
-import { watermarkerFor, type AudioWatermarker } from "./watermark-client.ts";
+import { watermarkerFor, type AudioWatermarker, type ContentCredentialSigner } from "./watermark-client.ts";
 
 /** Fetches the exact immutable project revision a render manifest references. */
 export interface ProjectLoader {
@@ -24,8 +25,9 @@ export interface WorkerDependencies {
   loader: ProjectLoader;
   sink: ArtifactSink;
   transcoder?: AudioTranscoder;
-  /** Marks exported audio (see watermark-client.ts); without it renders carry no watermark. */
+  /** The platform's AI marking (see watermark-client.ts); without it renders carry no marks. */
   watermarker?: AudioWatermarker | null;
+  signer?: ContentCredentialSigner | null;
   /** Where plug-in freezes are read back for frozen playback; without it frozen plug-ins fail closed. */
   frozenSource?: FrozenArtifactSource;
 }
@@ -83,7 +85,12 @@ export async function processNextJob(
       rendered,
       job.manifest,
       dependencies.transcoder ?? new FfmpegTranscoder(),
-      watermarkerFor(project, dependencies.watermarker ?? null)
+      {
+        watermarker: watermarkerFor(project, dependencies.watermarker ?? null),
+        signer: dependencies.signer ?? null,
+        // Tags are local metadata, so they go on whenever the project has AI involvement.
+        tags: aiTags(project)
+      }
     );
     for (const artifact of outcome.artifacts) {
       await dependencies.sink.store(job.manifest.renderId, artifact);

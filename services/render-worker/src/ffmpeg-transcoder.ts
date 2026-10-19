@@ -7,6 +7,8 @@ export interface AudioTranscodeRequest {
   format: LossyAudioFormat;
   bitrateKbps: number;
   maxDurationSeconds?: number;
+  /** Written as ID3 TXXX frames (MP3) or Vorbis comments (OGG); see ai-marking.ts. */
+  tags?: Record<string, string>;
 }
 
 export interface AudioTranscoder {
@@ -98,6 +100,7 @@ export class FfmpegTranscoder implements AudioTranscoder {
       "pipe:0",
       "-map_metadata",
       "-1",
+      ...Object.entries(request.tags ?? {}).flatMap(([key, value]) => ["-metadata", `${key}=${value}`]),
       "-vn",
       ...(request.maxDurationSeconds === undefined
         ? []
