@@ -4,7 +4,7 @@
 
 ### Removed
 
-- **The classic studio layout (Studio UI v2, step 9b-2a).** The DAW layout is now the only layout: the classic top bar, sidebar, Workspace and Layout menus, mixer drawer, sidebar instrument picker and Devices page are gone, with their styles, tests and baselines. A layout saved by the classic studio still opens; its panel sizes and dock choices carry over. The README shows the DAW layout.
+- **The classic studio layout (Studio UI v2, step 9b-2a).** The DAW layout is now the only layout: the classic top bar, sidebar, Workspace and Layout menus, mixer drawer, sidebar instrument picker and Devices page are gone, with their styles, tests and baselines. A layout saved by the classic studio still opens; its panel sizes and dock choices carry over. The README shows the DAW layout. The editors now have one form each (9b-2b): the piano roll, timeline, adaptive workspace, Generate and Export lose their classic variants, including the "Back to arrangement" buttons.
 
 ### Added
 
