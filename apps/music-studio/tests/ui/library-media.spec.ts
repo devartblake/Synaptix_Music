@@ -129,3 +129,51 @@ test("projects can be renamed and given cover art, and downloaded renders play o
   await context.setOffline(false);
   expect(errors).toEqual([]);
 });
+
+test("a cover follows its project across devices: cloud covers download, new covers upload", async ({ page }) => {
+  test.setTimeout(180_000);
+  const projectId = `cover-sync-${test.info().project.name}`;
+  const remote = png(64, 64);
+  const uploads: string[] = [];
+  await page.route("**/api/platform/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === "/api/platform/projects") {
+      // Another device set this cover; the list carries its hash.
+      return route.fulfill({ json: [{ projectId, name: "Shared song", archived: false, coverSha256: "a".repeat(64) }] });
+    }
+    if (url.pathname === `/api/platform/projects/${projectId}/cover`) {
+      if (request.method() === "GET") return route.fulfill({ body: remote, headers: { "content-type": "image/png" } });
+      if (request.method() === "PUT") {
+        uploads.push(request.headers()["content-type"] ?? "");
+        return route.fulfill({ json: { projectId, mediaType: "image/webp", sizeBytes: 1, sha256: "b".repeat(64), updatedAt: "2026-10-19T00:00:00Z" } });
+      }
+    }
+    return route.fulfill({ status: 503, json: { code: "offline", message: "Platform unavailable" } });
+  });
+
+  // Renaming saves the project in this browser, as on any device that has opened it.
+  await page.goto(`/studio/${projectId}`);
+  await expect(page.locator(".studio-title small")).not.toContainText("Loading project", { timeout: 60000 });
+  await page.getByRole("button", { name: /^Rename project/ }).click();
+  await page.getByLabel("Project name").fill("Shared song");
+  await page.getByLabel("Project name").press("Enter");
+  await expect(page.getByRole("heading", { name: "Shared song" })).toBeVisible();
+  await page.waitForTimeout(1200);
+
+  // Loading the cloud list brings the other device's cover into this browser.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Find or create project" }).click();
+  await page.getByRole("button", { name: "Browse cloud projects" }).click();
+  await expect(page.getByText("Cloud projects loaded.")).toBeVisible({ timeout: 20000 });
+  await page.goto(`/library/${projectId}`);
+  const artwork = page.getByRole("img", { name: "Shared song artwork" });
+  await expect(artwork).toHaveJSProperty("tagName", "IMG", { timeout: 20000 });
+  expect(await artwork.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([64, 64]);
+
+  // A cover chosen here is uploaded so the other devices get it.
+  await page.locator('input[type="file"]').setInputFiles({ name: "cover.png", mimeType: "image/png", buffer: png() });
+  await expect(page.getByText("Cover updated.")).toBeVisible({ timeout: 15000 });
+  await expect.poll(() => uploads.length).toBe(1);
+  expect(uploads[0]).toMatch(/^image\//);
+});
