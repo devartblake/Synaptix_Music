@@ -9,7 +9,7 @@ import { canFreeze } from "./plugin-freeze-model.ts";
 
 export interface ExportOptions {
   scope: "master" | "stems";
-  format: "wav" | "mp3" | "ogg";
+  format: RenderManifest["output"]["format"];
   sampleRate: 44100 | 48000 | 96000;
   bitDepth: 16 | 24 | 32;
   tail: number;
@@ -19,14 +19,25 @@ export interface ExportOptions {
 /**
  * Export formats a project may use. Music with AI involvement (a generated arrangement was applied)
  * isn't offered as OGG: its exports must carry C2PA content credentials (publication rules,
- * phase 2), and the C2PA SDK can't bind to OGG.
+ * phase 2), and the C2PA SDK can't bind to OGG. Every other format can carry them.
  */
 export function exportFormatsFor(project: { generationMetadata?: unknown }): ExportOptions["format"][] {
-  return project.generationMetadata ? ["wav", "mp3"] : ["wav", "mp3", "ogg"];
+  const signable: ExportOptions["format"][] = ["wav", "mp3", "m4a", "opus", "flac"];
+  return project.generationMetadata ? signable : [...signable, "ogg"];
 }
 
+/** How each format is named in the Export menu. */
+export const EXPORT_FORMAT_LABELS: Record<ExportOptions["format"], string> = {
+  wav: "WAV",
+  mp3: "MP3",
+  m4a: "AAC (M4A)",
+  opus: "Opus (MP4)",
+  flac: "FLAC (lossless)",
+  ogg: "OGG"
+};
+
 export const OGG_NOT_FOR_AI_MESSAGE =
-  "OGG isn't offered for music made with AI: it can't carry content credentials. Choose WAV or MP3.";
+  "OGG isn't offered for music made with AI: it can't carry content credentials. Choose another format.";
 
 export async function createExportManifest(
   project: MusicProject,

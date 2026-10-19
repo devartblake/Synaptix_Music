@@ -8,7 +8,9 @@ export const RENDER_CONTRACT_VERSION = "1.0.0" as const;
  */
 export const RENDER_ENGINE_VERSION = "1.2.0" as const;
 
-export const RenderFormatSchema = z.enum(["wav", "mp3", "ogg"]);
+// m4a: AAC in MP4 (.m4a); opus: Opus in MP4 (.mp4); flac: lossless. All but ogg can carry C2PA
+// content credentials, so music with AI involvement is delivered in any format except ogg.
+export const RenderFormatSchema = z.enum(["wav", "mp3", "ogg", "m4a", "opus", "flac"]);
 export const PreviewOutputSchema = z
   .object({
     format: z.enum(["mp3", "ogg"]).default("mp3"),

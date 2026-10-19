@@ -3,7 +3,7 @@
  * platform. This worker only sends audio, with its service token:
  * - the inaudible watermark: each rendered WAV goes through /internal/music/watermark before it is
  *   transcoded, so MP3, OGG and previews all carry it. The platform decides the mark's message.
- * - C2PA content credentials: each WAV and MP3 export goes through the revision's
+ * - C2PA content credentials: each WAV, MP3, M4A, MP4 (Opus) and FLAC export goes through the revision's
  *   /content-credentials. The platform states the provenance from its own copy of the revision.
  */
 
@@ -11,8 +11,11 @@ export interface AudioWatermarker {
   markWav(wav: Buffer): Promise<Buffer>;
 }
 
+/** Formats the C2PA SDK binds content credentials to (not Ogg). */
+export type SignableMediaType = "audio/wav" | "audio/mpeg" | "audio/mp4" | "audio/flac";
+
 export interface ContentCredentialSigner {
-  sign(audio: Buffer, mediaType: "audio/wav" | "audio/mpeg", projectId: string, revisionId: string): Promise<Buffer>;
+  sign(audio: Buffer, mediaType: SignableMediaType, projectId: string, revisionId: string): Promise<Buffer>;
 }
 
 export interface HttpWatermarkerOptions {
@@ -65,7 +68,7 @@ export class HttpContentCredentialSigner implements ContentCredentialSigner {
       throw new Error("Content-credential base URL and service token are required.");
   }
 
-  async sign(audio: Buffer, mediaType: "audio/wav" | "audio/mpeg", projectId: string, revisionId: string): Promise<Buffer> {
+  async sign(audio: Buffer, mediaType: SignableMediaType, projectId: string, revisionId: string): Promise<Buffer> {
     const url = `${this.baseUrl}/internal/music/projects/${encodeURIComponent(projectId)}/revisions/${encodeURIComponent(revisionId)}/content-credentials`;
     const response = await this.fetchImplementation(url, {
       method: "POST",

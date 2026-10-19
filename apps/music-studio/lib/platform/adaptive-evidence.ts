@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   RenderArtifactManifestSchema,
+  RenderFormatSchema,
   type RenderJob,
   type AdaptiveGameAudioManifest
 } from "@synaptix/render-contracts";
@@ -19,7 +20,7 @@ const ReportSchema = z.object({
   renderId: z.string().uuid(),
   projectId: z.string(),
   revisionId: z.string(),
-  outputFormat: z.enum(["wav", "mp3", "ogg"]),
+  outputFormat: RenderFormatSchema,
   artifactManifestChecksumSha256: hash,
   artifacts: z.array(
     z.object({
