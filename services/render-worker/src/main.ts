@@ -7,6 +7,7 @@ import { httpProjectLoaderFromEnv } from "./http-project-loader.ts";
 import { applyMigrations } from "./migrate.ts";
 import { minioArtifactStoreFromEnv } from "./minio-artifact-store.ts";
 import { PostgresRenderJobStore } from "./postgres-render-job-store.ts";
+import { aiMarkingFromEnv } from "./watermark-client.ts";
 import { runWorker } from "./worker.ts";
 
 // Boots the render-job HTTP API and, when platform and object-storage
@@ -36,7 +37,9 @@ async function main(): Promise<void> {
   console.log(`render-worker artifact delivery ${artifactStore ? "enabled" : "disabled"}`);
   if (projectLoader && artifactStore) {
     const workerId = process.env.RENDER_WORKER_ID ?? `${hostname()}-${process.pid}`;
-    void runWorker(store, { loader: projectLoader, sink: artifactStore, frozenSource: artifactStore }, workerId, {
+    const marking = aiMarkingFromEnv();
+    console.log(`render-worker AI marking ${marking ? "enabled" : "disabled (RENDER_AI_MARKING=off)"}`);
+    void runWorker(store, { loader: projectLoader, sink: artifactStore, frozenSource: artifactStore, ...marking }, workerId, {
       signal: workerAbort.signal
     });
     console.log(`render-worker polling enabled as '${workerId}'`);
