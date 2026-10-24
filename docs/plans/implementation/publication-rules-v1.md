@@ -1,6 +1,6 @@
 # Publication Rules v1: Provenance, Licensing and AI Marking
 
-**Status (2026-10-19):** Being built. Decisions marked **Agreed** were settled on 2026-10-10; items marked **To discuss** are still open. Phase 1 is delivered in parts (see "Phase 1 progress" below); 1a, the provenance record in the project, is done.
+**Status (2026-10-24):** Phases 1 and 2 are built. Phase 3 is partly built: the melody check is calibrated but not enforced, and the disclosure text and credits are in the studio. Phase 4 waits for an AI audio model. Decisions marked **Agreed** were settled on 2026-10-10 or later; items marked **To discuss** are still open. Production still needs the watermark service switched on and a trusted C2PA certificate.
 
 **Not legal advice.** The owner's lawyer reviews this before launch, in particular Stable Audio 3.0's licence text and the final wording of the EU deadline change.
 
@@ -14,7 +14,7 @@ Every piece of music published from Synaptix Music to SynaptixPlay can answer th
 
 The rules are enforced by code at publish time. Policy written in a document alone doesn't count.
 
-## Where things stand
+## Where things stood (2026-10-10)
 
 | Area | Today |
 | --- | --- |
@@ -78,12 +78,12 @@ The rules are enforced by code at publish time. Policy written in a document alo
   - **Only for the current revision:** the record describes the project as it stands, so it is attached only when the package's renders are of the current revision. For older renders the studio asks for a render of the current revision.
   - **Studio check:** `licenceRefusal(record)` is the rule: hand-composed music passes; generated or edited music needs a licence record that isn't `not-allowed`; no record means no publish. The publish panel shows the reason and disables Publish.
   - **Trust:** the platform must not rely on the studio's record. 1c recomputes it from the platform's stored copy of the revision and enforces the gate on that.
-- **1c (backend):** the platform stores the record with each version, enforces the gate, and adds the admin override with a reason and an audit entry.
-- **1d: the server-side lock on AI audio.** The audio service and the studio's side are built (2026-10-19); the platform's grant endpoint is next.
+- **1c, done (2026-10-19, backend):** the platform derives the record from its own stored revision, stores it with each version and enforces the gate (422 `LicenceRefused`; 409 `ProvenanceMismatch` when the manifest claims otherwise). An admin can override one refused draft version with a reason, recorded as an audit event.
+- **1d, done (2026-10-19): the server-side lock on AI audio.** The audio service, the studio's side and the platform's grant endpoint are built.
   - **Grant:** the platform signs `v1.<account>.<expires>.<hmac>` (HMAC-SHA256 over the first three parts, a few minutes' life) for an entitled account. The studio's server fetches one per request with `POST /api/v1/music/ai-audio/grants` (answering `{ token, expiresAt }`, or 403 `AiAudioNotEntitled`) and forwards it as `X-Synaptix-Audio-Grant`.
   - **Service:** every `/audio` route checks the grant against `SYNAPTIX_AUDIO_GRANT_SECRET` (`app/entitlement.py`); health checks stay open. With no secret it refuses everyone. `SYNAPTIX_AUDIO_LOCK=off` opens it for local demos.
   - **Studio:** the **Prototype audio** panel shows only when the platform grants this account access. Signed-out callers and refused accounts get 403 without the service being called; a platform that can't answer gets 502, never an open service.
-  - **Platform (next):** the grant endpoint, with entitlement as a feature flag (`Music:AiAudio:Enabled`) plus a per-account allow-list, signed with `Music:AiAudio:GrantSecret`.
+  - **Platform:** the grant endpoint, with entitlement as a feature flag (`Music:AiAudio:Enabled`) plus a per-account allow-list, signed with `Music:AiAudio:GrantSecret`.
 
 ### Licence gate (decision 2)
 
@@ -104,7 +104,7 @@ The rules are enforced by code at publish time. Policy written in a document alo
 ## Phase 2: AI marking on exported audio (decision 3; EU deadline 2 December 2026)
 
 **Progress (2026-10-19):**
-- **Watermark built.** AudioSeal runs in the backend's `Synaptix.Watermark` service (TycoonTycoon_Backend; MIT code and weights, CPU, internal only). The render worker sends each master and stem WAV of a project with AI involvement to the backend's `/internal/music/watermark` before transcoding, so every format carries the mark. The backend sets the 16-bit message (`5358`, "SX" v1). Hand-composed projects and plug-in freezes aren't marked. A watermark failure fails the render. In a robustness check on a synthetic clip, the mark sat 32.7 dB below the music and was detected after MP3 192/128/96k and OGG 160/96k (p ≥ 0.993; unmarked 0.269). It still needs checking on real renders.
+- **Watermark built.** AudioSeal runs in the backend's `Synaptix.Watermark` service (TycoonTycoon_Backend; MIT code and weights, CPU, internal only). The render worker sends each master and stem WAV of a project with AI involvement to the backend's `/internal/music/watermark` before transcoding, so every format carries the mark. The backend sets the 16-bit message (`5358`, "SX" v1). Hand-composed projects and plug-in freezes aren't marked. A watermark failure fails the render. In a robustness check on a synthetic clip, the mark sat 32.7 dB below the music and was detected after MP3 192/128/96k and OGG 160/96k (p ≥ 0.993; unmarked 0.269). On three real renders it was detected in every format (p ≥ 0.997; unmarked ≤ 0.22); the 16-bit message is best effort (see the service README).
 - **C2PA built.** The backend's watermark service signs with `c2pa-python` (ES256). The render worker sends each WAV and MP3 deliverable, last, to `/internal/music/projects/{id}/revisions/{rev}/content-credentials`, and the backend states the provenance from its stored revision (the licence gate's reader) with an IPTC digital source type: generated, composite (edited) or human. Tampering with the audio fails verification (`assertion.dataHash.mismatch`).
   - **Signing certificate:** self-signed for now (`Synaptix.Watermark/scripts/staging-c2pa-cert.sh`); validators show the signer as untrusted. DigiCert and SSL.com are being asked for a trusted claim-signing certificate.
   - **OGG (Agreed 2026-10-19):** the C2PA SDK can't bind to OGG at all, so a sidecar isn't possible either. Music with AI involvement isn't offered or delivered as OGG: the studio's Export menu leaves it out and the render worker refuses an OGG request, previews included. Hand-composed music can still be exported as OGG.
@@ -297,3 +297,4 @@ Each phase is one or two PRs per repo, with tests, docs and changelog.
 
 - 2026-10-10: first draft, from the owner's decisions and research on reference sets and store disclosure rules.
 - 2026-10-10: agreed: `editShare` from generated note IDs; a watermark on every export with AI involvement.
+- 2026-10-24: status brought up to date: phases 1 and 2 built, phase 3 partly built.
