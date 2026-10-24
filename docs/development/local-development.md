@@ -171,6 +171,7 @@ Exports are marked as AI-involved (publication rules phase 2). When the worker r
 - **Metadata tags:** projects with AI involvement get `AI_GENERATED`, `AI_GENERATOR`, `AI_MODEL` and `AI_LICENSE` as ID3 TXXX frames (MP3), MP4 metadata (M4A, Opus), Vorbis comments (FLAC, OGG) and a LIST/INFO comment (WAV), for players that don't read C2PA.
 - **C2PA content credentials:** every WAV, MP3, M4A, Opus (MP4) and FLAC deliverable, tags included, is signed last through the backend's `/internal/music/projects/{id}/revisions/{rev}/content-credentials`, which states the provenance from its own copy of the revision. OGG can't carry C2PA (the SDK can't bind to it), so projects with AI involvement aren't exported as OGG: the studio doesn't offer it and the worker refuses it.
 - A watermark or signing failure fails the render instead of delivering unmarked audio. The backend needs its watermark service (TycoonTycoon_Backend: `--profile music-watermark`, with a signing chain from `Synaptix.Watermark/scripts/staging-c2pa-cert.sh`). Set `RENDER_AI_MARKING=off` to render without the watermark and credentials locally.
+- The watermark container runs as uid 1000, so the signing key and chain must be readable by that user. The script prints the `chown` to run. With TycoonTycoon_Backend #609, an unreadable file gives a 503 that names it; before, signing failed with a 415.
 
 ## Install TypeScript Dependencies
 
