@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useState } from "react";
 import { z } from "zod";
+import { disclosureText, type PackageProvenance } from "@synaptix/project-model";
 import type { AdaptiveGameAudioManifest, RenderJob } from "@synaptix/render-contracts";
 import {
   AdaptivePackagePublishResponseSchema,
@@ -207,6 +208,7 @@ export function AdaptivePublication({
       </label>
       <p>{gate}</p>
       {manifest && licenceIssue && <p role="alert" className="licence-issue">{licenceIssue}</p>}
+      {manifest?.provenance && !licenceIssue && <StoreDisclosure record={manifest.provenance} />}
       <Button
         disabled={busy || !payload || Boolean(licenceIssue)}
         onClick={() =>
@@ -332,5 +334,47 @@ export function AdaptivePublication({
         </details>
       )}
     </aside>
+  );
+}
+
+/**
+ * What to tell stores about this music (publication-rules-v1, decision 5) and the credits its model's
+ * licence requires (decision 6), written from the package's provenance record. Screening isn't
+ * claimed yet: the melody check doesn't record a result in the package.
+ */
+function StoreDisclosure({ record }: { record: PackageProvenance }) {
+  const text = disclosureText(record);
+  const [copied, setCopied] = useState<string | null>(null);
+  async function copy(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(`${label} copied.`);
+    } catch {
+      setCopied("Copying isn't available here; select the text instead.");
+    }
+  }
+  return (
+    <details className="store-disclosure">
+      <summary>Store disclosure</summary>
+      <p>
+        Steam AI category: <strong>{text.steamCategory ?? "none needed (composed by hand)"}</strong>
+      </p>
+      <label>
+        Long form (Steam Content Survey)
+        <textarea readOnly rows={4} value={text.long} />
+      </label>
+      <Button onClick={() => void copy("Long form", text.long)}>Copy long form</Button>
+      <label>
+        One line (other stores)
+        <input readOnly value={text.short} />
+      </label>
+      <Button onClick={() => void copy("One line", text.short)}>Copy one line</Button>
+      {text.credits.length > 0 && (
+        <p>
+          Credits required by the model&apos;s licence: <strong>{text.credits.join("; ")}</strong>
+        </p>
+      )}
+      <p role="status">{copied}</p>
+    </details>
   );
 }
