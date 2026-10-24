@@ -11,7 +11,7 @@ from __future__ import annotations
 import gzip
 import json
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,10 +34,18 @@ class MelodyIndex:
     version: str = "unversioned"
     postings: dict[tuple[Token, ...], list[tuple[int, int]]] = field(default_factory=dict)
     weights: dict[tuple[Token, ...], float] = field(default_factory=dict)
+    bits: dict[Token, float] = field(default_factory=dict)
+    unseen_bits: float = 0.0
 
     def __post_init__(self) -> None:
         if self.postings:
             return
+        # How surprising each token is across the reference set: repeated notes in an even rhythm
+        # carry almost no information, a distinctive leap a lot (add-one smoothed).
+        counts = Counter(token for reference in self.references for token in reference.tokens)
+        total = sum(counts.values()) + len(counts) + 1
+        self.bits = {token: -math.log2((count + 1) / total) for token, count in counts.items()}
+        self.unseen_bits = -math.log2(1 / total)
         postings: dict[tuple[Token, ...], list[tuple[int, int]]] = defaultdict(list)
         for ref_number, reference in enumerate(self.references):
             for position in range(len(reference.tokens) - SEED + 1):
@@ -49,6 +57,10 @@ class MelodyIndex:
         for gram, hits in self.postings.items():
             songs = len({ref for ref, _ in hits})
             self.weights[gram] = math.log((1 + total) / (1 + songs)) + 1
+
+    def information(self, tokens: list[Token] | tuple[Token, ...]) -> float:
+        """Bits of information in a run of tokens."""
+        return sum(self.bits.get(token, self.unseen_bits) for token in tokens)
 
     def save(self, path: Path) -> None:
         payload = {

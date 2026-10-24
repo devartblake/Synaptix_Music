@@ -8,6 +8,7 @@
 
 ### Changed
 
+- **Melody check calibrated on POP909.** The rule "8 consecutive matching notes" flagged 81.7% of unrelated pop songs and every generated arrangement, so a block now needs at least 8 notes carrying at least 56 bits of information (how rare the steps are across the reference set). Repeated notes and scale runs no longer block; copies with an edited note are joined into one match. Melody extraction for the reference index now picks the melody part correctly 85% of the time, up from 40%. `scripts/calibrate_melody_check.py` reproduces the numbers; `SYNAPTIX_MELODY_BLOCK_BITS` overrides the threshold.
 - **More export formats: AAC (M4A), Opus (MP4) and FLAC.** All three carry the AI marks: the watermark, metadata tags (MP4 metadata or Vorbis comments) and signed C2PA content credentials, so music made with AI can be exported as WAV, MP3, M4A, Opus or FLAC. Opus is delivered in an MP4 container (`.mp4`), which C2PA can bind to. Defaults: AAC 192 kbps, Opus 128 kbps. Output stays byte-identical across retries.
 - **Music made with AI isn't exported as OGG.** OGG can't carry C2PA content credentials, so projects with AI involvement offer WAV and MP3 only, and the render worker refuses an OGG request for them (previews included). Hand-composed projects keep OGG.
 

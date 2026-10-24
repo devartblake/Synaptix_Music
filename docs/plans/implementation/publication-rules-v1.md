@@ -155,18 +155,34 @@ The rules are enforced by code at publish time. Policy written in a document alo
    - This catches arrangement-level similarity that the symbolic check misses.
    - It matters because content-ID systems on YouTube and Twitch will scan streams of the game.
 
-**Progress (2026-10-19): the symbolic check is built in the generation API (`app/similarity/`), not yet enforced.**
+**Progress: the symbolic check is built in the generation API (`app/similarity/`), calibrated on POP909, and not yet enforced.**
 - **Matcher:**
-  - Takes the top line of each pitched clip.
-  - Tokens are (interval, onset-gap ratio), so the match ignores key and tempo and survives doubled or halved note values.
-  - The index uses 4-token seeds (6 notes) weighted by rarity, and exact runs are joined along each reference's diagonal.
-  - 8 or more consecutive notes against a protected reference is a block. A run also found in a public-domain reference is logged only. The rarity-score rule is configurable and off until calibrated.
-- **Generation API:** every proposal carries `similarityCheck` (`clear`, `blocked` or `unchecked`), with findings by track, clip and bars, never naming the song. `unchecked` until `SYNAPTIX_MELODY_INDEX` points at an index.
-- **Index builder:** `scripts/build_melody_index.py` reads folders of MIDI files (protected or public domain). It picks the melody as the highest-pitched non-drum part with at least 16 notes.
+  - It takes the top line of each pitched clip.
+  - Tokens are (interval, onset-gap ratio), so a match ignores key and tempo and survives doubled or halved note values.
+  - Exact runs are found from rarity-weighted 4-token seeds.
+  - Runs against the same song that are a changed or added note apart are joined into one match.
+- **Rule, changed by calibration (2026-10-24):** a block needs a match of at least 8 notes carrying at least 56 bits of information.
+  - "Information" is how rare each interval-and-rhythm step is across the reference set.
+  - A run also found in a public-domain reference is only logged.
+  - The original rule, 8 consecutive notes, flagged 81.7% of unrelated POP909 songs and every generated arrangement. The shared runs were repeated notes, scale steps and bass patterns.
+  - `SYNAPTIX_MELODY_BLOCK_BITS` overrides the threshold. It must be recalibrated for the real reference set, because bits are relative to the set's own phrases and POP909 is Chinese pop.
+- **Calibration** (`scripts/calibrate_melody_check.py`, POP909, 909 songs; share caught at 56 bits):
+
+  | Case | Caught |
+  | --- | --- |
+  | Unrelated songs (false positives) | 2.5% (about 1.6% without POP909's duplicate songs) |
+  | Exact or transposed copy, 12 notes | 62% |
+  | Exact or transposed copy, 16 notes | 99.7% |
+  | 16-note copy with one changed note | 80% |
+  | 16-note copy with one added note | 54% |
+  | Alternative transcriptions of the same song | 99.7% |
+  | Generated arrangements (150) | 0% (highest 46.5 bits) |
+
+  An 8-note copy almost never blocks now: an 8-note figure rarely carries enough information to tell a copied hook from a common one. That trade-off is for the lawyer to confirm.
+- **Melody extraction for the index:** the builder prefers a part named melody, vocal or lead, and otherwise takes the most monophonic part. With track names hidden, that found POP909's labelled melody in 85% of songs; "the highest part" found it in 40%.
+- **Generation API:** every proposal carries `similarityCheck` (`clear`, `blocked` or `unchecked`), with findings by track, clip and bars, never naming the song. It reads `unchecked` until `SYNAPTIX_MELODY_INDEX` points at an index built with `scripts/build_melody_index.py`.
 - **Still to do:**
-  - Choose and build the reference set (lawyer on Lakh MIDI).
-  - Calibrate on POP909 and known infringement cases.
-  - Confirm near-misses with local alignment; today's matches are exact runs.
+  - Choose and build the reference set (the lawyer needs to sign off on Lakh MIDI), then recalibrate on it.
   - Act on a block: regenerate or warn in the studio, block preview and publish, and run the check again at publish over the edited project.
   - Store the result in the package record.
 
