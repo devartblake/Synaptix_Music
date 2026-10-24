@@ -412,6 +412,68 @@ export function packageProvenance(project: ArrangementSource): PackageProvenance
   };
 }
 
+/** Store disclosure for a package's music (publication-rules-v1, decision 5) and its credits (decision 6). */
+export interface MusicDisclosure {
+  /** For Steam's Content Survey and similar long-form fields. */
+  long: string;
+  /** For stores and pages with room for one line. */
+  short: string;
+  /** Steam's AI category: music made in the studio and shipped is pre-generated; hand-composed music needs none. */
+  steamCategory: "Pre-generated" | null;
+  /** Attributions the model's licence requires (e.g. "Powered by Stability AI"); empty when none. */
+  credits: string[];
+}
+
+function composerDescription(record: PackageProvenance): { long: string; short: string } {
+  if (record.generatorId === "synaptix-claude-composer")
+    return { long: "which uses Anthropic's Claude to plan arrangements", short: "with AI (Anthropic's Claude)" };
+  if (record.generatorId === "synaptix-local-composer")
+    return {
+      long: `which uses a locally run open-weight AI model${record.model ? ` (${record.model})` : ""} to plan arrangements`,
+      short: `with AI (${record.model ?? "a local open-weight model"})`
+    };
+  return {
+    long: "using its procedural composer, which follows musical rules and uses no machine-learning model",
+    short: "with a rule-based composer (no AI model)"
+  };
+}
+
+/**
+ * Disclosure text built from the provenance record, so it says exactly what the platform knows.
+ * Pass `screened: true` only when the music passed the melody similarity check; the text claims
+ * the screening only then.
+ */
+export function disclosureText(record: PackageProvenance, options: { screened?: boolean } = {}): MusicDisclosure {
+  const credits = record.credits ?? [];
+  const runtime = "No music is generated while the game runs.";
+  if (record.origin === "hand") {
+    return {
+      long: `The music in this game was composed by hand in Synaptix Music, without AI or generative tools. ${runtime}`,
+      short: "Music composed by hand, without AI.",
+      steamCategory: null,
+      credits
+    };
+  }
+  const composer = composerDescription(record);
+  const percent = record.editShare === undefined ? null : Math.round(record.editShare * 100);
+  const edits =
+    record.origin === "generated" || percent === 0
+      ? "it was not edited by hand after it was generated"
+      : percent === null ? "it was then edited by hand" : `about ${percent}% of the notes were edited by hand`;
+  const shortEdits =
+    record.origin === "generated" || percent === 0 ? "" : percent === null ? ", edited by hand" : `, ${percent}% edited by hand`;
+  const screening = options.screened ? ", and every track was screened for melodic similarity to known songs" : "";
+  return {
+    long:
+      `The music in this game was composed with Synaptix Music, ${composer.long}. ` +
+      `The music is note-based and was rendered to audio before release; ${edits}. ` +
+      `No lyrics or voice cloning were used${screening}. ${runtime}`,
+    short: `Music pre-generated ${composer.short}${shortEdits}.`,
+    steamCategory: "Pre-generated",
+    credits
+  };
+}
+
 /**
  * Why publishing must refuse a package, or null when its licence allows it. Hand-composed music is
  * always fine; generated music needs a licence record that doesn't say `not-allowed`. The platform

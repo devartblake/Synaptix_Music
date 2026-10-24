@@ -220,6 +220,10 @@ The rules are enforced by code at publish time. Policy written in a document alo
 - **Google Play** only has rules for apps that *generate* content at runtime, so they don't apply.
 - **Epic** shows no AI labels.
 
+**Built (2026-10-24):** `disclosureText(record, { screened })` in project-model writes the long form, the one-liner and the Steam category from the provenance record. The publication panel shows them with copy buttons once the licence check passes.
+- **Wording:** the procedural composer is described as rule-based, with no machine-learning model. Hand-composed music reads "composed by hand, without AI" and needs no Steam category.
+- **Screening:** the text claims melody screening only when the music passed the check. The package record doesn't hold a check result yet, so the studio doesn't claim it today.
+
 **To discuss:** whether SynaptixPlay's own store should show this disclosure for its games, the way Steam does.
 
 ### Credits (decision 6)
@@ -228,6 +232,8 @@ The rules are enforced by code at publish time. Policy written in a document alo
 - Claude and the procedural composer need none.
 - Stable Audio would add "Powered by Stability AI".
 - A CC-BY model would add its attribution.
+
+**Built (2026-10-24):** the credits travel in the package manifest's provenance record, and the publication panel shows them under "Credits required by the model's licence" when there are any.
 
 ## Phase 4: revenue watch (decision 7)
 
