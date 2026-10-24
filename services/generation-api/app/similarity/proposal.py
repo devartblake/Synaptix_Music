@@ -12,7 +12,7 @@ from app.models.generation import (
     SimilarityCheck,
     SimilarityFinding,
 )
-from app.similarity.check import find_matches, is_block
+from app.similarity.check import BLOCK_BITS, BLOCK_NOTES, find_matches, is_block
 from app.similarity.index import MelodyIndex
 from app.similarity.melody import Note, melody_line, phrase_tokens
 
@@ -26,15 +26,18 @@ def melody_index() -> MelodyIndex | None:
     return MelodyIndex.load(Path(path)) if path else None
 
 
-def score_threshold() -> float | None:
-    value = os.environ.get("SYNAPTIX_MELODY_SCORE_THRESHOLD", "").strip()
-    return float(value) if value else None
+def block_bits() -> float:
+    """The information a match needs to block (SYNAPTIX_MELODY_BLOCK_BITS, default BLOCK_BITS).
+
+    Recalibrate it when the reference set changes: bits are relative to the set's own phrases."""
+    value = os.environ.get("SYNAPTIX_MELODY_BLOCK_BITS", "").strip()
+    return float(value) if value else BLOCK_BITS
 
 
 def check_proposal(
     proposal: GenerationProposal,
     index: MelodyIndex | None,
-    threshold: float | None = None,
+    threshold: float = BLOCK_BITS,
 ) -> SimilarityCheck:
     """Checks the top line of every pitched clip (drums are skipped)."""
     if index is None:
@@ -62,8 +65,8 @@ def check_proposal(
                             notes=match.notes,
                         )
                     )
-                elif match.notes >= 6:
-                    logged += 1
+                elif match.notes >= BLOCK_NOTES and match.bits >= threshold:
+                    logged += 1  # as distinctive as a block, but public domain or common to it
     return SimilarityCheck(
         status="blocked" if findings else "clear",
         indexVersion=index.version,

@@ -1,8 +1,10 @@
 """The melody check (publication-rules-v1, decision 4).
 
 What the rule protects against: generated music repeating a copyrighted song's hook. So a match must
-survive a change of key and tempo, 8 matching notes block while 7 don't, a phrase that is also in a
-public-domain tune (a scale, a folk turn) is only logged, and a warning never names the song.
+survive a change of key and tempo and an edited note; fewer than 8 notes never block; a run with
+little information (repeated notes, a scale) doesn't block however long it is, because unrelated
+songs share those; a phrase also in a public-domain tune is only logged; and a warning never names
+the song. Thresholds come from the POP909 calibration (scripts/calibrate_melody_check.py).
 
 The "protected" melodies here are invented stand-ins; the repository ships no copyrighted melodies.
 """
@@ -12,7 +14,7 @@ from pathlib import Path
 
 from app.generation.composers import ProceduralComposer, compose_arrangement
 from app.models.generation import GenerationRequest
-from app.similarity.check import find_matches, is_block
+from app.similarity.check import BLOCK_BITS, find_matches, is_block
 from app.similarity.index import MelodyIndex, Reference
 from app.similarity.melody import Note, melody_line, phrase_tokens
 from app.similarity.proposal import check_proposal
@@ -30,8 +32,27 @@ def line(pitches: list[int], beats: list[float], start: int = 0, scale: float = 
 
 
 # Invented "protected" hook: distinctive leaps and rhythm.
-HOOK_PITCHES = [64, 71, 69, 74, 72, 67, 76, 74, 79, 77, 72, 81]
-HOOK_BEATS = [0.5, 0.25, 0.75, 0.5, 0.25, 1.0, 0.5, 0.25, 0.75, 0.5, 0.25, 1.0]
+HOOK_PITCHES = [64, 71, 69, 74, 72, 67, 76, 74, 79, 77, 72, 81, 76, 83, 78, 71]
+HOOK_BEATS = [
+    0.5,
+    0.25,
+    0.75,
+    0.5,
+    0.25,
+    1.0,
+    0.5,
+    0.25,
+    0.75,
+    0.5,
+    0.25,
+    1.0,
+    0.5,
+    0.25,
+    0.75,
+    1.0,
+]
+# Repeated notes in an even rhythm: in real songs this is everywhere.
+REPEATED = [67] * 16
 # Public domain: "Ode to Joy" opening, and a plain major scale run.
 ODE = line([64, 64, 65, 67, 67, 65, 64, 62, 60, 60, 62, 64, 64, 62, 62], [1] * 12 + [1.5, 0.5, 2])
 SCALE = line([60, 62, 64, 65, 67, 69, 71, 72, 74, 76], [0.5] * 10)
@@ -43,11 +64,13 @@ def reference(ref_id: str, notes: list[Note], protected: bool) -> Reference:
 
 def index(*extra: Reference) -> MelodyIndex:
     rng = random.Random(1)
-    filler = [  # unrelated protected songs, so rarity weights behave as in a real set
+    filler = [  # unrelated protected songs, so phrase statistics behave as in a real set
         reference(
             f"filler-{i}",
+            # Like real melodies, they mix leaps with stretches of repeated notes.
             line(
-                [rng.randint(55, 80) for _ in range(24)], [rng.choice([0.5, 1]) for _ in range(24)]
+                [rng.randint(55, 80) for _ in range(24)] + [60 + i] * 12,
+                [rng.choice([0.5, 1]) for _ in range(24)] + [0.5] * 12,
             ),
             True,
         )
@@ -68,8 +91,9 @@ def tokens_of(notes: list[Note]):
     return phrase_tokens(melody_line(notes))
 
 
-def longest_blocking(notes: list[Note], idx: MelodyIndex) -> int:
-    return max((m.notes for m in find_matches(tokens_of(notes), idx) if is_block(m)), default=0)
+def longest_blocking(notes: list[Note], idx: MelodyIndex, block_bits: float = BLOCK_BITS) -> int:
+    matches = find_matches(tokens_of(notes), idx)
+    return max((m.notes for m in matches if is_block(m, block_bits)), default=0)
 
 
 def test_a_copied_hook_is_found_in_another_key_and_tempo() -> None:
@@ -77,13 +101,28 @@ def test_a_copied_hook_is_found_in_another_key_and_tempo() -> None:
     assert longest_blocking(copied, index()) == len(HOOK_PITCHES)
 
 
-def test_eight_matching_notes_block_and_seven_do_not() -> None:
+def test_fewer_than_eight_notes_never_block_however_distinctive() -> None:
     idx = index()
     tail = [50, 52, 49]  # unrelated notes after the copied stretch
     eight = line(HOOK_PITCHES[:8] + tail, HOOK_BEATS[:8] + [1, 1, 1])
     seven = line(HOOK_PITCHES[:7] + tail, HOOK_BEATS[:7] + [1, 1, 1])
-    assert longest_blocking(eight, idx) >= 8
-    assert longest_blocking(seven, idx) == 0
+    # With the information bar removed, length alone decides.
+    assert longest_blocking(eight, idx, block_bits=0) >= 8
+    assert longest_blocking(seven, idx, block_bits=0) == 0
+
+
+def test_a_long_run_of_repeated_notes_does_not_block() -> None:
+    # Sixteen repeated notes match every filler song's repeated stretch, but carry little
+    # information: on POP909, counting notes like this flagged most unrelated songs.
+    matches = find_matches(tokens_of(line(REPEATED, [0.5] * 16)), index())
+    assert any(m.notes >= 8 for m in matches)
+    assert not any(is_block(m) for m in matches)
+
+
+def test_a_copy_with_one_edited_note_still_blocks() -> None:
+    edited = list(HOOK_PITCHES)
+    edited[8] += 2
+    assert longest_blocking(line(edited, HOOK_BEATS), index()) >= 14
 
 
 def test_matches_only_against_public_domain_tunes_are_logged_not_blocked() -> None:
@@ -97,8 +136,9 @@ def test_a_common_phrase_shared_with_a_public_domain_tune_does_not_block() -> No
         "pop-with-scale", SCALE + line([80, 70, 75], [1, 1, 1], start=5 * Q), True
     )
     public_scale = reference("folk-scale", SCALE, False)
-    assert longest_blocking(SCALE, index(protected_with_scale)) >= 8
-    assert longest_blocking(SCALE, index(protected_with_scale, public_scale)) == 0
+    # The information bar is lifted to isolate the public-domain rule.
+    assert longest_blocking(SCALE, index(protected_with_scale), block_bits=0) >= 8
+    assert longest_blocking(SCALE, index(protected_with_scale, public_scale), block_bits=0) == 0
 
 
 def test_the_top_line_is_the_melody() -> None:
@@ -141,20 +181,42 @@ def test_a_proposal_reports_where_not_what_and_is_unchecked_without_an_index() -
     assert "hook" not in result.model_dump_json()  # the matched song is never named
 
 
-def test_the_index_builder_finds_the_melody_part_of_a_midi_file(tmp_path: Path) -> None:
+def _midi(tmp_path: Path, parts, names=None) -> Path:
     mido = __import__("pytest").importorskip("mido")
     song = mido.MidiFile(ticks_per_beat=Q)
-    for channel, pitches in [(0, [48] * 16), (1, HOOK_PITCHES + HOOK_PITCHES[:4]), (9, [36] * 16)]:
+    for number, (channel, chords) in enumerate(parts):
         track = mido.MidiTrack()
-        for pitch in pitches:
-            track.append(mido.Message("note_on", note=pitch, velocity=90, channel=channel, time=0))
-            track.append(
-                mido.Message("note_off", note=pitch, velocity=0, channel=channel, time=Q // 2)
-            )
+        track.name = (names or {}).get(number, "")
+        for chord in chords:
+            for pitch in chord:
+                track.append(
+                    mido.Message("note_on", note=pitch, velocity=90, channel=channel, time=0)
+                )
+            for i, pitch in enumerate(chord):
+                track.append(
+                    mido.Message(
+                        "note_off",
+                        note=pitch,
+                        velocity=0,
+                        channel=channel,
+                        time=Q // 2 if i == 0 else 0,
+                    )
+                )
         song.tracks.append(track)
-    song.save(tmp_path / "song.mid")
+    path = tmp_path / "song.mid"
+    song.save(path)
+    return path
 
+
+def test_the_index_builder_finds_the_melody_part_of_a_midi_file(tmp_path: Path) -> None:
     from app.similarity.midi import melody_from_midi
 
-    # The bass line (lower) and the drums (channel 10) are not the melody.
-    assert [n.pitch for n in melody_from_midi(tmp_path / "song.mid")][:12] == HOOK_PITCHES
+    melody = [[p] for p in HOOK_PITCHES + HOOK_PITCHES[:4]]
+    piano = [[72, 79, 84]] * 20  # chords played above the melody
+    bass, drums = [[40]] * 20, [[36]] * 20
+    path = _midi(tmp_path, [(0, bass), (1, melody), (2, piano), (9, drums)])
+    # Melodies are sung one note at a time: the chordal piano is higher but isn't the tune.
+    assert [n.pitch for n in melody_from_midi(path)][:16] == HOOK_PITCHES
+    # A part named like a melody wins outright.
+    named = _midi(tmp_path, [(0, bass), (1, piano)], names={0: "Lead vocal"})
+    assert {n.pitch for n in melody_from_midi(named)} == {40}

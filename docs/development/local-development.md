@@ -240,8 +240,9 @@ The direct Python endpoint is suitable for generator development. In the integra
 
 Every proposal carries a `similarityCheck` (publication rules phase 3, decision 4). The API takes
 the top line of each pitched clip and compares it with a reference set of melodies, ignoring key
-and tempo. 8 or more consecutive matching notes against a protected song make the check
-`blocked`. Phrases that also appear in a public-domain tune (scales, folk turns) are only counted
+and tempo. A match of at least 8 notes carrying at least 56 bits of information (how rare its
+steps are) against a protected song makes the check `blocked`; repeated notes and scales carry
+little, so they don't. Phrases that also appear in a public-domain tune (scales, folk turns) are only counted
 as logged matches. Findings name the track, clip and bars, never the matched song.
 
 The reference set is a server-side index file. Build it from folders of MIDI files:
@@ -252,8 +253,8 @@ python scripts/build_melody_index.py --protected <copyrighted-midi-dir> \
 ```
 
 Then set `SYNAPTIX_MELODY_INDEX=/path/to/melodies.json.gz`. Without it, proposals are
-`unchecked`. `SYNAPTIX_MELODY_SCORE_THRESHOLD` adds a rarity-weighted score rule, which is off
-until the thresholds are calibrated. Which reference set to use is still being decided, and none
+`unchecked`. `SYNAPTIX_MELODY_BLOCK_BITS` changes the threshold (calibrated on POP909 with
+`scripts/calibrate_melody_check.py`; recalibrate for the real reference set). Which reference set to use is still being decided, and none
 ships in this repository.
 
 ### Choose a composer
