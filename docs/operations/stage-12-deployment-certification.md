@@ -9,7 +9,7 @@ The Stage 12 implementation is code-complete. Production closure requires this r
 - SynaptixPlay backend containing the internal immutable-revision endpoint from backend PR #525.
 - PostgreSQL with render-worker migration `0001_render_jobs.sql` applied.
 - MinIO bucket `synaptix-assets`.
-- Render-worker image built from `services/render-worker/Dockerfile`; the image includes FFmpeg with `libmp3lame` and `libvorbis`.
+- Render-worker image built from `services/render-worker/Dockerfile`; the image includes FFmpeg 5.1 (Debian bookworm) with the `aac`, `libopus`, `libmp3lame`, `libvorbis` and `flac` encoders. Checked 2026-10-24: the transcoder test passes inside the image, with every format byte-identical across runs and tagged.
 - Private connectivity from the worker to PostgreSQL, MinIO, and the platform API.
 - Private connectivity from the Next.js BFF to the render-worker HTTP API.
 
